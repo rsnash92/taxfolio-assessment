@@ -85,9 +85,12 @@ export function WizardProvider({
       const savedData = localStorage.getItem('wizard-data');
       const savedStep = localStorage.getItem('wizard-step');
 
+      let loadedData = initialData;
+
       if (savedData) {
         try {
-          setData(JSON.parse(savedData));
+          loadedData = JSON.parse(savedData);
+          setData(loadedData);
         } catch {
           // Use initial data if parse fails
         }
@@ -95,6 +98,32 @@ export function WizardProvider({
 
       if (savedStep) {
         setCurrentStep(savedStep as StepId);
+      }
+
+      // Check for bank connection callback
+      const urlParams = new URLSearchParams(window.location.search);
+      const bankConnected = urlParams.get('bank_connected') === 'true';
+      const txCount = urlParams.get('tx_count');
+      const bankError = urlParams.get('bank_error');
+
+      if (bankConnected) {
+        console.log('Bank connected! Transaction count:', txCount);
+        // Update data with bank connected status
+        setData((prev) => ({
+          ...prev,
+          bankConnected: true,
+          connectionMethod: 'bank',
+        }));
+        // Move to next step (importing or transactions)
+        setCurrentStep('importing');
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (bankError) {
+        console.error('Bank connection error:', bankError);
+        // Stay on connect step, error will be shown
+        setCurrentStep('connect-choice');
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
       }
 
       setIsLoading(false);
