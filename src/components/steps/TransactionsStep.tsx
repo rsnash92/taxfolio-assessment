@@ -15,10 +15,11 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  CheckCheck,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 type FilterStatus = 'all' | 'needs_review' | 'business' | 'personal';
 
@@ -75,34 +76,29 @@ export function TransactionsStep() {
   }, [filter, search]);
 
   // Calculate stats
-  const stats = useMemo(
-    () => ({
+  const stats = useMemo(() => {
+    const needsReviewTxs = transactions.filter((t) => t.status === 'needs_review');
+    const uncategorisedCount = needsReviewTxs.filter((t) => !t.suggested_category).length;
+    const pendingConfirmCount = needsReviewTxs.filter((t) => t.suggested_category).length;
+
+    return {
       total: transactions.length,
       business: transactions.filter((t) => t.status === 'business').length,
       personal: transactions.filter((t) => t.status === 'personal').length,
-      needsReview: transactions.filter((t) => t.status === 'needs_review')
-        .length,
-      hasSuggestions: transactions.some((t) => t.suggested_category !== null),
-    }),
-    [transactions]
-  );
-
-  // Calculate totals
-  const totals = useMemo(() => {
-    const businessTxs = transactions.filter((t) => t.status === 'business');
-    return {
-      income: businessTxs
-        .filter((t) => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0),
-      expenses: businessTxs
-        .filter((t) => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0),
+      needsReview: needsReviewTxs.length,
+      uncategorised: uncategorisedCount,
+      pendingConfirm: pendingConfirmCount,
     };
   }, [transactions]);
 
-  // Handle AI categorisation with streaming
+  // Handle AI categorisation with streaming - stores suggestions but keeps status as needs_review
   const handleCategorise = useCallback(async () => {
-    if (transactions.length === 0) return;
+    // Only categorise uncategorised transactions (no suggestion yet)
+    const uncategorisedTxs = transactions.filter(
+      (t) => t.status === 'needs_review' && !t.suggested_category
+    );
+
+    if (uncategorisedTxs.length === 0) return;
 
     setIsCategorising(true);
     setCategoriseProgress(0);
@@ -113,7 +109,7 @@ export function TransactionsStep() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          transactions,
+          transactions: uncategorisedTxs,
           stream: true,
         }),
       });
@@ -156,15 +152,16 @@ export function TransactionsStep() {
         }
       }
 
-      // Apply results to transactions
+      // Apply suggestions but keep status as needs_review (user must confirm)
       if (results.length > 0) {
         const updatedTransactions = transactions.map((tx) => {
           const result = results.find((r) => r.id === tx.id);
           if (result) {
             return {
               ...tx,
-              status: result.is_business ? 'business' : 'personal',
+              // Keep status as needs_review - user must confirm
               suggested_category: result.category,
+              suggested_is_business: result.is_business,
               confidence: result.confidence,
             };
           }
@@ -184,6 +181,28 @@ export function TransactionsStep() {
       setCategoriseProgress(0);
       setCategoriseStatus('');
     }
+  }, [transactions, updateData]);
+
+  // Confirm all AI suggestions
+  const handleConfirmAll = useCallback(() => {
+    const pendingTxs = transactions.filter(
+      (t) => t.status === 'needs_review' && t.suggested_category
+    );
+
+    if (pendingTxs.length === 0) return;
+
+    const updatedTransactions = transactions.map((tx) => {
+      if (tx.status === 'needs_review' && tx.suggested_category) {
+        return {
+          ...tx,
+          status: tx.suggested_is_business ? 'business' : 'personal',
+          category: tx.suggested_category,
+        };
+      }
+      return tx;
+    });
+
+    updateData({ transactions: updatedTransactions as typeof transactions });
   }, [transactions, updateData]);
 
   // Handle status change for single transaction
@@ -217,9 +236,8 @@ export function TransactionsStep() {
     }
   };
 
-  // Can always continue - allow users to proceed even with uncategorised transactions
-  // They can come back and review later
-  const canContinue = stats.total > 0;
+  // Can continue when all transactions are categorised (not needs_review)
+  const canContinue = stats.total > 0 && stats.needsReview === 0;
 
   // Handle continue
   const handleContinue = () => {
@@ -241,90 +259,66 @@ export function TransactionsStep() {
         </p>
       </div>
 
-      {/* AI Categorise Banner - show if transactions need review */}
-      {stats.needsReview > 0 && !stats.hasSuggestions && (
-        <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Brain className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900 mb-1">
-                  Let AI categorise your transactions
-                </p>
-                <p className="text-sm text-gray-600">
-                  Our AI will analyse each transaction and mark it as business or personal.
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={handleCategorise}
-              disabled={isCategorising}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              {isCategorising ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{categoriseProgress}%</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  <span>Categorise All</span>
-                </div>
-              )}
-            </Button>
-          </div>
-
-          {/* Progress bar */}
-          {isCategorising && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                <span>{categoriseStatus}</span>
-                <span>{categoriseProgress}%</span>
-              </div>
-              <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 transition-all duration-300"
-                  style={{ width: `${categoriseProgress}%` }}
-                />
-              </div>
-            </div>
+      {/* Action Bar - like main app */}
+      <div className="flex items-center gap-3 mb-6">
+        {/* Categorise Button */}
+        <Button
+          onClick={handleCategorise}
+          disabled={isCategorising || stats.uncategorised === 0}
+          variant="outline"
+          className="bg-white"
+        >
+          {isCategorising ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {categoriseProgress}%
+            </>
+          ) : (
+            <>
+              <Brain className="h-4 w-4 mr-2" />
+              Categorise {stats.uncategorised > 0 ? stats.uncategorised : ''}
+            </>
           )}
-        </div>
-      )}
+        </Button>
 
-      {/* AI Summary Banner - show after categorisation */}
-      {stats.hasSuggestions && stats.needsReview < stats.total && (
-        <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Brain className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900 mb-1">
-                  AI has categorised your transactions
-                </p>
-                <p className="text-sm text-gray-600">
-                  {stats.business} marked as business, {stats.personal} as
-                  personal.
-                  {stats.needsReview > 0 && (
-                    <span className="text-amber-600 font-medium">
-                      {' '}
-                      {stats.needsReview} need your review.
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={handleContinue}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white"
-            >
-              Continue to Summary
-            </Button>
+        {/* Confirm All Button */}
+        <Button
+          onClick={handleConfirmAll}
+          disabled={stats.pendingConfirm === 0}
+          variant="outline"
+          className="bg-white"
+        >
+          <CheckCheck className="h-4 w-4 mr-2" />
+          Confirm All {stats.pendingConfirm > 0 ? stats.pendingConfirm : ''}
+        </Button>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Search */}
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search transactions..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-white"
+          />
+        </div>
+      </div>
+
+      {/* Progress bar when categorising */}
+      {isCategorising && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <span>{categoriseStatus}</span>
+            <span>{categoriseProgress}%</span>
+          </div>
+          <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500 transition-all duration-300"
+              style={{ width: `${categoriseProgress}%` }}
+            />
           </div>
         </div>
       )}
@@ -335,24 +329,19 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'business' ? 'all' : 'business')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-emerald-300',
+            'bg-gray-900 rounded-xl p-4 text-left transition-all',
             filter === 'business'
-              ? 'border-emerald-500 ring-1 ring-emerald-500/30'
-              : 'border-gray-200'
+              ? 'ring-2 ring-emerald-500 ring-offset-2'
+              : 'hover:bg-gray-800'
           )}
         >
           <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                'w-10 h-10 rounded-lg flex items-center justify-center',
-                filter === 'business' ? 'bg-emerald-100' : 'bg-gray-100'
-              )}
-            >
-              <Briefcase className="h-5 w-5 text-emerald-600" />
+            <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+              <Briefcase className="h-5 w-5 text-emerald-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.business}</p>
-              <p className="text-xs text-gray-500">Business</p>
+              <p className="text-2xl font-bold text-emerald-400">{stats.business}</p>
+              <p className="text-xs text-gray-400">Business</p>
             </div>
           </div>
         </button>
@@ -361,24 +350,19 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'personal' ? 'all' : 'personal')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-gray-400',
+            'bg-gray-900 rounded-xl p-4 text-left transition-all',
             filter === 'personal'
-              ? 'border-gray-500 ring-1 ring-gray-500/30'
-              : 'border-gray-200'
+              ? 'ring-2 ring-gray-500 ring-offset-2'
+              : 'hover:bg-gray-800'
           )}
         >
           <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                'w-10 h-10 rounded-lg flex items-center justify-center',
-                filter === 'personal' ? 'bg-gray-200' : 'bg-gray-100'
-              )}
-            >
-              <User className="h-5 w-5 text-gray-500" />
+            <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
+              <User className="h-5 w-5 text-gray-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-500">{stats.personal}</p>
-              <p className="text-xs text-gray-500">Personal (excluded)</p>
+              <p className="text-2xl font-bold text-gray-300">{stats.personal}</p>
+              <p className="text-xs text-gray-400">Personal</p>
             </div>
           </div>
         </button>
@@ -387,24 +371,19 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'needs_review' ? 'all' : 'needs_review')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-amber-300',
+            'bg-gray-900 rounded-xl p-4 text-left transition-all',
             filter === 'needs_review'
-              ? 'border-amber-500 ring-1 ring-amber-500/30'
-              : 'border-gray-200'
+              ? 'ring-2 ring-amber-500 ring-offset-2'
+              : 'hover:bg-gray-800'
           )}
         >
           <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                'w-10 h-10 rounded-lg flex items-center justify-center',
-                filter === 'needs_review' ? 'bg-amber-100' : 'bg-gray-100'
-              )}
-            >
-              <AlertCircle className="h-5 w-5 text-amber-500" />
+            <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
+              <AlertCircle className="h-5 w-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-amber-500">{stats.needsReview}</p>
-              <p className="text-xs text-gray-500">Needs review</p>
+              <p className="text-2xl font-bold text-amber-400">{stats.needsReview}</p>
+              <p className="text-xs text-gray-400">Needs review</p>
             </div>
           </div>
         </button>
@@ -413,57 +392,43 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter('all')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-gray-400',
+            'bg-gray-900 rounded-xl p-4 text-left transition-all',
             filter === 'all'
-              ? 'border-gray-600 ring-1 ring-gray-600/30'
-              : 'border-gray-200'
+              ? 'ring-2 ring-white ring-offset-2'
+              : 'hover:bg-gray-800'
           )}
         >
           <div>
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            <p className="text-xs text-gray-500">Total transactions</p>
+            <p className="text-2xl font-bold text-white">{stats.total}</p>
+            <p className="text-xs text-gray-400">Total transactions</p>
           </div>
         </button>
       </div>
 
-      {/* Search & Bulk Actions */}
-      <div className="flex items-center gap-4 mb-4">
-        {/* Search */}
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search transactions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+      {/* Bulk Actions - when items selected */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-gray-100 rounded-lg">
+          <span className="text-sm text-gray-600">{selected.size} selected</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulkAction('business')}
+            className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            Business
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulkAction('personal')}
+            className="text-gray-600"
+          >
+            <XCircle className="h-4 w-4 mr-1" />
+            Personal
+          </Button>
         </div>
-
-        {/* Bulk Actions */}
-        {selected.size > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">{selected.size} selected</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBulkAction('business')}
-              className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-            >
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-              Business
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBulkAction('personal')}
-              className="text-gray-600"
-            >
-              <XCircle className="h-4 w-4 mr-1" />
-              Personal
-            </Button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Transactions Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
@@ -583,16 +548,18 @@ export function TransactionsStep() {
 
       {/* Info if items need review */}
       {stats.needsReview > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-blue-800">
+              <p className="text-sm font-medium text-amber-800">
                 {stats.needsReview} transaction
                 {stats.needsReview !== 1 ? 's' : ''} still need review
               </p>
-              <p className="text-sm text-blue-600">
-                You can continue and come back to review these later, or categorise them now.
+              <p className="text-sm text-amber-600">
+                {stats.pendingConfirm > 0
+                  ? `${stats.pendingConfirm} have AI suggestions ready to confirm.`
+                  : 'Use the Categorise button to get AI suggestions.'}
               </p>
             </div>
           </div>
@@ -601,11 +568,7 @@ export function TransactionsStep() {
 
       <WizardNavigation
         canContinue={canContinue}
-        continueLabel={
-          stats.needsReview > 0
-            ? `Continue to Summary (${stats.needsReview} uncategorised)`
-            : 'Continue to Summary'
-        }
+        continueLabel="Continue to Summary"
         onContinue={handleContinue}
       />
     </div>
