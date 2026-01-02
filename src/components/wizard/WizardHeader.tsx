@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useWizard } from '@/providers/WizardProvider';
-import { HelpCircle, Home, Save, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { HelpCircle, Save, Loader2, LogOut, User } from 'lucide-react';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-GB', {
@@ -14,6 +16,14 @@ function formatCurrency(amount: number): string {
 export function WizardHeader() {
   const { data, isSaving } = useWizard();
   const { taxCalculation, taxYear } = data;
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -75,14 +85,22 @@ export function WizardHeader() {
           </div>
         </div>
 
-        {/* Back to Dashboard */}
-        <Link
-          href="https://app.taxfolio.io/dashboard"
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
-        >
-          <Home className="h-4 w-4" />
-          <span className="hidden sm:inline">Back to Dashboard</span>
-        </Link>
+        {/* User Menu */}
+        <div className="flex items-center gap-4">
+          <Link
+            href="https://app.taxfolio.io/dashboard"
+            className="hidden sm:flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+          >
+            <span>Back to Dashboard</span>
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
+        </div>
       </div>
     </header>
   );
