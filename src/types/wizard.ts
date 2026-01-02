@@ -85,6 +85,7 @@ export interface Transaction {
   amount: number;
   type: 'income' | 'expense';
   category: string | null;
+  suggested_category: string | null;
   status: 'business' | 'personal' | 'needs_review';
   confidence: number;
 }

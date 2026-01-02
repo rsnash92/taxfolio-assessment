@@ -10,6 +10,7 @@ import { ResidencyStep } from '@/components/steps/ResidencyStep';
 import { IncomeSourcesStep } from '@/components/steps/IncomeSourcesStep';
 import { ConnectStep } from '@/components/steps/ConnectStep';
 import { ImportingStep } from '@/components/steps/ImportingStep';
+import { TransactionsStep } from '@/components/steps/TransactionsStep';
 import { NotSupportedStep } from '@/components/steps/NotSupportedStep';
 
 export function WizardContainer() {
@@ -46,7 +47,7 @@ export function WizardContainer() {
 
       // Transactions
       case 'transactions':
-        return <PlaceholderStep title="Review Transactions" />;
+        return <TransactionsStep />;
       case 'transactions-summary':
         return <PlaceholderStep title="Transactions Summary" />;
 
@@ -103,7 +104,9 @@ export function WizardContainer() {
         <WizardSidebar />
 
         <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-3xl mx-auto">{renderStep()}</div>
+          <div className={currentStep === 'transactions' ? 'max-w-6xl mx-auto' : 'max-w-3xl mx-auto'}>
+            {renderStep()}
+          </div>
         </main>
       </div>
     </div>

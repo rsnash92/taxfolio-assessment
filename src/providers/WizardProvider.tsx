@@ -145,12 +145,25 @@ export function WizardProvider({
           };
         }
 
-        // Update data with bank connected status and import data
+        // Read transactions from cookie
+        let transactions: Transaction[] = [];
+        const transactionsCookie = getCookie('bank_transactions');
+        if (transactionsCookie) {
+          try {
+            transactions = JSON.parse(transactionsCookie);
+            console.log('Parsed transactions:', transactions.length);
+          } catch (e) {
+            console.error('Failed to parse transactions cookie:', e);
+          }
+        }
+
+        // Update data with bank connected status, import data, and transactions
         setData((prev) => ({
           ...prev,
           bankConnected: true,
           connectionMethod: 'bank',
           bankImportData,
+          transactions,
         }));
         // Move to next step (importing or transactions)
         setCurrentStep('importing');

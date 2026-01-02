@@ -5,6 +5,7 @@ import {
   getAccounts,
   getTransactions,
 } from '@/lib/truelayer/client';
+import { categoriseTransactions } from '@/lib/categorisation/ai-categorise';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003';
 
@@ -91,9 +92,48 @@ export async function GET(request: NextRequest) {
 
     console.log(`Imported ${allTransactions.length} transactions total`);
 
-    // Store transactions in localStorage via query param
-    // In production, store in Supabase
-    // For now, we'll encode transactions count and redirect
+    // AI categorise transactions
+    let categorisedTransactions;
+    try {
+      console.log('Starting AI categorisation...');
+      categorisedTransactions = await categoriseTransactions(allTransactions);
+      console.log('AI categorisation complete');
+    } catch (err) {
+      console.error('AI categorisation failed:', err);
+      // Fallback - mark all as needs_review
+      categorisedTransactions = allTransactions.map((t) => ({
+        ...t,
+        category: null,
+        suggested_category: 'Other',
+        is_business: false,
+        confidence: 0.5,
+      }));
+    }
+
+    // Transform transactions to wizard format
+    const wizardTransactions = categorisedTransactions.map((t, index) => ({
+      id: t.transaction_id || `tx-${index}-${Date.now()}`,
+      date: t.timestamp?.split('T')[0] || new Date().toISOString().split('T')[0],
+      description: t.description || 'Unknown transaction',
+      amount: Math.abs(t.amount),
+      type: (t.transaction_type === 'CREDIT' ? 'income' : 'expense') as
+        | 'income'
+        | 'expense',
+      category: t.category || null,
+      suggested_category: t.suggested_category || null,
+      status: (t.confidence > 0.8
+        ? t.is_business
+          ? 'business'
+          : 'personal'
+        : 'needs_review') as 'business' | 'personal' | 'needs_review',
+      confidence: t.confidence,
+    }));
+
+    console.log(
+      `Categorised: ${wizardTransactions.filter((t) => t.status === 'business').length} business, ` +
+        `${wizardTransactions.filter((t) => t.status === 'personal').length} personal, ` +
+        `${wizardTransactions.filter((t) => t.status === 'needs_review').length} needs review`
+    );
 
     // Clear state cookie and redirect back to wizard with success flag
     const response = NextResponse.redirect(
@@ -101,18 +141,31 @@ export async function GET(request: NextRequest) {
     );
     response.cookies.delete('truelayer_oauth_state');
 
-    // Store tokens and transactions info in a session cookie for the wizard to pick up
+    // Store bank import data in cookie
     response.cookies.set(
       'bank_import_data',
       JSON.stringify({
         accountCount: accounts.length,
         transactionCount: allTransactions.length,
-        bankName:
-          accounts[0]?.provider?.display_name || 'Connected Bank',
-        accessToken: tokens.access_token, // For fetching more data if needed
+        bankName: accounts[0]?.provider?.display_name || 'Connected Bank',
       }),
       {
-        httpOnly: false, // Allow client to read
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60, // 1 hour
+        path: '/',
+      }
+    );
+
+    // Store transactions in a separate cookie (will be chunked if large)
+    // For dev purposes, we'll limit to first 100 transactions to avoid cookie size limits
+    const transactionsToStore = wizardTransactions.slice(0, 100);
+    response.cookies.set(
+      'bank_transactions',
+      JSON.stringify(transactionsToStore),
+      {
+        httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 60 * 60, // 1 hour
