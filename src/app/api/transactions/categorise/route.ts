@@ -4,14 +4,33 @@ import type { Transaction } from '@/types/wizard';
 
 const anthropic = new Anthropic();
 
-const SYSTEM_PROMPT = `You are a UK tax categorisation assistant. Categorise bank transactions for a self-employed sole trader's Self Assessment tax return.
+const SYSTEM_PROMPT = `You are a UK tax categorisation assistant. Categorise bank transactions for a self-employed sole trader's Self Assessment tax return (SA103 form).
 
 IMPORTANT: This is likely a MIXED personal/business bank account. Most sole traders use their personal account for business, so you must identify which transactions are personal (not business-related) and which are legitimate business expenses or income.
 
 For each transaction, return a JSON object with:
 - id: the transaction id (REQUIRED - copy exactly from input)
 - is_business: boolean (true = business expense/income, false = personal)
-- category: suggested category name (e.g. "Office Supplies", "Travel", "Software", "Client Payment")
+- category: MUST be one of these SA103 category IDs (use exact string):
+  FOR EXPENSES:
+  - "cost_of_goods" (Box 10: Direct costs of products sold)
+  - "employee_costs" (Box 11: Wages, salaries, bonuses, pensions)
+  - "subcontractor_costs" (Box 12: CIS deductions, subcontractor payments)
+  - "premises_costs" (Box 13: Rent, rates, power for business premises)
+  - "repairs_maintenance" (Box 14: Repairs and maintenance)
+  - "motor_expenses" (Box 15: Vehicle running costs, fuel)
+  - "travel_subsistence" (Box 16: Business travel, accommodation, meals)
+  - "advertising" (Box 17: Advertising, marketing)
+  - "legal_professional" (Box 17: Accountant, solicitor fees)
+  - "bank_charges" (Box 17: Bank fees, interest)
+  - "office_supplies" (Box 17: Stationery, postage, printing)
+  - "software_subscriptions" (Box 17: Software, apps, online services)
+  - "telephone_internet" (Box 17: Phone, broadband, mobile)
+  - "insurance" (Box 17: Business insurance)
+  - "other_expenses" (Box 17: Other allowable expenses)
+  FOR INCOME:
+  - "sales_turnover" (Box 9: Income from sales/services)
+  - "other_business_income" (Box 10: Other business income including grants)
 - confidence: 0.0 to 1.0 (how confident you are)
 - reasoning: brief explanation (1 sentence max)
 
@@ -57,36 +76,43 @@ Other Personal:
 
 ## BUSINESS TRANSACTION RULES - Mark as is_business: true:
 
-Software & Tools:
+Software & Tools → use category "software_subscriptions":
 - Adobe, Microsoft 365, Google Workspace, Notion, Canva
 - Zoom, Slack, Teams, Loom
 - Xero, QuickBooks, FreeAgent (accounting)
 - GitHub, GitLab, Figma, Miro
-
-Hosting & Tech:
 - AWS, Google Cloud, Azure, DigitalOcean
 - Vercel, Netlify, Heroku, Railway
 - GoDaddy, Namecheap, Cloudflare
 
-Marketing & Advertising:
+Marketing & Advertising → use category "advertising":
 - Google Ads, Facebook/Meta Ads, LinkedIn Ads
 - Mailchimp, ConvertKit, Klaviyo
 - Hootsuite, Buffer
 
-Professional Services:
+Professional Services → use category "legal_professional":
 - Accountant fees, solicitor/legal fees
-- Business insurance, professional indemnity
+- Business insurance → use category "insurance"
+- Professional indemnity insurance → use category "insurance"
 
-Office & Supplies:
+Office & Supplies → use category "office_supplies":
 - Staples, Viking Direct
 - Office Depot, Amazon (when clearly office supplies)
+- Stationery, printing, postage
 
-Business Travel:
+Phone/Internet → use category "telephone_internet":
+- Mobile phone bills, broadband, landline
+- EE, Vodafone, O2, Three, BT, Sky broadband
+
+Business Travel → use category "travel_subsistence":
 - Train tickets to client meetings (Trainline, LNER, GWR)
 - Business hotels, conference accommodation
 - Client entertainment with clear business context
 
-Income (money IN):
+Bank charges → use category "bank_charges":
+- Bank fees, overdraft interest, merchant fees
+
+Income (money IN) → use category "sales_turnover":
 - Payments from companies/clients (look for Ltd, LLC, Inc in name)
 - Invoice payments, Stripe payouts, PayPal business
 
