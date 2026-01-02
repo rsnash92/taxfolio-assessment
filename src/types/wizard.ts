@@ -7,6 +7,7 @@ export type StepId =
   | 'bank-connection'
   | 'upload-statements'
   | 'manual-entry'
+  | 'accounts'
   | 'importing'
   // Transactions
   | 'transactions'

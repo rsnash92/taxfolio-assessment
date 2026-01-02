@@ -37,12 +37,18 @@ export const ALL_STEPS: StepConfig[] = [
     condition: (data) => data.connectionMethod === 'upload',
   },
   {
+    id: 'accounts',
+    section: 'connect',
+    title: 'Your Accounts',
+    showInSidebar: false,
+    condition: (data) => data.connectionMethod === 'bank' && data.bankConnected,
+  },
+  {
     id: 'importing',
     section: 'connect',
     title: 'Importing',
     showInSidebar: false,
-    condition: (data) =>
-      data.connectionMethod === 'bank' || data.connectionMethod === 'upload',
+    condition: (data) => data.connectionMethod === 'upload',
   },
 
   // Transactions

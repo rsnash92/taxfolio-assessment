@@ -104,69 +104,20 @@ export function WizardProvider({
       // Check for bank connection callback
       const urlParams = new URLSearchParams(window.location.search);
       const bankConnected = urlParams.get('bank_connected') === 'true';
-      const txCount = urlParams.get('tx_count');
       const bankError = urlParams.get('bank_error');
 
       if (bankConnected) {
-        console.log('Bank connected! Transaction count:', txCount);
+        console.log('Bank connected! Redirecting to accounts step...');
 
-        // Read bank import data from cookie
-        const getCookie = (name: string) => {
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) {
-            const cookieValue = parts.pop()?.split(';').shift();
-            return cookieValue ? decodeURIComponent(cookieValue) : null;
-          }
-          return null;
-        };
-
-        let bankImportData = null;
-        const bankImportCookie = getCookie('bank_import_data');
-        if (bankImportCookie) {
-          try {
-            bankImportData = JSON.parse(bankImportCookie);
-            console.log('Parsed bank import data:', bankImportData);
-          } catch (e) {
-            console.error('Failed to parse bank import cookie:', e);
-            // Fallback to URL params
-            bankImportData = {
-              accountCount: 1,
-              transactionCount: parseInt(txCount || '0', 10),
-              bankName: 'Connected Bank',
-            };
-          }
-        } else {
-          // Fallback to URL params if cookie not found
-          bankImportData = {
-            accountCount: 1,
-            transactionCount: parseInt(txCount || '0', 10),
-            bankName: 'Connected Bank',
-          };
-        }
-
-        // Read transactions from cookie
-        let transactions: Transaction[] = [];
-        const transactionsCookie = getCookie('bank_transactions');
-        if (transactionsCookie) {
-          try {
-            transactions = JSON.parse(transactionsCookie);
-            console.log('Parsed transactions:', transactions.length);
-          } catch (e) {
-            console.error('Failed to parse transactions cookie:', e);
-          }
-        }
-
-        // Update data with bank connected status, import data, and transactions
+        // Update data with bank connected status
+        // Transactions will be fetched in AccountsStep when user clicks Import
         setData((prev) => ({
           ...prev,
           bankConnected: true,
           connectionMethod: 'bank',
-          bankImportData,
-          transactions,
         }));
-        // Move to next step (importing or transactions)
-        setCurrentStep('importing');
+        // Move to accounts step where user can see accounts and import transactions
+        setCurrentStep('accounts');
         // Clean up URL
         window.history.replaceState({}, '', window.location.pathname);
       } else if (bankError) {

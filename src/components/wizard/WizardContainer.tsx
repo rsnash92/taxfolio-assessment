@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { ResidencyStep } from '@/components/steps/ResidencyStep';
 import { IncomeSourcesStep } from '@/components/steps/IncomeSourcesStep';
 import { ConnectStep } from '@/components/steps/ConnectStep';
+import { AccountsStep } from '@/components/steps/AccountsStep';
 import { ImportingStep } from '@/components/steps/ImportingStep';
 import { TransactionsStep } from '@/components/steps/TransactionsStep';
 import { NotSupportedStep } from '@/components/steps/NotSupportedStep';
@@ -42,6 +43,8 @@ export function WizardContainer() {
         return <PlaceholderStep title="Bank Connection" />;
       case 'upload-statements':
         return <PlaceholderStep title="Upload Statements" />;
+      case 'accounts':
+        return <AccountsStep />;
       case 'importing':
         return <ImportingStep />;
 

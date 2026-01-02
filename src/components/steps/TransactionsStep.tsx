@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { TransactionRow } from '@/components/transactions/TransactionRow';
@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Sparkles,
   Search,
+  Loader2,
+  Wand2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,12 +19,25 @@ import { formatCurrency, cn } from '@/lib/utils';
 
 type FilterStatus = 'all' | 'needs_review' | 'business' | 'personal';
 
+interface CategoryResult {
+  id: string;
+  is_business: boolean;
+  category: string;
+  confidence: number;
+  reasoning: string;
+}
+
 export function TransactionsStep() {
   const { data, updateTransaction, bulkUpdateTransactions, goNext, updateData } =
     useWizard();
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // AI categorisation state
+  const [isCategorising, setIsCategorising] = useState(false);
+  const [categoriseProgress, setCategoriseProgress] = useState(0);
+  const [categoriseStatus, setCategoriseStatus] = useState('');
 
   const transactions = data.transactions || [];
 
@@ -49,6 +64,7 @@ export function TransactionsStep() {
       personal: transactions.filter((t) => t.status === 'personal').length,
       needsReview: transactions.filter((t) => t.status === 'needs_review')
         .length,
+      hasSuggestions: transactions.some((t) => t.suggested_category !== null),
     }),
     [transactions]
   );
@@ -65,6 +81,92 @@ export function TransactionsStep() {
         .reduce((sum, t) => sum + t.amount, 0),
     };
   }, [transactions]);
+
+  // Handle AI categorisation with streaming
+  const handleCategorise = useCallback(async () => {
+    if (transactions.length === 0) return;
+
+    setIsCategorising(true);
+    setCategoriseProgress(0);
+    setCategoriseStatus('Starting AI categorisation...');
+
+    try {
+      const response = await fetch('/api/transactions/categorise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactions,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to categorise transactions');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      const results: CategoryResult[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.slice(6));
+
+              if (event.type === 'progress') {
+                setCategoriseProgress(event.progress);
+                setCategoriseStatus(event.status);
+              } else if (event.type === 'batch_complete') {
+                results.push(...event.results);
+              } else if (event.type === 'complete') {
+                setCategoriseProgress(100);
+                setCategoriseStatus('Categorisation complete!');
+              }
+            } catch {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      }
+
+      // Apply results to transactions
+      if (results.length > 0) {
+        const updatedTransactions = transactions.map((tx) => {
+          const result = results.find((r) => r.id === tx.id);
+          if (result) {
+            return {
+              ...tx,
+              status: result.is_business ? 'business' : 'personal',
+              suggested_category: result.category,
+              confidence: result.confidence,
+            };
+          }
+          return tx;
+        });
+
+        updateData({ transactions: updatedTransactions as typeof transactions });
+      }
+
+      // Brief delay to show completion
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (err) {
+      console.error('Categorisation error:', err);
+      setCategoriseStatus('Categorisation failed. Please try again.');
+    } finally {
+      setIsCategorising(false);
+      setCategoriseProgress(0);
+      setCategoriseStatus('');
+    }
+  }, [transactions, updateData]);
 
   // Handle status change for single transaction
   const handleStatusChange = (id: string, status: 'business' | 'personal') => {
@@ -119,8 +221,62 @@ export function TransactionsStep() {
         </p>
       </div>
 
-      {/* AI Summary Banner */}
-      {stats.needsReview < stats.total && (
+      {/* AI Categorise Banner - show if transactions need review */}
+      {stats.needsReview > 0 && !stats.hasSuggestions && (
+        <div className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-violet-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Wand2 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 mb-1">
+                  Let AI categorise your transactions
+                </p>
+                <p className="text-sm text-gray-600">
+                  Our AI will analyse each transaction and mark it as business or personal.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={handleCategorise}
+              disabled={isCategorising}
+              className="bg-violet-500 hover:bg-violet-600 text-white"
+            >
+              {isCategorising ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>{categoriseProgress}%</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Categorise All</span>
+                </div>
+              )}
+            </Button>
+          </div>
+
+          {/* Progress bar */}
+          {isCategorising && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <span>{categoriseStatus}</span>
+                <span>{categoriseProgress}%</span>
+              </div>
+              <div className="h-2 bg-violet-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-violet-500 transition-all duration-300"
+                  style={{ width: `${categoriseProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI Summary Banner - show after categorisation */}
+      {stats.hasSuggestions && stats.needsReview < stats.total && (
         <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
