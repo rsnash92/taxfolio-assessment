@@ -1,20 +1,12 @@
 'use client';
 
 import { useWizard } from '@/providers/WizardProvider';
-import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { HelpCircle, Check } from 'lucide-react';
 
 export function SelfEmploymentBasicsStep() {
-  const { currentBusinessId, data, updateBusinessData, updateIncomeSource } = useWizard();
+  const { currentBusinessId, data, updateBusinessData, updateIncomeSource, goNext } = useWizard();
 
   if (!currentBusinessId) {
     return <div>No business selected</div>;
@@ -35,113 +27,93 @@ export function SelfEmploymentBasicsStep() {
     }
   };
 
+  const isValid = !!businessData.businessName && !!businessData.businessDescription;
+
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">The Basics</h1>
-        <p className="text-gray-600">
-          Tell us about your self-employment business. This information is required for your SA103 form.
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        {/* Business Name */}
-        <div className="space-y-2">
-          <Label htmlFor="businessName">Business Name</Label>
-          <Input
-            id="businessName"
-            placeholder="e.g., John Smith Consulting"
-            value={businessData.businessName || ''}
-            onChange={(e) => handleChange('businessName', e.target.value)}
-          />
-          <p className="text-sm text-gray-500">
-            This is how your business will appear on your tax return
-          </p>
+      {/* Card Container */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+        {/* Header with tax year badge and required indicator */}
+        <div className="flex items-center justify-between mb-6">
+          <span className="inline-flex items-center px-3 py-1 rounded-md bg-red-50 text-red-600 text-sm font-medium border border-red-100">
+            Between 06/04/2024 and 05/04/2025
+          </span>
+          <span className="text-red-500 text-sm font-medium flex items-center gap-1">
+            <span className="text-red-400">*</span> Required
+          </span>
         </div>
 
-        {/* Business Description */}
-        <div className="space-y-2">
-          <Label htmlFor="businessDescription">Nature of Business</Label>
-          <Textarea
-            id="businessDescription"
-            placeholder="e.g., IT consulting and software development"
-            value={businessData.businessDescription || ''}
-            onChange={(e) => handleChange('businessDescription', e.target.value)}
-            rows={3}
-          />
-          <p className="text-sm text-gray-500">
-            Briefly describe what your business does
-          </p>
+        {/* Title */}
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">The basics</h1>
+        <p className="text-gray-500 mb-8">Let&apos;s get to know each other.</p>
+
+        {/* Form Fields */}
+        <div className="space-y-6">
+          {/* Self-employment name */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-gray-700 font-medium">
+              Self-employment name
+              <span className="text-red-500">*</span>
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-gray-500 text-sm">
+              Your name, or the name of your business.
+            </p>
+            <Input
+              placeholder=""
+              value={businessData.businessName || ''}
+              onChange={(e) => handleChange('businessName', e.target.value)}
+              className="h-12 text-base border-gray-200 rounded-lg"
+            />
+          </div>
+
+          {/* Business description */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-gray-700 font-medium">
+              How would you describe your business?
+              <span className="text-red-500">*</span>
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-gray-500 text-sm">
+              We just need a brief description of what your business or self-employment does.
+            </p>
+            <Input
+              placeholder=""
+              value={businessData.businessDescription || ''}
+              onChange={(e) => handleChange('businessDescription', e.target.value)}
+              className="h-12 text-base border-gray-200 rounded-lg"
+            />
+          </div>
+
+          {/* Business postcode */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-gray-700 font-medium">
+              What is the postcode of your business address?
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-gray-500 text-sm">
+              If you have a separate address you run your self-employment from, provide this postcode. If not, then it is likely to be your home postcode.
+            </p>
+            <Input
+              placeholder=""
+              value={businessData.businessPostcode || ''}
+              onChange={(e) => handleChange('businessPostcode', e.target.value)}
+              className="h-12 text-base border-gray-200 rounded-lg"
+            />
+          </div>
         </div>
 
-        {/* Business Postcode */}
-        <div className="space-y-2">
-          <Label htmlFor="businessPostcode">Business Postcode</Label>
-          <Input
-            id="businessPostcode"
-            placeholder="e.g., SW1A 1AA"
-            value={businessData.businessPostcode || ''}
-            onChange={(e) => handleChange('businessPostcode', e.target.value.toUpperCase())}
-            className="max-w-[200px]"
-          />
-          <p className="text-sm text-gray-500">
-            The postcode where your business is based (can be your home)
-          </p>
-        </div>
-
-        {/* Accounting Method */}
-        <div className="space-y-2">
-          <Label htmlFor="accountingMethod">Accounting Method</Label>
-          <Select
-            value={businessData.accountingMethod || 'cash'}
-            onValueChange={(value) => handleChange('accountingMethod', value)}
+        {/* Next Button */}
+        <div className="flex justify-end mt-8">
+          <Button
+            onClick={goNext}
+            disabled={!isValid}
+            className="bg-blue-500 hover:bg-blue-600 px-6 py-2 h-auto rounded-full text-white"
           >
-            <SelectTrigger className="max-w-[300px]">
-              <SelectValue placeholder="Select method" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cash">Cash Basis</SelectItem>
-              <SelectItem value="accruals">Traditional Accounting (Accruals)</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500">
-            Most small businesses use Cash Basis - you record income when received and expenses when paid
-          </p>
+            Next
+            <Check className="h-4 w-4 ml-2" />
+          </Button>
         </div>
-
-        {/* Accounting Period */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="startDate">Accounting Period Start</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={businessData.startDate || '2024-04-06'}
-              onChange={(e) => handleChange('startDate', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="endDate">Accounting Period End</Label>
-            <Input
-              id="endDate"
-              type="date"
-              value={businessData.endDate || '2025-04-05'}
-              onChange={(e) => handleChange('endDate', e.target.value)}
-            />
-          </div>
-        </div>
-        <p className="text-sm text-gray-500">
-          For most people this aligns with the tax year (6 April 2024 to 5 April 2025)
-        </p>
-      </div>
-
-      <div className="mt-8">
-        <WizardNavigation
-          canContinue={
-            !!businessData.businessName &&
-            !!businessData.businessDescription
-          }
-        />
       </div>
     </div>
   );
