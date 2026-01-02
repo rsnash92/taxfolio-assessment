@@ -181,9 +181,14 @@ export function WizardProvider({
   }, []);
 
   const goNext = useCallback(() => {
+    console.log('[WizardProvider] goNext called, currentStep:', currentStep);
     const nextStep = getNextStep(currentStep, data);
+    console.log('[WizardProvider] nextStep:', nextStep);
     if (nextStep) {
+      console.log('[WizardProvider] Setting step to:', nextStep);
       setCurrentStep(nextStep);
+    } else {
+      console.log('[WizardProvider] No next step available!');
     }
   }, [currentStep, data]);
 
