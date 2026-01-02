@@ -80,6 +80,7 @@ export interface SelfEmploymentBusiness {
   businessDescription: string;
   businessPostcode: string;
   detailsChanged: boolean;
+  industry: string;
   accountingMethod: 'cash' | 'accruals';
   startDate: string;
   endDate: string;

@@ -4,12 +4,46 @@ import { useState } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { HelpCircle, Check, ArrowLeft } from 'lucide-react';
+import {
+  HelpCircle,
+  Check,
+  ArrowLeft,
+  Wrench,
+  Stethoscope,
+  Camera,
+  Dumbbell,
+  Music,
+  Palette,
+  GraduationCap,
+  Truck,
+  Car,
+  UtensilsCrossed,
+  Tag,
+  Star,
+  Circle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Industry options with icons - these help AI categorize transactions
+const INDUSTRIES = [
+  { id: 'construction', label: 'Construction or trades', icon: Wrench },
+  { id: 'healthcare', label: 'Healthcare', icon: Stethoscope },
+  { id: 'content-creator', label: 'Content creator', icon: Camera },
+  { id: 'health-fitness', label: 'Health and fitness', icon: Dumbbell },
+  { id: 'musician', label: 'Musician', icon: Music },
+  { id: 'freelancer', label: 'Freelancer or creative', icon: Palette },
+  { id: 'teacher', label: 'Teacher or tutor', icon: GraduationCap },
+  { id: 'courier', label: 'Courier Delivery', icon: Truck },
+  { id: 'taxi', label: 'Taxi Service', icon: Car },
+  { id: 'food-delivery', label: 'Food Delivery', icon: UtensilsCrossed },
+  { id: 'retail', label: 'Retail', icon: Tag },
+  { id: 'entertainment', label: 'Entertainment / Sports', icon: Star },
+  { id: 'skip', label: 'Skip', icon: Circle },
+];
+
 export function SelfEmploymentBasicsStep() {
-  const { currentBusinessId, data, updateBusinessData, updateIncomeSource, goNext, goBack } = useWizard();
-  const [step, setStep] = useState<'details' | 'changed'>('details');
+  const { currentBusinessId, data, updateBusinessData, updateIncomeSource, goNext } = useWizard();
+  const [step, setStep] = useState<'details' | 'changed' | 'industry'>('details');
 
   if (!currentBusinessId) {
     return <div>No business selected</div>;
@@ -32,6 +66,7 @@ export function SelfEmploymentBasicsStep() {
 
   const isDetailsValid = !!businessData.businessName && !!businessData.businessDescription;
   const isChangedAnswered = businessData.detailsChanged !== undefined;
+  const isIndustrySelected = !!businessData.industry;
 
   // Step 1: Basic details
   if (step === 'details') {
@@ -125,6 +160,79 @@ export function SelfEmploymentBasicsStep() {
   }
 
   // Step 2: Details changed question
+  if (step === 'changed') {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <span className="inline-flex items-center px-3 py-1 rounded-md bg-red-50 text-red-600 text-sm font-medium border border-red-100">
+              Between 06/04/2024 and 05/04/2025
+            </span>
+            <span className="text-red-500 text-sm font-medium flex items-center gap-1">
+              <span className="text-red-400">*</span> Required
+            </span>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Have any of the details above changed within the past year?
+          </h1>
+          <p className="text-gray-500 mb-8">
+            If your details have changed since your last tax return was submitted, we&apos;ll need your old details to update HMRC.
+          </p>
+
+          {/* Yes/No Buttons */}
+          <div className="flex gap-4 mb-8">
+            <button
+              onClick={() => handleChange('detailsChanged', true)}
+              className={cn(
+                'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
+                businessData.detailsChanged === true
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 text-gray-700 hover:border-gray-300'
+              )}
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => handleChange('detailsChanged', false)}
+              className={cn(
+                'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
+                businessData.detailsChanged === false
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 text-gray-700 hover:border-gray-300'
+              )}
+            >
+              No
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              onClick={() => setStep('details')}
+              className="text-gray-600"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button
+              onClick={() => setStep('industry')}
+              disabled={!isChangedAnswered}
+              className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 h-auto rounded-full text-white"
+            >
+              Next
+              <Check className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 3: Industry selection
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
@@ -133,50 +241,60 @@ export function SelfEmploymentBasicsStep() {
           <span className="inline-flex items-center px-3 py-1 rounded-md bg-red-50 text-red-600 text-sm font-medium border border-red-100">
             Between 06/04/2024 and 05/04/2025
           </span>
-          <span className="text-red-500 text-sm font-medium flex items-center gap-1">
-            <span className="text-red-400">*</span> Required
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-red-500 text-sm font-medium flex items-center gap-1">
+              <span className="text-red-400">*</span> Required
+            </span>
+            <HelpCircle className="h-4 w-4 text-gray-400" />
+          </div>
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Have any of the details above changed within the past year?
-        </h1>
-        <p className="text-gray-500 mb-8">
-          If your details have changed since your last tax return was submitted, we&apos;ll need your old details to update HMRC.
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Your industry</h1>
+        <p className="text-gray-500 mb-2">
+          Please select which one of the below options best describes your self-employment service.
+        </p>
+        <p className="text-gray-500 mb-6">
+          If your business isn&apos;t listed, simply skip this question.
         </p>
 
-        {/* Yes/No Buttons */}
-        <div className="flex gap-4 mb-8">
-          <button
-            onClick={() => handleChange('detailsChanged', true)}
-            className={cn(
-              'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
-              businessData.detailsChanged === true
-                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                : 'border-gray-200 text-gray-700 hover:border-gray-300'
-            )}
-          >
-            Yes
-          </button>
-          <button
-            onClick={() => handleChange('detailsChanged', false)}
-            className={cn(
-              'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
-              businessData.detailsChanged === false
-                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                : 'border-gray-200 text-gray-700 hover:border-gray-300'
-            )}
-          >
-            No
-          </button>
+        {/* Industry Options */}
+        <div className="space-y-3 mb-8 max-h-[400px] overflow-y-auto">
+          {INDUSTRIES.map((industry) => {
+            const Icon = industry.icon;
+            const isSelected = businessData.industry === industry.id;
+
+            return (
+              <button
+                key={industry.id}
+                onClick={() => handleChange('industry', industry.id)}
+                className={cn(
+                  'w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-colors text-left',
+                  isSelected
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                )}
+              >
+                <Icon className={cn('h-5 w-5', isSelected ? 'text-emerald-600' : 'text-gray-400')} />
+                <span className="flex-1 font-medium">{industry.label}</span>
+                <div
+                  className={cn(
+                    'w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                    isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'
+                  )}
+                >
+                  {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
-            onClick={() => setStep('details')}
+            onClick={() => setStep('changed')}
             className="text-gray-600"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -184,7 +302,7 @@ export function SelfEmploymentBasicsStep() {
           </Button>
           <Button
             onClick={goNext}
-            disabled={!isChangedAnswered}
+            disabled={!isIndustrySelected}
             className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 h-auto rounded-full text-white"
           >
             Next
