@@ -329,19 +329,24 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'business' ? 'all' : 'business')}
           className={cn(
-            'bg-gray-900 rounded-xl p-4 text-left transition-all',
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-emerald-300',
             filter === 'business'
-              ? 'ring-2 ring-emerald-500 ring-offset-2'
-              : 'hover:bg-gray-800'
+              ? 'border-emerald-500 ring-1 ring-emerald-500/30'
+              : 'border-gray-200'
           )}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-              <Briefcase className="h-5 w-5 text-emerald-400" />
+            <div
+              className={cn(
+                'w-10 h-10 rounded-lg flex items-center justify-center',
+                filter === 'business' ? 'bg-emerald-100' : 'bg-gray-100'
+              )}
+            >
+              <Briefcase className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-emerald-400">{stats.business}</p>
-              <p className="text-xs text-gray-400">Business</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.business}</p>
+              <p className="text-xs text-gray-500">Business</p>
             </div>
           </div>
         </button>
@@ -350,19 +355,24 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'personal' ? 'all' : 'personal')}
           className={cn(
-            'bg-gray-900 rounded-xl p-4 text-left transition-all',
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-gray-400',
             filter === 'personal'
-              ? 'ring-2 ring-gray-500 ring-offset-2'
-              : 'hover:bg-gray-800'
+              ? 'border-gray-500 ring-1 ring-gray-500/30'
+              : 'border-gray-200'
           )}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
-              <User className="h-5 w-5 text-gray-400" />
+            <div
+              className={cn(
+                'w-10 h-10 rounded-lg flex items-center justify-center',
+                filter === 'personal' ? 'bg-gray-200' : 'bg-gray-100'
+              )}
+            >
+              <User className="h-5 w-5 text-gray-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-300">{stats.personal}</p>
-              <p className="text-xs text-gray-400">Personal</p>
+              <p className="text-2xl font-bold text-gray-500">{stats.personal}</p>
+              <p className="text-xs text-gray-500">Personal (excluded)</p>
             </div>
           </div>
         </button>
@@ -371,19 +381,24 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'needs_review' ? 'all' : 'needs_review')}
           className={cn(
-            'bg-gray-900 rounded-xl p-4 text-left transition-all',
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-amber-300',
             filter === 'needs_review'
-              ? 'ring-2 ring-amber-500 ring-offset-2'
-              : 'hover:bg-gray-800'
+              ? 'border-amber-500 ring-1 ring-amber-500/30'
+              : 'border-gray-200'
           )}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-amber-400" />
+            <div
+              className={cn(
+                'w-10 h-10 rounded-lg flex items-center justify-center',
+                filter === 'needs_review' ? 'bg-amber-100' : 'bg-gray-100'
+              )}
+            >
+              <AlertCircle className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-amber-400">{stats.needsReview}</p>
-              <p className="text-xs text-gray-400">Needs review</p>
+              <p className="text-2xl font-bold text-amber-500">{stats.needsReview}</p>
+              <p className="text-xs text-gray-500">Needs review</p>
             </div>
           </div>
         </button>
@@ -392,15 +407,15 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter('all')}
           className={cn(
-            'bg-gray-900 rounded-xl p-4 text-left transition-all',
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-gray-400',
             filter === 'all'
-              ? 'ring-2 ring-white ring-offset-2'
-              : 'hover:bg-gray-800'
+              ? 'border-gray-600 ring-1 ring-gray-600/30'
+              : 'border-gray-200'
           )}
         >
           <div>
-            <p className="text-2xl font-bold text-white">{stats.total}</p>
-            <p className="text-xs text-gray-400">Total transactions</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-xs text-gray-500">Total transactions</p>
           </div>
         </button>
       </div>
