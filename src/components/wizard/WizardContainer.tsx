@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { ResidencyStep } from '@/components/steps/ResidencyStep';
 import { IncomeSourcesStep } from '@/components/steps/IncomeSourcesStep';
 import { ConnectStep } from '@/components/steps/ConnectStep';
+import { ImportingStep } from '@/components/steps/ImportingStep';
 import { NotSupportedStep } from '@/components/steps/NotSupportedStep';
 
 export function WizardContainer() {
@@ -41,7 +42,7 @@ export function WizardContainer() {
       case 'upload-statements':
         return <PlaceholderStep title="Upload Statements" />;
       case 'importing':
-        return <PlaceholderStep title="Importing Data..." />;
+        return <ImportingStep />;
 
       // Transactions
       case 'transactions':
