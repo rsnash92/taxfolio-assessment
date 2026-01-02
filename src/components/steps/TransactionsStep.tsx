@@ -13,6 +13,8 @@ import {
   Loader2,
   Briefcase,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,12 +30,15 @@ interface CategoryResult {
   reasoning: string;
 }
 
+const ITEMS_PER_PAGE = 50;
+
 export function TransactionsStep() {
   const { data, updateTransaction, bulkUpdateTransactions, goNext, updateData } =
     useWizard();
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
 
   // AI categorisation state
   const [isCategorising, setIsCategorising] = useState(false);
@@ -56,6 +61,18 @@ export function TransactionsStep() {
       return true;
     });
   }, [transactions, filter, search]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredTransactions, currentPage]);
+
+  // Reset to page 1 when filter/search changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [filter, search]);
 
   // Calculate stats
   const stats = useMemo(
@@ -481,7 +498,7 @@ export function TransactionsStep() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredTransactions.map((transaction) => (
+            {paginatedTransactions.map((transaction) => (
               <TransactionRow
                 key={transaction.id}
                 transaction={transaction}
@@ -500,6 +517,65 @@ export function TransactionsStep() {
             {transactions.length === 0
               ? 'No transactions imported yet.'
               : 'No transactions match your filters.'}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to{' '}
+              {Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} of{' '}
+              {filteredTransactions.length} transactions
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={cn(
+                        'w-8 h-8 rounded-md text-sm font-medium transition-colors',
+                        currentPage === pageNum
+                          ? 'bg-emerald-500 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      )}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
       </div>

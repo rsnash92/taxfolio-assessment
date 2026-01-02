@@ -103,10 +103,14 @@ export function WizardContainer() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <WizardHeader />
 
-      <div className="flex flex-1">
-        <WizardSidebar />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Fixed sidebar */}
+        <div className="w-64 flex-shrink-0 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
+          <WizardSidebar />
+        </div>
 
-        <main className="flex-1 p-8 overflow-y-auto">
+        {/* Scrollable main content */}
+        <main className="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)]">
           <div className={currentStep === 'transactions' ? 'max-w-6xl mx-auto' : 'max-w-3xl mx-auto'}>
             {renderStep()}
           </div>

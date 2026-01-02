@@ -99,7 +99,7 @@ export function WizardSidebar() {
   );
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-full hidden lg:block">
+    <aside className="w-full h-full bg-white border-r border-gray-200 hidden lg:block">
       <nav className="p-4">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
           Menu
