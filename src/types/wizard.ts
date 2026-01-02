@@ -31,8 +31,6 @@ export type StepId =
   | 'general-pension'
   | 'general-charitable'
   | 'general-venture-capital'
-  // General Deductions
-  | 'deductions-overview'
   // Personal & Review
   | 'personal-info'
   | 'review'
@@ -48,7 +46,6 @@ export type SectionId =
   | 'rental'
   | 'other-income'
   | 'general'
-  | 'deductions'
   | 'personal'
   | 'review';
 

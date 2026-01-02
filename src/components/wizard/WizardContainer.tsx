@@ -112,10 +112,6 @@ export function WizardContainer() {
       case 'general-venture-capital':
         return <VentureCapitalStep />;
 
-      // Deductions
-      case 'deductions-overview':
-        return <PlaceholderStep title="Deductions" />;
-
       // Personal & Review
       case 'personal-info':
         return <PlaceholderStep title="Personal Details" />;

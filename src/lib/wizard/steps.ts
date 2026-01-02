@@ -223,14 +223,6 @@ export const ALL_STEPS: StepConfig[] = [
     condition: (data) => data.general?.selectedReliefs?.includes('venture-capital') ?? false,
   },
 
-  // Deductions
-  {
-    id: 'deductions-overview',
-    section: 'deductions',
-    title: 'Deductions',
-    showInSidebar: true,
-  },
-
   // Personal Info
   {
     id: 'personal-info',
@@ -275,7 +267,7 @@ export function getNextStep(
 ): StepId | null {
   // Handle self-employment list step
   if (currentStep === 'self-employment-list') {
-    // From list, go to next section (rental or other-income or deductions)
+    // From list, go to next section (rental or other-income or general)
     const hasRental = data.incomeSources.some((s) => s.type === 'rental');
     if (hasRental) return 'rental-details';
 
@@ -284,7 +276,7 @@ export function getNextStep(
     );
     if (hasOtherIncome) return 'other-income';
 
-    return 'deductions-overview';
+    return 'general-overview';
   }
 
   // Handle self-employment step progression (within a business)
@@ -316,7 +308,7 @@ export function getNextStep(
     );
     if (hasOtherIncome) return 'other-income';
 
-    return 'deductions-overview';
+    return 'general-overview';
   }
 
   // Handle transition from accounts to self-employment list
@@ -332,7 +324,57 @@ export function getNextStep(
     );
     if (hasOtherIncome) return 'other-income';
 
-    return 'deductions-overview';
+    return 'general-overview';
+  }
+
+  // Handle other-income to general
+  if (currentStep === 'other-income') {
+    return 'general-overview';
+  }
+
+  // Handle general section progression
+  if (currentStep === 'general-overview') {
+    const selectedReliefs = data.general?.selectedReliefs || [];
+    if (selectedReliefs.includes('marriage-allowance')) return 'general-marriage-allowance';
+    if (selectedReliefs.includes('blind-allowance')) return 'general-blind-allowance';
+    if (selectedReliefs.includes('pension')) return 'general-pension';
+    if (selectedReliefs.includes('charitable')) return 'general-charitable';
+    if (selectedReliefs.includes('venture-capital')) return 'general-venture-capital';
+    return 'personal-info';
+  }
+
+  if (currentStep === 'general-marriage-allowance') {
+    const selectedReliefs = data.general?.selectedReliefs || [];
+    if (selectedReliefs.includes('blind-allowance')) return 'general-blind-allowance';
+    if (selectedReliefs.includes('pension')) return 'general-pension';
+    if (selectedReliefs.includes('charitable')) return 'general-charitable';
+    if (selectedReliefs.includes('venture-capital')) return 'general-venture-capital';
+    return 'personal-info';
+  }
+
+  if (currentStep === 'general-blind-allowance') {
+    const selectedReliefs = data.general?.selectedReliefs || [];
+    if (selectedReliefs.includes('pension')) return 'general-pension';
+    if (selectedReliefs.includes('charitable')) return 'general-charitable';
+    if (selectedReliefs.includes('venture-capital')) return 'general-venture-capital';
+    return 'personal-info';
+  }
+
+  if (currentStep === 'general-pension') {
+    const selectedReliefs = data.general?.selectedReliefs || [];
+    if (selectedReliefs.includes('charitable')) return 'general-charitable';
+    if (selectedReliefs.includes('venture-capital')) return 'general-venture-capital';
+    return 'personal-info';
+  }
+
+  if (currentStep === 'general-charitable') {
+    const selectedReliefs = data.general?.selectedReliefs || [];
+    if (selectedReliefs.includes('venture-capital')) return 'general-venture-capital';
+    return 'personal-info';
+  }
+
+  if (currentStep === 'general-venture-capital') {
+    return 'personal-info';
   }
 
   // Default step progression
