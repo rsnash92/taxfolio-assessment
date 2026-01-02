@@ -24,6 +24,15 @@ import {
   SelfEmploymentSummaryStep,
 } from '@/components/steps/self-employment';
 
+// Rental Steps
+import {
+  RentalListStep,
+  RentalDetailsStep,
+  RentalIncomeStep,
+  RentalExpensesStep,
+  RentalSummaryStep,
+} from '@/components/steps/rental';
+
 // General Steps (Tax Reliefs & Allowances)
 import {
   GeneralOverviewStep,
@@ -92,15 +101,17 @@ export function WizardContainer() {
       case 'self-employment-summary':
         return <SelfEmploymentSummaryStep />;
 
-      // Rental (per property)
+      // Rental (list and per property)
+      case 'rental-list':
+        return <RentalListStep />;
       case 'rental-details':
-        return <PlaceholderStep title="Property Details" />;
+        return <RentalDetailsStep />;
       case 'rental-income':
-        return <PlaceholderStep title="Property Income" />;
+        return <RentalIncomeStep />;
       case 'rental-expenses':
-        return <PlaceholderStep title="Property Expenses" />;
+        return <RentalExpensesStep />;
       case 'rental-summary':
-        return <PlaceholderStep title="Rental Summary" />;
+        return <RentalSummaryStep />;
 
       // Other Income
       case 'other-income':
@@ -158,7 +169,8 @@ export function WizardContainer() {
           <div className={
             currentStep === 'self-employment-income' ||
             currentStep === 'self-employment-expenses' ||
-            currentStep === 'self-employment-list'
+            currentStep === 'self-employment-list' ||
+            currentStep === 'rental-list'
               ? 'max-w-4xl mx-auto'
               : 'max-w-3xl mx-auto'
           }>

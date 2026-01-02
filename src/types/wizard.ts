@@ -17,7 +17,8 @@ export type StepId =
   | 'self-employment-capital-allowances'
   | 'self-employment-losses'
   | 'self-employment-summary'
-  // Rental (dynamic per property)
+  // Rental (list and dynamic per property)
+  | 'rental-list'
   | 'rental-details'
   | 'rental-income'
   | 'rental-expenses'
@@ -137,6 +138,11 @@ export interface RentalProperty {
   propertyType: 'residential' | 'commercial' | 'holiday-let';
   ownershipShare: number; // percentage
 
+  // Finance Costs (Section 24)
+  hasMortgage: boolean;
+  mortgageInterest: number;
+  otherFinanceCosts: number;
+
   // Income
   income: {
     rentReceived: number;
@@ -152,6 +158,9 @@ export interface RentalProperty {
 
   // Calculated
   profit: number;
+
+  // Completion status
+  isComplete: boolean;
 }
 
 // General Section Data (Tax Reliefs & Allowances)
