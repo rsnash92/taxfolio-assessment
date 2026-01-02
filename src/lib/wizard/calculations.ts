@@ -19,44 +19,51 @@ const NI_RATES = {
 export function calculateTaxLiability(data: WizardData): WizardData['taxCalculation'] {
   // Calculate total income
   let totalIncome = 0;
-
-  // Self-employment income
-  if (data.incomeSources.some((s) => s.type === 'self-employment')) {
-    totalIncome += data.selfEmployment.businessIncome;
-    totalIncome += data.selfEmployment.otherIncome;
-  }
-
-  // Rental income
-  if (data.incomeSources.some((s) => s.type === 'rental')) {
-    for (const property of data.rental.properties) {
-      totalIncome += property.income;
-    }
-  }
-
-  // Calculate total expenses
   let totalExpenses = 0;
 
-  // Self-employment expenses
-  if (data.incomeSources.some((s) => s.type === 'self-employment')) {
-    totalExpenses += Object.values(data.selfEmployment.businessExpenses).reduce(
-      (sum, val) => sum + val,
-      0
-    );
-  }
+  // Self-employment income and expenses (from all businesses)
+  const selfEmploymentBusinesses = data.incomeSources.filter(
+    (s) => s.type === 'self-employment'
+  );
 
-  // Rental expenses
-  if (data.incomeSources.some((s) => s.type === 'rental')) {
-    for (const property of data.rental.properties) {
-      totalExpenses += Object.values(property.expenses).reduce(
-        (sum, val) => sum + val,
-        0
-      );
+  for (const business of selfEmploymentBusinesses) {
+    const businessData = data.selfEmploymentData[business.id];
+    if (businessData) {
+      // Add income
+      totalIncome += businessData.income?.total || 0;
+      // Add expenses
+      totalExpenses += businessData.expenses?.total || 0;
+      // Subtract capital allowances (treated as additional deduction)
+      totalExpenses += businessData.capitalAllowances?.total || 0;
     }
   }
+
+  // Rental income and expenses (from all properties)
+  const rentalProperties = data.incomeSources.filter(
+    (s) => s.type === 'rental'
+  );
+
+  for (const property of rentalProperties) {
+    const propertyData = data.rentalData[property.id];
+    if (propertyData) {
+      totalIncome += propertyData.income?.total || 0;
+      totalExpenses += propertyData.expenses?.total || 0;
+    }
+  }
+
+  // Other income
+  totalIncome += data.otherIncome.interest || 0;
+  totalIncome += data.otherIncome.dividends || 0;
+  totalIncome += data.otherIncome.pension || 0;
+  totalIncome += data.otherIncome.stateBenefits || 0;
+  totalIncome += data.otherIncome.other || 0;
 
   // Calculate total deductions
   const totalDeductions =
-    data.deductions.mileage.total + data.deductions.homeOffice.amount;
+    (data.deductions.mileage.total || 0) +
+    (data.deductions.homeOffice.amount || 0) +
+    (data.deductions.pensionContributions || 0) +
+    (data.deductions.giftAid || 0);
 
   // Calculate taxable profit
   const taxableProfit = Math.max(

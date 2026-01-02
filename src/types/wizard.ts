@@ -9,36 +9,22 @@ export type StepId =
   | 'manual-entry'
   | 'accounts'
   | 'importing'
-  // Transactions
-  | 'transactions'
-  | 'transactions-summary'
-  // Self Employment (dynamic - only if selected)
-  | 'self-employment-intro'
+  // Self Employment (dynamic per business)
+  | 'self-employment-basics'
   | 'self-employment-income'
   | 'self-employment-expenses'
+  | 'self-employment-capital-allowances'
+  | 'self-employment-losses'
   | 'self-employment-summary'
-  // Employment (PAYE)
-  | 'employment-intro'
-  // CIS
-  | 'cis-intro'
-  // Rental (dynamic - only if selected)
-  | 'rental-intro'
+  // Rental (dynamic per property)
+  | 'rental-details'
   | 'rental-income'
   | 'rental-expenses'
   | 'rental-summary'
-  // Dividends
-  | 'dividends-intro'
-  // Interest
-  | 'interest-intro'
-  // Capital Gains
-  | 'capital-gains-intro'
-  // Pension
-  | 'pension-intro'
-  // State Benefits
-  | 'state-benefits-intro'
-  // Deductions
-  | 'deductions-mileage'
-  | 'deductions-home-office'
+  // Other Income Types (simple amounts)
+  | 'other-income'
+  // General Deductions
+  | 'deductions-overview'
   // Personal & Review
   | 'personal-info'
   | 'review'
@@ -50,16 +36,9 @@ export type StepId =
 export type SectionId =
   | 'getting-started'
   | 'connect'
-  | 'transactions'
   | 'self-employment'
-  | 'employment'
-  | 'cis'
   | 'rental'
-  | 'dividends'
-  | 'interest'
-  | 'capital-gains'
-  | 'pension'
-  | 'state-benefits'
+  | 'other-income'
   | 'deductions'
   | 'personal'
   | 'review';
@@ -90,6 +69,76 @@ export interface Transaction {
   suggested_is_business?: boolean;
   status: 'business' | 'personal' | 'needs_review';
   confidence: number;
+  // Link to specific business/property
+  businessId?: string;
+}
+
+// Self Employment Business Data
+export interface SelfEmploymentBusiness {
+  // The Basics
+  businessName: string;
+  businessDescription: string;
+  businessPostcode: string;
+  accountingMethod: 'cash' | 'accruals';
+  startDate: string;
+  endDate: string;
+
+  // Income
+  income: {
+    fromTransactions: number;
+    manual: Array<{ description: string; amount: number }>;
+    total: number;
+  };
+
+  // Expenses by SA103 category
+  expenses: {
+    byCategory: Record<string, number>;
+    fromTransactions: number;
+    manual: number;
+    total: number;
+  };
+
+  // Capital Allowances
+  capitalAllowances: {
+    equipment: number;
+    vehicles: number;
+    other: number;
+    total: number;
+  };
+
+  // Losses
+  losses: {
+    broughtForward: number;
+    carriedForward: number;
+  };
+
+  // Calculated
+  profit: number;
+}
+
+// Rental Property Data
+export interface RentalProperty {
+  // Property Details
+  address: string;
+  postcode: string;
+  propertyType: 'residential' | 'commercial' | 'holiday-let';
+  ownershipShare: number; // percentage
+
+  // Income
+  income: {
+    rentReceived: number;
+    otherIncome: number;
+    total: number;
+  };
+
+  // Expenses
+  expenses: {
+    byCategory: Record<string, number>;
+    total: number;
+  };
+
+  // Calculated
+  profit: number;
 }
 
 export interface WizardData {
@@ -117,31 +166,31 @@ export interface WizardData {
     bankName: string;
   } | null;
 
-  // Transactions
+  // Transactions (shared across all businesses/properties)
   transactions: Transaction[];
   transactionsReviewed: boolean;
 
-  // Self Employment
-  selfEmployment: {
-    businessIncome: number;
-    businessExpenses: Record<string, number>;
-    otherIncome: number;
-  };
+  // Self Employment Data (keyed by business ID from incomeSources)
+  selfEmploymentData: Record<string, Partial<SelfEmploymentBusiness>>;
 
-  // Rental
-  rental: {
-    properties: Array<{
-      id: string;
-      address: string;
-      income: number;
-      expenses: Record<string, number>;
-    }>;
+  // Rental Data (keyed by property ID from incomeSources)
+  rentalData: Record<string, Partial<RentalProperty>>;
+
+  // Other Income (simple types)
+  otherIncome: {
+    interest: number;
+    dividends: number;
+    pension: number;
+    stateBenefits: number;
+    other: number;
   };
 
   // Deductions
   deductions: {
     mileage: { miles: number; rate: number; total: number };
     homeOffice: { amount: number; method: 'simplified' | 'actual' };
+    pensionContributions: number;
+    giftAid: number;
   };
 
   // Personal
@@ -168,12 +217,16 @@ export interface WizardData {
 export interface WizardContextType {
   // State
   currentStep: StepId;
+  currentBusinessId: string | null;
+  currentPropertyId: string | null;
   data: WizardData;
   isLoading: boolean;
   isSaving: boolean;
 
   // Navigation
   goToStep: (step: StepId) => void;
+  goToBusinessStep: (businessId: string, step: StepId) => void;
+  goToPropertyStep: (propertyId: string, step: StepId) => void;
   goNext: () => void;
   goBack: () => void;
   canGoNext: boolean;
@@ -181,6 +234,8 @@ export interface WizardContextType {
 
   // Data updates
   updateData: (updates: Partial<WizardData>) => void;
+  updateBusinessData: (businessId: string, updates: Partial<SelfEmploymentBusiness>) => void;
+  updatePropertyData: (propertyId: string, updates: Partial<RentalProperty>) => void;
 
   // Income sources
   addIncomeSource: (source: Omit<IncomeSource, 'id'>) => void;

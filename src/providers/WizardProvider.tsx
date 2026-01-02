@@ -15,6 +15,8 @@ import {
   IncomeSource,
   Transaction,
   SectionId,
+  SelfEmploymentBusiness,
+  RentalProperty,
 } from '@/types/wizard';
 import {
   getVisibleSteps,
@@ -35,17 +37,20 @@ const initialData: WizardData = {
   bankImportData: null,
   transactions: [],
   transactionsReviewed: false,
-  selfEmployment: {
-    businessIncome: 0,
-    businessExpenses: {},
-    otherIncome: 0,
-  },
-  rental: {
-    properties: [],
+  selfEmploymentData: {},
+  rentalData: {},
+  otherIncome: {
+    interest: 0,
+    dividends: 0,
+    pension: 0,
+    stateBenefits: 0,
+    other: 0,
   },
   deductions: {
     mileage: { miles: 0, rate: 0.45, total: 0 },
     homeOffice: { amount: 0, method: 'simplified' },
+    pensionContributions: 0,
+    giftAid: 0,
   },
   personalInfo: {
     fullName: '',
@@ -75,6 +80,8 @@ export function WizardProvider({
   userId?: string;
 }) {
   const [currentStep, setCurrentStep] = useState<StepId>('residency');
+  const [currentBusinessId, setCurrentBusinessId] = useState<string | null>(null);
+  const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
   const [data, setData] = useState<WizardData>(initialData);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,12 +94,14 @@ export function WizardProvider({
       // In development, just use localStorage for session persistence
       const savedData = localStorage.getItem('wizard-data');
       const savedStep = localStorage.getItem('wizard-step');
+      const savedBusinessId = localStorage.getItem('wizard-business-id');
+      const savedPropertyId = localStorage.getItem('wizard-property-id');
 
       let loadedData = initialData;
 
       if (savedData) {
         try {
-          loadedData = JSON.parse(savedData);
+          loadedData = { ...initialData, ...JSON.parse(savedData) };
           setData(loadedData);
         } catch {
           // Use initial data if parse fails
@@ -101,6 +110,14 @@ export function WizardProvider({
 
       if (savedStep) {
         setCurrentStep(savedStep as StepId);
+      }
+
+      if (savedBusinessId) {
+        setCurrentBusinessId(savedBusinessId);
+      }
+
+      if (savedPropertyId) {
+        setCurrentPropertyId(savedPropertyId);
       }
 
       // Check for bank connection callback
@@ -143,12 +160,18 @@ export function WizardProvider({
     // Save to localStorage for development
     localStorage.setItem('wizard-data', JSON.stringify(data));
     localStorage.setItem('wizard-step', currentStep);
+    if (currentBusinessId) {
+      localStorage.setItem('wizard-business-id', currentBusinessId);
+    }
+    if (currentPropertyId) {
+      localStorage.setItem('wizard-property-id', currentPropertyId);
+    }
 
     // Simulate save delay
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     setIsSaving(false);
-  }, [data, currentStep]);
+  }, [data, currentStep, currentBusinessId, currentPropertyId]);
 
   // Auto-save on data changes (debounced)
   useEffect(() => {
@@ -170,8 +193,8 @@ export function WizardProvider({
   useEffect(() => {
     calculateTax();
   }, [
-    data.selfEmployment,
-    data.rental,
+    data.selfEmploymentData,
+    data.rentalData,
     data.deductions,
     data.transactions,
     calculateTax,
@@ -182,12 +205,23 @@ export function WizardProvider({
     setCurrentStep(step);
   }, []);
 
+  const goToBusinessStep = useCallback((businessId: string, step: StepId) => {
+    setCurrentBusinessId(businessId);
+    setCurrentPropertyId(null);
+    setCurrentStep(step);
+  }, []);
+
+  const goToPropertyStep = useCallback((propertyId: string, step: StepId) => {
+    setCurrentPropertyId(propertyId);
+    setCurrentBusinessId(null);
+    setCurrentStep(step);
+  }, []);
+
   const goNext = useCallback(() => {
     console.log('[WizardProvider] goNext called, currentStep:', currentStep);
-    console.log('[WizardProvider] data.incomeSources:', data.incomeSources);
-    console.log('[WizardProvider] data.connectionMethod:', data.connectionMethod);
+    console.log('[WizardProvider] currentBusinessId:', currentBusinessId);
 
-    const nextStep = getNextStep(currentStep, data);
+    const nextStep = getNextStep(currentStep, data, currentBusinessId, currentPropertyId);
     console.log('[WizardProvider] nextStep:', nextStep);
 
     if (nextStep) {
@@ -196,29 +230,63 @@ export function WizardProvider({
     } else {
       console.log('[WizardProvider] No next step available!');
     }
-  }, [currentStep, data]);
+  }, [currentStep, data, currentBusinessId, currentPropertyId]);
 
   const goBack = useCallback(() => {
-    const prevStep = getPreviousStep(currentStep, data);
+    const prevStep = getPreviousStep(currentStep, data, currentBusinessId, currentPropertyId);
     if (prevStep) {
       setCurrentStep(prevStep);
     }
-  }, [currentStep, data]);
+  }, [currentStep, data, currentBusinessId, currentPropertyId]);
 
-  const canGoNext = getNextStep(currentStep, data) !== null;
-  const canGoBack = getPreviousStep(currentStep, data) !== null;
+  const canGoNext = getNextStep(currentStep, data, currentBusinessId, currentPropertyId) !== null;
+  const canGoBack = getPreviousStep(currentStep, data, currentBusinessId, currentPropertyId) !== null;
 
   // Data updates
   const updateData = useCallback((updates: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  // Business data updates
+  const updateBusinessData = useCallback(
+    (businessId: string, updates: Partial<SelfEmploymentBusiness>) => {
+      setData((prev) => ({
+        ...prev,
+        selfEmploymentData: {
+          ...prev.selfEmploymentData,
+          [businessId]: {
+            ...prev.selfEmploymentData[businessId],
+            ...updates,
+          },
+        },
+      }));
+    },
+    []
+  );
+
+  // Property data updates
+  const updatePropertyData = useCallback(
+    (propertyId: string, updates: Partial<RentalProperty>) => {
+      setData((prev) => ({
+        ...prev,
+        rentalData: {
+          ...prev.rentalData,
+          [propertyId]: {
+            ...prev.rentalData[propertyId],
+            ...updates,
+          },
+        },
+      }));
+    },
+    []
+  );
+
   // Income sources
   const addIncomeSource = useCallback(
     (source: Omit<IncomeSource, 'id'>) => {
       const newSource = {
         ...source,
-        id: `source-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `source-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       };
 
       setData((prev) => ({
@@ -290,24 +358,39 @@ export function WizardProvider({
             return 'completed';
           if (data.connectionMethod) return 'in_progress';
           return 'not_started';
-        case 'transactions':
-          if (data.transactionsReviewed) return 'completed';
-          if (data.transactions.length > 0) return 'in_progress';
-          return 'not_started';
-        case 'self-employment':
+        case 'self-employment': {
+          const businesses = data.incomeSources.filter(s => s.type === 'self-employment');
+          if (businesses.length === 0) return 'not_started';
+          const allComplete = businesses.every(b => {
+            const businessData = data.selfEmploymentData[b.id];
+            return businessData?.income?.total !== undefined;
+          });
+          if (allComplete) return 'completed';
+          return 'in_progress';
+        }
+        case 'rental': {
+          const properties = data.incomeSources.filter(s => s.type === 'rental');
+          if (properties.length === 0) return 'not_started';
+          const allComplete = properties.every(p => {
+            const propertyData = data.rentalData[p.id];
+            return propertyData?.income?.total !== undefined;
+          });
+          if (allComplete) return 'completed';
+          return 'in_progress';
+        }
+        case 'other-income':
           if (
-            data.selfEmployment.businessIncome > 0 ||
-            Object.keys(data.selfEmployment.businessExpenses).length > 0
+            data.otherIncome.interest > 0 ||
+            data.otherIncome.dividends > 0 ||
+            data.otherIncome.pension > 0
           )
             return 'in_progress';
-          return 'not_started';
-        case 'rental':
-          if (data.rental.properties.length > 0) return 'in_progress';
           return 'not_started';
         case 'deductions':
           if (
             data.deductions.mileage.miles > 0 ||
-            data.deductions.homeOffice.amount > 0
+            data.deductions.homeOffice.amount > 0 ||
+            data.deductions.pensionContributions > 0
           )
             return 'in_progress';
           return 'not_started';
@@ -327,15 +410,21 @@ export function WizardProvider({
 
   const value: WizardContextType = {
     currentStep,
+    currentBusinessId,
+    currentPropertyId,
     data,
     isLoading,
     isSaving,
     goToStep,
+    goToBusinessStep,
+    goToPropertyStep,
     goNext,
     goBack,
     canGoNext,
     canGoBack,
     updateData,
+    updateBusinessData,
+    updatePropertyData,
     addIncomeSource,
     updateIncomeSource,
     deleteIncomeSource,

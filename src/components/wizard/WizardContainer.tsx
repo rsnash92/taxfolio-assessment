@@ -11,8 +11,17 @@ import { IncomeSourcesStep } from '@/components/steps/IncomeSourcesStep';
 import { ConnectStep } from '@/components/steps/ConnectStep';
 import { AccountsStep } from '@/components/steps/AccountsStep';
 import { ImportingStep } from '@/components/steps/ImportingStep';
-import { TransactionsStep } from '@/components/steps/TransactionsStep';
 import { NotSupportedStep } from '@/components/steps/NotSupportedStep';
+
+// Self Employment Steps
+import {
+  SelfEmploymentBasicsStep,
+  SelfEmploymentIncomeStep,
+  SelfEmploymentExpensesStep,
+  SelfEmploymentCapitalAllowancesStep,
+  SelfEmploymentLossesStep,
+  SelfEmploymentSummaryStep,
+} from '@/components/steps/self-employment';
 
 export function WizardContainer() {
   const { currentStep, isLoading } = useWizard();
@@ -48,25 +57,23 @@ export function WizardContainer() {
       case 'importing':
         return <ImportingStep />;
 
-      // Transactions
-      case 'transactions':
-        return <TransactionsStep />;
-      case 'transactions-summary':
-        return <PlaceholderStep title="Transactions Summary" />;
-
-      // Self Employment
-      case 'self-employment-intro':
-        return <PlaceholderStep title="Self Employment" />;
+      // Self Employment (per business)
+      case 'self-employment-basics':
+        return <SelfEmploymentBasicsStep />;
       case 'self-employment-income':
-        return <PlaceholderStep title="Business Income" />;
+        return <SelfEmploymentIncomeStep />;
       case 'self-employment-expenses':
-        return <PlaceholderStep title="Business Expenses" />;
+        return <SelfEmploymentExpensesStep />;
+      case 'self-employment-capital-allowances':
+        return <SelfEmploymentCapitalAllowancesStep />;
+      case 'self-employment-losses':
+        return <SelfEmploymentLossesStep />;
       case 'self-employment-summary':
-        return <PlaceholderStep title="Self Employment Summary" />;
+        return <SelfEmploymentSummaryStep />;
 
-      // Rental
-      case 'rental-intro':
-        return <PlaceholderStep title="Rental Income" />;
+      // Rental (per property)
+      case 'rental-details':
+        return <PlaceholderStep title="Property Details" />;
       case 'rental-income':
         return <PlaceholderStep title="Property Income" />;
       case 'rental-expenses':
@@ -74,11 +81,13 @@ export function WizardContainer() {
       case 'rental-summary':
         return <PlaceholderStep title="Rental Summary" />;
 
+      // Other Income
+      case 'other-income':
+        return <PlaceholderStep title="Other Income" />;
+
       // Deductions
-      case 'deductions-mileage':
-        return <PlaceholderStep title="Mileage" />;
-      case 'deductions-home-office':
-        return <PlaceholderStep title="Home Office" />;
+      case 'deductions-overview':
+        return <PlaceholderStep title="Deductions" />;
 
       // Personal & Review
       case 'personal-info':
@@ -111,7 +120,12 @@ export function WizardContainer() {
 
         {/* Scrollable main content */}
         <main className="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)]">
-          <div className={currentStep === 'transactions' ? 'max-w-6xl mx-auto' : 'max-w-3xl mx-auto'}>
+          <div className={
+            currentStep === 'self-employment-income' ||
+            currentStep === 'self-employment-expenses'
+              ? 'max-w-4xl mx-auto'
+              : 'max-w-3xl mx-auto'
+          }>
             {renderStep()}
           </div>
         </main>
