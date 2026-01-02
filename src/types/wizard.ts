@@ -96,7 +96,7 @@ export interface SelfEmploymentBusiness {
   expenses: {
     byCategory: Record<string, number>;
     fromTransactions: number;
-    manual: number;
+    manual: Array<{ description: string; amount: number; category?: string }>;
     total: number;
   };
 
