@@ -30,6 +30,8 @@ const initialData: WizardData = {
   incomeSources: [],
   connectionMethod: null,
   bankConnected: false,
+  bankAccounts: [],
+  bankName: null,
   bankImportData: null,
   transactions: [],
   transactionsReviewed: false,

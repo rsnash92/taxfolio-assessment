@@ -23,7 +23,7 @@ interface BankAccount {
 }
 
 export function AccountsStep() {
-  const { updateData, goNext } = useWizard();
+  const { data: wizardData, updateData, goNext } = useWizard();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [bankName, setBankName] = useState<string>('');
@@ -32,29 +32,50 @@ export function AccountsStep() {
   const [importProgress, setImportProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch accounts on mount
+  // Fetch accounts on mount - use saved accounts as fallback if cookie expired
   useEffect(() => {
     async function fetchAccounts() {
       try {
         const response = await fetch('/api/truelayer/accounts');
-        const data = await response.json();
+        const apiData = await response.json();
 
-        if (data.connected) {
-          setAccounts(data.accounts);
-          setBankName(data.bankName);
+        if (apiData.connected) {
+          setAccounts(apiData.accounts);
+          setBankName(apiData.bankName);
           // Select all accounts by default
-          setSelectedAccounts(new Set(data.accounts.map((a: BankAccount) => a.account_id)));
+          setSelectedAccounts(new Set(apiData.accounts.map((a: BankAccount) => a.account_id)));
+
+          // Save accounts to wizard data for persistence
+          updateData({
+            bankAccounts: apiData.accounts,
+            bankName: apiData.bankName,
+          });
+        } else if (wizardData.bankAccounts && wizardData.bankAccounts.length > 0) {
+          // Use saved accounts from localStorage if cookie expired
+          console.log('[AccountsStep] Using saved accounts from localStorage');
+          setAccounts(wizardData.bankAccounts);
+          setBankName(wizardData.bankName || 'Connected Bank');
+          setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
         } else {
-          setError(data.error || 'No bank connection found');
+          setError(apiData.error || 'No bank connection found');
         }
       } catch {
-        setError('Failed to fetch accounts');
+        // Try to use saved accounts on error
+        if (wizardData.bankAccounts && wizardData.bankAccounts.length > 0) {
+          console.log('[AccountsStep] API error, using saved accounts');
+          setAccounts(wizardData.bankAccounts);
+          setBankName(wizardData.bankName || 'Connected Bank');
+          setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
+        } else {
+          setError('Failed to fetch accounts');
+        }
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchAccounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Toggle account selection

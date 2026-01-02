@@ -104,6 +104,13 @@ export interface WizardData {
   // Connect
   connectionMethod: 'bank' | 'upload' | 'manual' | null;
   bankConnected: boolean;
+  bankAccounts: Array<{
+    account_id: string;
+    display_name: string;
+    account_type: string;
+    provider_name: string;
+  }>;
+  bankName: string | null;
   bankImportData: {
     accountCount: number;
     transactionCount: number;
