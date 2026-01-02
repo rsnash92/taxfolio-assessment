@@ -11,6 +11,8 @@ import {
   Brain,
   Search,
   Loader2,
+  Briefcase,
+  User,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -301,78 +303,105 @@ export function TransactionsStep() {
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* Clickable Stat Cards - Filter by clicking */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-sm text-gray-500 mb-1">Business Income</p>
-          <p className="text-xl font-bold text-emerald-600">
-            {formatCurrency(totals.income)}
-          </p>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-sm text-gray-500 mb-1">Business Expenses</p>
-          <p className="text-xl font-bold text-red-600">
-            {formatCurrency(totals.expenses)}
-          </p>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-sm text-gray-500 mb-1">Net Profit</p>
-          <p className="text-xl font-bold text-gray-900">
-            {formatCurrency(totals.income - totals.expenses)}
-          </p>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-sm text-gray-500 mb-1">Needs Review</p>
-          <p
-            className={cn(
-              'text-xl font-bold',
-              stats.needsReview > 0 ? 'text-amber-600' : 'text-emerald-600'
-            )}
-          >
-            {stats.needsReview}
-          </p>
-        </div>
-      </div>
-
-      {/* Filters & Search */}
-      <div className="flex items-center gap-4 mb-4">
-        {/* Status Tabs */}
-        <div className="flex bg-gray-100 rounded-lg p-1">
-          {[
-            { value: 'all', label: 'All', count: stats.total },
-            {
-              value: 'needs_review',
-              label: 'Needs Review',
-              count: stats.needsReview,
-            },
-            { value: 'business', label: 'Business', count: stats.business },
-            { value: 'personal', label: 'Personal', count: stats.personal },
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value as FilterStatus)}
+        {/* Business */}
+        <button
+          onClick={() => setFilter(filter === 'business' ? 'all' : 'business')}
+          className={cn(
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-emerald-300',
+            filter === 'business'
+              ? 'border-emerald-500 ring-1 ring-emerald-500/30'
+              : 'border-gray-200'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div
               className={cn(
-                'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                filter === tab.value
-                  ? 'bg-white shadow text-gray-900'
-                  : 'text-gray-600 hover:text-gray-900'
+                'w-10 h-10 rounded-lg flex items-center justify-center',
+                filter === 'business' ? 'bg-emerald-100' : 'bg-gray-100'
               )}
             >
-              {tab.label}
-              {tab.count > 0 && (
-                <span
-                  className={cn(
-                    'ml-1.5 px-1.5 py-0.5 rounded-full text-xs',
-                    filter === tab.value ? 'bg-gray-200' : 'bg-gray-200/50'
-                  )}
-                >
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+              <Briefcase className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.business}</p>
+              <p className="text-xs text-gray-500">Business</p>
+            </div>
+          </div>
+        </button>
 
+        {/* Personal */}
+        <button
+          onClick={() => setFilter(filter === 'personal' ? 'all' : 'personal')}
+          className={cn(
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-gray-400',
+            filter === 'personal'
+              ? 'border-gray-500 ring-1 ring-gray-500/30'
+              : 'border-gray-200'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                'w-10 h-10 rounded-lg flex items-center justify-center',
+                filter === 'personal' ? 'bg-gray-200' : 'bg-gray-100'
+              )}
+            >
+              <User className="h-5 w-5 text-gray-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-500">{stats.personal}</p>
+              <p className="text-xs text-gray-500">Personal (excluded)</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Needs Review */}
+        <button
+          onClick={() => setFilter(filter === 'needs_review' ? 'all' : 'needs_review')}
+          className={cn(
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-amber-300',
+            filter === 'needs_review'
+              ? 'border-amber-500 ring-1 ring-amber-500/30'
+              : 'border-gray-200'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                'w-10 h-10 rounded-lg flex items-center justify-center',
+                filter === 'needs_review' ? 'bg-amber-100' : 'bg-gray-100'
+              )}
+            >
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-amber-500">{stats.needsReview}</p>
+              <p className="text-xs text-gray-500">Needs review</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Total */}
+        <button
+          onClick={() => setFilter('all')}
+          className={cn(
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-gray-400',
+            filter === 'all'
+              ? 'border-gray-600 ring-1 ring-gray-600/30'
+              : 'border-gray-200'
+          )}
+        >
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-xs text-gray-500">Total transactions</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Search & Bulk Actions */}
+      <div className="flex items-center gap-4 mb-4">
         {/* Search */}
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
