@@ -24,6 +24,16 @@ import {
   SelfEmploymentSummaryStep,
 } from '@/components/steps/self-employment';
 
+// General Steps (Tax Reliefs & Allowances)
+import {
+  GeneralOverviewStep,
+  MarriageAllowanceStep,
+  BlindAllowanceStep,
+  PensionContributionsStep,
+  CharitableGivingStep,
+  VentureCapitalStep,
+} from '@/components/steps/general';
+
 export function WizardContainer() {
   const { currentStep, isLoading } = useWizard();
 
@@ -87,6 +97,20 @@ export function WizardContainer() {
       // Other Income
       case 'other-income':
         return <PlaceholderStep title="Other Income" />;
+
+      // General (Tax Reliefs & Allowances)
+      case 'general-overview':
+        return <GeneralOverviewStep />;
+      case 'general-marriage-allowance':
+        return <MarriageAllowanceStep />;
+      case 'general-blind-allowance':
+        return <BlindAllowanceStep />;
+      case 'general-pension':
+        return <PensionContributionsStep />;
+      case 'general-charitable':
+        return <CharitableGivingStep />;
+      case 'general-venture-capital':
+        return <VentureCapitalStep />;
 
       // Deductions
       case 'deductions-overview':

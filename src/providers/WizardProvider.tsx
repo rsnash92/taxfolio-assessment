@@ -39,6 +39,9 @@ const initialData: WizardData = {
   transactionsReviewed: false,
   selfEmploymentData: {},
   rentalData: {},
+  general: {
+    selectedReliefs: [],
+  },
   otherIncome: {
     interest: 0,
     dividends: 0,

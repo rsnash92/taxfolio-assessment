@@ -24,6 +24,13 @@ export type StepId =
   | 'rental-summary'
   // Other Income Types (simple amounts)
   | 'other-income'
+  // General (Tax Reliefs & Allowances)
+  | 'general-overview'
+  | 'general-marriage-allowance'
+  | 'general-blind-allowance'
+  | 'general-pension'
+  | 'general-charitable'
+  | 'general-venture-capital'
   // General Deductions
   | 'deductions-overview'
   // Personal & Review
@@ -40,6 +47,7 @@ export type SectionId =
   | 'self-employment'
   | 'rental'
   | 'other-income'
+  | 'general'
   | 'deductions'
   | 'personal'
   | 'review';
@@ -147,6 +155,60 @@ export interface RentalProperty {
   profit: number;
 }
 
+// General Section Data (Tax Reliefs & Allowances)
+export interface GeneralData {
+  selectedReliefs: string[];
+
+  // Marriage Allowance
+  marriageAllowance?: {
+    type: 'transfer' | 'receive' | null;
+    spouseNino?: string;
+    spouseName?: string;
+    spouseDob?: string;
+  };
+
+  // Blind Person's Allowance
+  blindAllowance?: {
+    registeredBlind: boolean;
+    localAuthority?: string;
+    registrationDate?: string;
+    surplusFromSpouse?: number;
+  };
+
+  // Pension Contributions
+  pension?: {
+    personalContributions: number;
+    employerContributions?: number;
+    oneOffContributions?: number;
+    carryForwardUsed?: boolean;
+    carryForwardAmount?: number;
+  };
+
+  // Charitable Giving
+  charitable?: {
+    giftAidDonations: number;
+    giftAidTreatedAsPreviousYear?: number;
+    giftAidBroughtForward?: number;
+    giftOfShares?: number;
+    giftOfProperty?: number;
+    giftToNonUKCharities?: number;
+  };
+
+  // Venture Capital Schemes
+  ventureCapital?: {
+    eisInvestments?: number;
+    eisReliefClaimed?: number;
+    eisCarryBack?: boolean;
+    seisInvestments?: number;
+    seisReliefClaimed?: number;
+    seisCarryBack?: boolean;
+    vctInvestments?: number;
+    vctReliefClaimed?: number;
+    sitrInvestments?: number;
+    sitrReliefClaimed?: number;
+  };
+}
+
 export interface WizardData {
   // Session
   sessionId: string | null;
@@ -190,6 +252,9 @@ export interface WizardData {
     stateBenefits: number;
     other: number;
   };
+
+  // General (Tax Reliefs & Allowances)
+  general: Partial<GeneralData>;
 
   // Deductions
   deductions: {

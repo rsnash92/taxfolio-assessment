@@ -180,6 +180,49 @@ export const ALL_STEPS: StepConfig[] = [
       ),
   },
 
+  // General (Tax Reliefs & Allowances)
+  {
+    id: 'general-overview',
+    section: 'general',
+    title: 'Tax Reliefs',
+    showInSidebar: true,
+  },
+  {
+    id: 'general-marriage-allowance',
+    section: 'general',
+    title: 'Marriage Allowance',
+    showInSidebar: false,
+    condition: (data) => data.general?.selectedReliefs?.includes('marriage-allowance') ?? false,
+  },
+  {
+    id: 'general-blind-allowance',
+    section: 'general',
+    title: "Blind Person's Allowance",
+    showInSidebar: false,
+    condition: (data) => data.general?.selectedReliefs?.includes('blind-allowance') ?? false,
+  },
+  {
+    id: 'general-pension',
+    section: 'general',
+    title: 'Pension Contributions',
+    showInSidebar: false,
+    condition: (data) => data.general?.selectedReliefs?.includes('pension') ?? false,
+  },
+  {
+    id: 'general-charitable',
+    section: 'general',
+    title: 'Charitable Giving',
+    showInSidebar: false,
+    condition: (data) => data.general?.selectedReliefs?.includes('charitable') ?? false,
+  },
+  {
+    id: 'general-venture-capital',
+    section: 'general',
+    title: 'Venture Capital Schemes',
+    showInSidebar: false,
+    condition: (data) => data.general?.selectedReliefs?.includes('venture-capital') ?? false,
+  },
+
   // Deductions
   {
     id: 'deductions-overview',
