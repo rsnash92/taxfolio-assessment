@@ -323,7 +323,7 @@ export function TransactionsStep() {
               onClick={handleContinue}
               className="bg-emerald-500 hover:bg-emerald-600 text-white"
             >
-              Continue
+              Continue to Summary
             </Button>
           </div>
         </div>
@@ -603,8 +603,8 @@ export function TransactionsStep() {
         canContinue={canContinue}
         continueLabel={
           stats.needsReview > 0
-            ? `Continue (${stats.needsReview} uncategorised)`
-            : 'Continue'
+            ? `Continue to Summary (${stats.needsReview} uncategorised)`
+            : 'Continue to Summary'
         }
         onContinue={handleContinue}
       />
