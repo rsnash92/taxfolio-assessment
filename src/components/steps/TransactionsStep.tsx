@@ -280,25 +280,33 @@ export function TransactionsStep() {
       {/* AI Summary Banner - show after categorisation */}
       {stats.hasSuggestions && stats.needsReview < stats.total && (
         <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Brain className="h-5 w-5 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Brain className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 mb-1">
+                  AI has categorised your transactions
+                </p>
+                <p className="text-sm text-gray-600">
+                  {stats.business} marked as business, {stats.personal} as
+                  personal.
+                  {stats.needsReview > 0 && (
+                    <span className="text-amber-600 font-medium">
+                      {' '}
+                      {stats.needsReview} need your review.
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-gray-900 mb-1">
-                AI has categorised your transactions
-              </p>
-              <p className="text-sm text-gray-600">
-                {stats.business} marked as business, {stats.personal} as
-                personal.
-                {stats.needsReview > 0 && (
-                  <span className="text-amber-600 font-medium">
-                    {' '}
-                    {stats.needsReview} need your review.
-                  </span>
-                )}
-              </p>
-            </div>
+            <Button
+              onClick={handleContinue}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            >
+              Continue
+            </Button>
           </div>
         </div>
       )}
