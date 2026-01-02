@@ -1,29 +1,58 @@
-const TRUELAYER_CLIENT_ID = process.env.TRUELAYER_CLIENT_ID!;
-const TRUELAYER_CLIENT_SECRET = process.env.TRUELAYER_CLIENT_SECRET!;
-const TRUELAYER_REDIRECT_URI = process.env.TRUELAYER_REDIRECT_URI!;
+const ENV = process.env.TRUELAYER_ENV || 'sandbox';
+
+export const TRUELAYER_CONFIG = {
+  clientId: process.env.TRUELAYER_CLIENT_ID!,
+  clientSecret: process.env.TRUELAYER_CLIENT_SECRET!,
+
+  // URLs based on environment
+  authUrl:
+    ENV === 'sandbox'
+      ? 'https://auth.truelayer-sandbox.com'
+      : 'https://auth.truelayer.com',
+
+  apiUrl:
+    ENV === 'sandbox'
+      ? 'https://api.truelayer-sandbox.com'
+      : 'https://api.truelayer.com',
+
+  // Redirect URI
+  redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/truelayer/callback`,
+
+  // Scopes we need
+  scopes: ['info', 'accounts', 'balance', 'transactions', 'offline_access'],
+
+  // Environment
+  isSandbox: ENV === 'sandbox',
+};
 
 export function getAuthUrl(state: string) {
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: TRUELAYER_CLIENT_ID,
-    redirect_uri: TRUELAYER_REDIRECT_URI,
-    scope: 'info accounts balance transactions',
+    client_id: TRUELAYER_CONFIG.clientId,
+    redirect_uri: TRUELAYER_CONFIG.redirectUri,
+    scope: TRUELAYER_CONFIG.scopes.join(' '),
     state,
-    providers: 'uk-ob-all uk-oauth-all',
   });
 
-  return `https://auth.truelayer.com/?${params.toString()}`;
+  // Set providers based on environment
+  if (TRUELAYER_CONFIG.isSandbox) {
+    params.set('providers', 'mock');
+  } else {
+    params.set('providers', 'uk-ob-all uk-oauth-all');
+  }
+
+  return `${TRUELAYER_CONFIG.authUrl}/?${params.toString()}`;
 }
 
 export async function exchangeCode(code: string) {
-  const response = await fetch('https://auth.truelayer.com/connect/token', {
+  const response = await fetch(`${TRUELAYER_CONFIG.authUrl}/connect/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
-      client_id: TRUELAYER_CLIENT_ID,
-      client_secret: TRUELAYER_CLIENT_SECRET,
-      redirect_uri: TRUELAYER_REDIRECT_URI,
+      client_id: TRUELAYER_CONFIG.clientId,
+      client_secret: TRUELAYER_CONFIG.clientSecret,
+      redirect_uri: TRUELAYER_CONFIG.redirectUri,
       code,
     }),
   });
@@ -32,7 +61,7 @@ export async function exchangeCode(code: string) {
 }
 
 export async function getAccounts(accessToken: string) {
-  const response = await fetch('https://api.truelayer.com/data/v1/accounts', {
+  const response = await fetch(`${TRUELAYER_CONFIG.apiUrl}/data/v1/accounts`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -46,7 +75,7 @@ export async function getTransactions(
   to: string
 ) {
   const response = await fetch(
-    `https://api.truelayer.com/data/v1/accounts/${accountId}/transactions?from=${from}&to=${to}`,
+    `${TRUELAYER_CONFIG.apiUrl}/data/v1/accounts/${accountId}/transactions?from=${from}&to=${to}`,
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     }

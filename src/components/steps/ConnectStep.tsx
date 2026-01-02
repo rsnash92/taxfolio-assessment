@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
-import { Building2, Upload, Edit3 } from 'lucide-react';
+import { Building2, Upload, Edit3, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CONNECTION_OPTIONS = [
@@ -28,22 +29,47 @@ const CONNECTION_OPTIONS = [
 ];
 
 export function ConnectStep() {
-  const { data, updateData, goNext } = useWizard();
+  const { data, updateData, goNext, saveProgress } = useWizard();
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSelect = (method: 'bank' | 'upload' | 'manual') => {
     updateData({ connectionMethod: method });
+    setError(null);
   };
 
-  const handleContinue = () => {
-    if (data.connectionMethod === 'manual') {
-      // Skip bank connection and transactions, go to first income section
-      if (data.incomeSources.some((s) => s.type === 'self-employment')) {
-        goNext(); // Will go to self-employment based on step conditions
-      } else if (data.incomeSources.some((s) => s.type === 'rental')) {
-        goNext();
-      } else {
-        goNext();
+  const handleContinue = async () => {
+    if (data.connectionMethod === 'bank') {
+      setIsConnecting(true);
+      setError(null);
+
+      try {
+        // Save progress before redirecting
+        await saveProgress();
+
+        // Get TrueLayer auth URL
+        const response = await fetch('/api/truelayer/connect', {
+          method: 'POST',
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+          setError('Failed to connect to bank. Please try again.');
+          setIsConnecting(false);
+          return;
+        }
+
+        // Redirect to TrueLayer
+        window.location.href = result.authUrl;
+      } catch (err) {
+        console.error('Bank connection error:', err);
+        setError('Failed to connect. Please try again.');
+        setIsConnecting(false);
       }
+    } else if (data.connectionMethod === 'manual') {
+      // Skip bank connection and transactions, go to first income section
+      goNext();
     } else {
       goNext();
     }
@@ -61,6 +87,13 @@ export function ConnectStep() {
         </p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
       {/* Connection Options */}
       <div className="space-y-3 mb-8">
         {CONNECTION_OPTIONS.map((option) => {
@@ -73,11 +106,13 @@ export function ConnectStep() {
               onClick={() =>
                 handleSelect(option.id as 'bank' | 'upload' | 'manual')
               }
+              disabled={isConnecting}
               className={cn(
                 'w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
                 isSelected
                   ? 'border-emerald-500 bg-emerald-50'
-                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                  : 'border-gray-200 hover:border-gray-300 bg-white',
+                isConnecting && 'opacity-50 cursor-not-allowed'
               )}
             >
               <div
@@ -130,9 +165,20 @@ export function ConnectStep() {
         </div>
       )}
 
+      {/* Connecting State */}
+      {isConnecting && (
+        <div className="flex items-center justify-center gap-3 py-4 mb-8">
+          <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+          <span className="text-gray-600">Connecting to your bank...</span>
+        </div>
+      )}
+
       <WizardNavigation
-        canContinue={data.connectionMethod !== null}
+        canContinue={data.connectionMethod !== null && !isConnecting}
         onContinue={handleContinue}
+        continueLabel={
+          data.connectionMethod === 'bank' ? 'Connect Bank' : 'Continue'
+        }
       />
     </div>
   );
