@@ -15,6 +15,7 @@ import { NotSupportedStep } from '@/components/steps/NotSupportedStep';
 
 // Self Employment Steps
 import {
+  SelfEmploymentListStep,
   SelfEmploymentBasicsStep,
   SelfEmploymentIncomeStep,
   SelfEmploymentExpensesStep,
@@ -57,7 +58,9 @@ export function WizardContainer() {
       case 'importing':
         return <ImportingStep />;
 
-      // Self Employment (per business)
+      // Self Employment (list and per business)
+      case 'self-employment-list':
+        return <SelfEmploymentListStep />;
       case 'self-employment-basics':
         return <SelfEmploymentBasicsStep />;
       case 'self-employment-income':
@@ -122,7 +125,8 @@ export function WizardContainer() {
         <main className="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)]">
           <div className={
             currentStep === 'self-employment-income' ||
-            currentStep === 'self-employment-expenses'
+            currentStep === 'self-employment-expenses' ||
+            currentStep === 'self-employment-list'
               ? 'max-w-4xl mx-auto'
               : 'max-w-3xl mx-auto'
           }>

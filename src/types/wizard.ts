@@ -9,7 +9,8 @@ export type StepId =
   | 'manual-entry'
   | 'accounts'
   | 'importing'
-  // Self Employment (dynamic per business)
+  // Self Employment (list and dynamic per business)
+  | 'self-employment-list'
   | 'self-employment-basics'
   | 'self-employment-income'
   | 'self-employment-expenses'
@@ -116,6 +117,9 @@ export interface SelfEmploymentBusiness {
 
   // Calculated
   profit: number;
+
+  // Completion status
+  isComplete: boolean;
 }
 
 // Rental Property Data

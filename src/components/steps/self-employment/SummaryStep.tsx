@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import {
@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export function SelfEmploymentSummaryStep() {
-  const { currentBusinessId, data, updateBusinessData } = useWizard();
+  const { currentBusinessId, data, updateBusinessData, goToStep } = useWizard();
 
   if (!currentBusinessId) {
     return <div>No business selected</div>;
@@ -42,6 +42,12 @@ export function SelfEmploymentSummaryStep() {
       updateBusinessData(currentBusinessId, { profit });
     }
   }, [profit, businessData.profit, currentBusinessId, updateBusinessData]);
+
+  // Handle save and continue - mark business as complete
+  const handleSaveAndContinue = useCallback(() => {
+    updateBusinessData(currentBusinessId, { isComplete: true });
+    goToStep('self-employment-list');
+  }, [currentBusinessId, updateBusinessData, goToStep]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -242,7 +248,12 @@ export function SelfEmploymentSummaryStep() {
         </div>
       </div>
 
-      <WizardNavigation canContinue={true} />
+      <WizardNavigation
+        canContinue={true}
+        continueLabel="Save & Continue"
+        onContinue={handleSaveAndContinue}
+        showCheckmark={true}
+      />
     </div>
   );
 }

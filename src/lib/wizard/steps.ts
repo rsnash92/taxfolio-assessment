@@ -10,6 +10,16 @@ export const SELF_EMPLOYMENT_STEPS: { id: StepId; label: string }[] = [
   { id: 'self-employment-summary', label: 'Summary' },
 ];
 
+// Self Employment business steps (excluding the list)
+export const SELF_EMPLOYMENT_BUSINESS_STEPS: StepId[] = [
+  'self-employment-basics',
+  'self-employment-income',
+  'self-employment-expenses',
+  'self-employment-capital-allowances',
+  'self-employment-losses',
+  'self-employment-summary',
+];
+
 // Rental sub-steps (per property)
 export const RENTAL_STEPS: { id: StepId; label: string }[] = [
   { id: 'rental-details', label: 'Property Details' },
@@ -69,6 +79,15 @@ export const ALL_STEPS: StepConfig[] = [
     condition: (data) => data.connectionMethod === 'upload',
   },
 
+  // Self Employment list (manage multiple businesses)
+  {
+    id: 'self-employment-list',
+    section: 'self-employment',
+    title: 'Self-Employment',
+    showInSidebar: true,
+    condition: (data) =>
+      data.incomeSources.some((s) => s.type === 'self-employment'),
+  },
   // Self Employment (dynamic per business)
   {
     id: 'self-employment-basics',
@@ -211,20 +230,9 @@ export function getNextStep(
   currentBusinessId?: string | null,
   currentPropertyId?: string | null
 ): StepId | null {
-  // Handle self-employment step progression
-  if (currentStep.startsWith('self-employment-') && currentBusinessId) {
-    const stepIndex = SELF_EMPLOYMENT_STEPS.findIndex((s) => s.id === currentStep);
-    if (stepIndex < SELF_EMPLOYMENT_STEPS.length - 1) {
-      return SELF_EMPLOYMENT_STEPS[stepIndex + 1].id;
-    }
-    // If we're at the last self-employment step, check for more businesses or move to next section
-    const businesses = data.incomeSources.filter((s) => s.type === 'self-employment');
-    const currentBusinessIndex = businesses.findIndex((b) => b.id === currentBusinessId);
-    if (currentBusinessIndex < businesses.length - 1) {
-      // Move to next business
-      return 'self-employment-basics';
-    }
-    // Move to next section (rental or other-income or deductions)
+  // Handle self-employment list step
+  if (currentStep === 'self-employment-list') {
+    // From list, go to next section (rental or other-income or deductions)
     const hasRental = data.incomeSources.some((s) => s.type === 'rental');
     if (hasRental) return 'rental-details';
 
@@ -234,6 +242,16 @@ export function getNextStep(
     if (hasOtherIncome) return 'other-income';
 
     return 'deductions-overview';
+  }
+
+  // Handle self-employment step progression (within a business)
+  if (currentStep.startsWith('self-employment-') && currentBusinessId) {
+    const stepIndex = SELF_EMPLOYMENT_STEPS.findIndex((s) => s.id === currentStep);
+    if (stepIndex < SELF_EMPLOYMENT_STEPS.length - 1) {
+      return SELF_EMPLOYMENT_STEPS[stepIndex + 1].id;
+    }
+    // If we're at the last self-employment step (summary), go back to the list
+    return 'self-employment-list';
   }
 
   // Handle rental step progression
@@ -258,10 +276,10 @@ export function getNextStep(
     return 'deductions-overview';
   }
 
-  // Handle transition from accounts to first self-employment business
+  // Handle transition from accounts to self-employment list
   if (currentStep === 'accounts') {
     const hasSelfEmployment = data.incomeSources.some((s) => s.type === 'self-employment');
-    if (hasSelfEmployment) return 'self-employment-basics';
+    if (hasSelfEmployment) return 'self-employment-list';
 
     const hasRental = data.incomeSources.some((s) => s.type === 'rental');
     if (hasRental) return 'rental-details';
@@ -291,21 +309,21 @@ export function getPreviousStep(
   currentBusinessId?: string | null,
   currentPropertyId?: string | null
 ): StepId | null {
-  // Handle self-employment step progression
+  // Handle self-employment list step
+  if (currentStep === 'self-employment-list') {
+    // Go back to accounts or income-sources
+    if (data.bankConnected) return 'accounts';
+    return 'income-sources';
+  }
+
+  // Handle self-employment step progression (within a business)
   if (currentStep.startsWith('self-employment-') && currentBusinessId) {
     const stepIndex = SELF_EMPLOYMENT_STEPS.findIndex((s) => s.id === currentStep);
     if (stepIndex > 0) {
       return SELF_EMPLOYMENT_STEPS[stepIndex - 1].id;
     }
-    // If we're at the first self-employment step, check for previous businesses
-    const businesses = data.incomeSources.filter((s) => s.type === 'self-employment');
-    const currentBusinessIndex = businesses.findIndex((b) => b.id === currentBusinessId);
-    if (currentBusinessIndex > 0) {
-      return 'self-employment-summary'; // Go to summary of previous business
-    }
-    // Go back to accounts or income-sources
-    if (data.bankConnected) return 'accounts';
-    return 'income-sources';
+    // If we're at the first self-employment step, go back to the list
+    return 'self-employment-list';
   }
 
   // Handle rental step progression

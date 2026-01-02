@@ -1,3 +1,4 @@
+export { SelfEmploymentListStep } from './SelfEmploymentListStep';
 export { SelfEmploymentBasicsStep } from './BasicsStep';
 export { SelfEmploymentIncomeStep } from './IncomeStep';
 export { SelfEmploymentExpensesStep } from './ExpensesStep';
