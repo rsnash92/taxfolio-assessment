@@ -39,23 +39,20 @@ interface CategoryResult {
 
 const ITEMS_PER_PAGE = 25;
 
-// SA103 Expense Categories for summary
+// HMRC Self-Employment API expense categories (periodExpenses fields)
 const SA103_EXPENSE_CATEGORIES = [
-  { id: 'cost_of_goods', label: 'Cost of Goods Sold', box: '10' },
-  { id: 'employee_costs', label: 'Employee Costs', box: '11' },
-  { id: 'subcontractor_costs', label: 'Subcontractor Costs', box: '12' },
-  { id: 'premises_costs', label: 'Premises Costs', box: '13' },
-  { id: 'repairs_maintenance', label: 'Repairs & Maintenance', box: '14' },
-  { id: 'motor_expenses', label: 'Motor Expenses', box: '15' },
-  { id: 'travel_subsistence', label: 'Travel & Subsistence', box: '16' },
-  { id: 'advertising', label: 'Advertising & Marketing', box: '17' },
-  { id: 'legal_professional', label: 'Legal & Professional', box: '17' },
-  { id: 'bank_charges', label: 'Bank Charges', box: '17' },
-  { id: 'office_supplies', label: 'Office Supplies', box: '17' },
-  { id: 'software_subscriptions', label: 'Software & Subscriptions', box: '17' },
-  { id: 'telephone_internet', label: 'Telephone & Internet', box: '17' },
-  { id: 'insurance', label: 'Insurance', box: '17' },
-  { id: 'other_expenses', label: 'Other Expenses', box: '17' },
+  { id: 'costOfGoods', label: 'Cost of Goods', box: '10' },
+  { id: 'wagesAndStaffCosts', label: 'Wages & Staff Costs', box: '11' },
+  { id: 'paymentsToSubcontractors', label: 'Subcontractor Payments', box: '12' },
+  { id: 'premisesRunningCosts', label: 'Premises Costs', box: '13' },
+  { id: 'maintenanceCosts', label: 'Repairs & Maintenance', box: '14' },
+  { id: 'carVanTravelExpenses', label: 'Vehicle & Travel', box: '15-16' },
+  { id: 'advertisingCosts', label: 'Advertising & Marketing', box: '17' },
+  { id: 'professionalFees', label: 'Professional Fees', box: '17' },
+  { id: 'financeCharges', label: 'Finance Charges', box: '17' },
+  { id: 'interestOnBankOtherLoans', label: 'Loan Interest', box: '17' },
+  { id: 'adminCosts', label: 'Admin & Office Costs', box: '17' },
+  { id: 'otherExpenses', label: 'Other Expenses', box: '17' },
 ];
 
 export function SelfEmploymentExpensesStep() {

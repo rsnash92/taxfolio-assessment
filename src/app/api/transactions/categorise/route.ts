@@ -11,26 +11,23 @@ IMPORTANT: This is likely a MIXED personal/business bank account. Most sole trad
 For each transaction, return a JSON object with:
 - id: the transaction id (REQUIRED - copy exactly from input)
 - is_business: boolean (true = business expense/income, false = personal)
-- category: MUST be one of these SA103 category IDs (use exact string):
+- category: MUST be one of these HMRC API field names (use exact string):
   FOR EXPENSES:
-  - "cost_of_goods" (Box 10: Direct costs of products sold)
-  - "employee_costs" (Box 11: Wages, salaries, bonuses, pensions)
-  - "subcontractor_costs" (Box 12: CIS deductions, subcontractor payments)
-  - "premises_costs" (Box 13: Rent, rates, power for business premises)
-  - "repairs_maintenance" (Box 14: Repairs and maintenance)
-  - "motor_expenses" (Box 15: Vehicle running costs, fuel)
-  - "travel_subsistence" (Box 16: Business travel, accommodation, meals)
-  - "advertising" (Box 17: Advertising, marketing)
-  - "legal_professional" (Box 17: Accountant, solicitor fees)
-  - "bank_charges" (Box 17: Bank fees, interest)
-  - "office_supplies" (Box 17: Stationery, postage, printing)
-  - "software_subscriptions" (Box 17: Software, apps, online services)
-  - "telephone_internet" (Box 17: Phone, broadband, mobile)
-  - "insurance" (Box 17: Business insurance)
-  - "other_expenses" (Box 17: Other allowable expenses)
+  - "costOfGoods" (Box 10: Cost of goods bought for resale)
+  - "wagesAndStaffCosts" (Box 11: Wages, salaries, bonuses, pensions)
+  - "paymentsToSubcontractors" (Box 12: CIS/subcontractor payments)
+  - "premisesRunningCosts" (Box 13: Rent, rates, power, insurance for premises)
+  - "maintenanceCosts" (Box 14: Repairs and maintenance)
+  - "carVanTravelExpenses" (Box 15-16: Vehicle costs and business travel)
+  - "advertisingCosts" (Box 17: Advertising, marketing)
+  - "professionalFees" (Box 17: Accountant, solicitor fees)
+  - "financeCharges" (Box 17: Bank fees, credit card charges)
+  - "interestOnBankOtherLoans" (Box 17: Loan interest)
+  - "adminCosts" (Box 17: Phone, fax, stationery, office costs, software)
+  - "otherExpenses" (Box 17: Other allowable business expenses)
   FOR INCOME:
-  - "sales_turnover" (Box 9: Income from sales/services)
-  - "other_business_income" (Box 10: Other business income including grants)
+  - "turnover" (Box 9: Income from sales/services)
+  - "otherIncome" (Box 10: Other business income including grants)
 - confidence: 0.0 to 1.0 (how confident you are)
 - reasoning: brief explanation (1 sentence max)
 
@@ -76,43 +73,38 @@ Other Personal:
 
 ## BUSINESS TRANSACTION RULES - Mark as is_business: true:
 
-Software & Tools → use category "software_subscriptions":
+Software, Office & Admin → use category "adminCosts":
 - Adobe, Microsoft 365, Google Workspace, Notion, Canva
 - Zoom, Slack, Teams, Loom
-- Xero, QuickBooks, FreeAgent (accounting)
+- Xero, QuickBooks, FreeAgent (accounting software)
 - GitHub, GitLab, Figma, Miro
 - AWS, Google Cloud, Azure, DigitalOcean
 - Vercel, Netlify, Heroku, Railway
 - GoDaddy, Namecheap, Cloudflare
+- Mobile phone bills, broadband, landline
+- EE, Vodafone, O2, Three, BT, Sky broadband
+- Staples, Viking Direct, Office Depot
+- Stationery, printing, postage
 
-Marketing & Advertising → use category "advertising":
+Marketing & Advertising → use category "advertisingCosts":
 - Google Ads, Facebook/Meta Ads, LinkedIn Ads
 - Mailchimp, ConvertKit, Klaviyo
 - Hootsuite, Buffer
 
-Professional Services → use category "legal_professional":
+Professional Services → use category "professionalFees":
 - Accountant fees, solicitor/legal fees
-- Business insurance → use category "insurance"
-- Professional indemnity insurance → use category "insurance"
+- Business insurance, professional indemnity
 
-Office & Supplies → use category "office_supplies":
-- Staples, Viking Direct
-- Office Depot, Amazon (when clearly office supplies)
-- Stationery, printing, postage
-
-Phone/Internet → use category "telephone_internet":
-- Mobile phone bills, broadband, landline
-- EE, Vodafone, O2, Three, BT, Sky broadband
-
-Business Travel → use category "travel_subsistence":
+Vehicle & Travel → use category "carVanTravelExpenses":
 - Train tickets to client meetings (Trainline, LNER, GWR)
 - Business hotels, conference accommodation
-- Client entertainment with clear business context
+- Vehicle fuel, car insurance (business portion)
+- Uber/taxi for business trips
 
-Bank charges → use category "bank_charges":
-- Bank fees, overdraft interest, merchant fees
+Bank charges → use category "financeCharges":
+- Bank fees, overdraft interest, merchant fees, Stripe fees
 
-Income (money IN) → use category "sales_turnover":
+Income (money IN) → use category "turnover":
 - Payments from companies/clients (look for Ltd, LLC, Inc in name)
 - Invoice payments, Stripe payouts, PayPal business
 
