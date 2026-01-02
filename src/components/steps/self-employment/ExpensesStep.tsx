@@ -136,7 +136,7 @@ export function SelfEmploymentExpensesStep() {
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
   }, [expenseTransactions]);
 
-  // Calculate by SA103 category
+  // Calculate by SA103 category (includes confirmed + AI-suggested business expenses)
   const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     SA103_EXPENSE_CATEGORIES.forEach((cat) => {
@@ -144,9 +144,16 @@ export function SelfEmploymentExpensesStep() {
     });
 
     expenseTransactions
-      .filter((t) => t.status === 'business')
+      .filter((t) => {
+        // Include confirmed business expenses
+        if (t.status === 'business') return true;
+        // Include AI-suggested business expenses (pending confirmation)
+        if (t.status === 'needs_review' && t.suggested_is_business) return true;
+        return false;
+      })
       .forEach((t) => {
-        const category = t.category || 'other_expenses';
+        // Use confirmed category, or suggested category, or default
+        const category = t.category || t.suggested_category || 'other_expenses';
         if (totals[category] !== undefined) {
           totals[category] += Math.abs(t.amount);
         } else {
