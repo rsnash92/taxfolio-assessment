@@ -20,17 +20,133 @@ interface CategorisedTransaction extends TrueLayerTransaction {
   confidence: number;
 }
 
+const SYSTEM_PROMPT = `You are a UK tax categorisation assistant. Categorise bank transactions for a self-employed sole trader's Self Assessment tax return.
+
+IMPORTANT: This is likely a MIXED personal/business bank account. Most sole traders use their personal account for business, so you must identify which transactions are personal (not business-related) and which are legitimate business expenses or income.
+
+For each transaction, return a JSON object with:
+- category: simplified category name for display
+- is_business: true if business expense/income, false if personal
+- confidence: 0.0 to 1.0 (how confident you are)
+
+## PERSONAL TRANSACTION RULES - Mark as personal (is_business: false):
+
+Supermarkets (always personal):
+- Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, Waitrose, M&S Food, Co-op Food, Iceland
+
+Streaming & Entertainment (always personal):
+- Netflix, Spotify, Disney+, Amazon Prime Video, Apple TV+, NOW TV, YouTube Premium
+- Steam, PlayStation, Xbox, Nintendo, gaming purchases
+- Cinema, theatre, concerts
+
+Personal Subscriptions:
+- Gym memberships (PureGym, TheGym, David Lloyd, Virgin Active)
+- Dating apps (Tinder, Hinge, Bumble)
+- Personal magazines, newspapers for personal reading
+
+Clothing & Fashion (unless clearly workwear):
+- ASOS, Zara, H&M, Primark, Next, Boohoo, Shein, TK Maxx
+
+Food & Drink WITHOUT business context:
+- Deliveroo, Just Eat, Uber Eats
+- Restaurants, pubs, cafes (unless client meeting clear from description)
+- Greggs, Pret, Costa, Starbucks (personal unless "meeting" mentioned)
+
+Personal Transport:
+- Uber/Bolt for personal trips, personal car fuel without business context
+
+Home Expenses (unless home office claim specified):
+- Utilities (British Gas, EDF, Octopus Energy, etc.)
+- Council tax, TV licence, home insurance
+
+Personal Finance:
+- Mortgage/rent payments, personal savings transfers
+- Personal insurance (car, home, health, life)
+- Cash withdrawals (ATM)
+
+Other Personal:
+- Childcare, school fees, medical/dental
+- Holidays, flights, hotels (unless clear business trip)
+- Hairdresser, beauty treatments
+
+## BUSINESS TRANSACTION RULES - Mark as business (is_business: true):
+
+Software & Tools:
+- Adobe, Microsoft 365, Google Workspace, Notion, Canva
+- Zoom, Slack, Teams, Loom
+- Xero, QuickBooks, FreeAgent (accounting)
+- GitHub, GitLab, Figma, Miro
+
+Hosting & Tech:
+- AWS, Google Cloud, Azure, DigitalOcean
+- Vercel, Netlify, Heroku, Railway
+- GoDaddy, Namecheap, Cloudflare
+
+Marketing & Advertising:
+- Google Ads, Facebook/Meta Ads, LinkedIn Ads
+- Mailchimp, ConvertKit, Klaviyo
+- Hootsuite, Buffer
+
+Professional Services:
+- Accountant fees, solicitor/legal fees
+- Business insurance, professional indemnity
+
+Office & Supplies:
+- Staples, Viking Direct
+- Office Depot, Amazon (when clearly office supplies)
+
+Business Travel:
+- Train tickets to client meetings (Trainline, LNER, GWR)
+- Business hotels, conference accommodation
+- Client entertainment with clear business context
+
+Income (CREDIT transactions / money coming in):
+- Payments from companies/clients (look for Ltd, LLC, Inc in name)
+- Invoice payments, Stripe payouts, PayPal business
+
+## PROPERTY/LANDLORD TRANSACTIONS - For rental property owners:
+
+Property Income:
+- Rent received from tenants
+- Tenant deposits returned
+- LOOK FOR: tenant names, "rent", property addresses, letting agent names
+
+Property Expenses:
+- Letting agent fees: Foxtons, Countrywide, OpenRent, Purplebricks, Martin & Co
+- Landlord insurance: HomeLet, Just Landlords, Simply Business landlord
+- Property repairs: Checkatrade, MyBuilder, plumbers, electricians, boiler service
+- Ground rent & service charges: Freeholder payments, management company
+- Safety certificates: Gas Safe, EPC, electrical inspections
+
+## AMBIGUOUS - Set LOW confidence (0.3-0.5):
+- Amazon purchases (could be either)
+- Generic coffee shop visits
+- Phone bills (business mobile vs personal)
+- PayPal/Stripe without details
+- Large round-number transfers
+- Generic descriptions like "PAYMENT" or "PURCHASE"
+
+## KEY RULES:
+- DEBIT = money OUT (expenses/payments)
+- CREDIT = money IN (income)
+- When in doubt, mark as personal (is_business: false) - it's safer to exclude a legitimate expense than to claim a personal one
+- HMRC penalties for false claims are severe, so be conservative
+- If truly uncertain, use low confidence (0.3-0.5) so it gets flagged for review
+
+Return ONLY valid JSON array, no markdown or explanation.`;
+
 export async function categoriseTransactions(
   transactions: TrueLayerTransaction[]
 ): Promise<CategorisedTransaction[]> {
   if (!transactions.length) return [];
 
-  // Process in batches of 50
-  const batchSize = 50;
+  // Process in batches of 20 (matching main app)
+  const batchSize = 20;
   const results: CategorisedTransaction[] = [];
 
   for (let i = 0; i < transactions.length; i += batchSize) {
     const batch = transactions.slice(i, i + batchSize);
+    console.log(`[AI Categorise] Processing batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(transactions.length / batchSize)}`);
     const categorised = await categoriseBatch(batch);
     results.push(...categorised);
   }
@@ -41,80 +157,37 @@ export async function categoriseTransactions(
 async function categoriseBatch(
   transactions: TrueLayerTransaction[]
 ): Promise<CategorisedTransaction[]> {
-  const prompt = `You are a UK tax categorisation assistant for self-employed sole traders.
-
-Analyse each bank transaction and determine:
-1. category: HMRC expense category
-2. is_business: true if business expense, false if personal
-3. confidence: 0.0 to 1.0
-
-HMRC Categories:
-- Office Costs (stationery, phone bills)
-- Travel (fuel, train, parking for business)
-- Clothing (uniforms, safety gear only)
-- Staff Costs (salaries, subcontractors)
-- Stock & Materials (goods for resale)
-- Legal & Professional (accountant, solicitor)
-- Marketing (advertising, website)
-- Software & Subscriptions (Xero, Adobe, Microsoft)
-- Insurance (business insurance)
-- Bank Charges (business account fees)
-- Training (courses, books for business)
-- Other Expenses
-
-BUSINESS indicators (high confidence):
-- Software: Adobe, Microsoft, Xero, QuickBooks, Canva, Figma, GitHub, AWS, Heroku
-- Advertising: Google Ads, Facebook Ads, LinkedIn
-- Professional: accountant, solicitor, consultant
-- Domains/Hosting: GoDaddy, Namecheap, Cloudflare, Vercel
-- Office supplies: Staples, Viking, Amazon Business
-- Business travel: Trainline, Hotels.com (if description suggests work)
-- Co-working: WeWork, Regus
-
-PERSONAL indicators (high confidence):
-- Supermarkets: Tesco, Sainsbury's, Asda, Lidl, Aldi, Morrisons, Waitrose
-- Entertainment: Netflix, Spotify, Disney+, Prime Video, Cinema
-- Food delivery: Deliveroo, Uber Eats, Just Eat (unless client entertainment)
-- Personal shopping: ASOS, Zara, H&M, Next
-- Utilities: Council Tax, Water, Gas, Electric (unless home office claim)
-- Personal finance: mortgage, rent, personal loans
-
-AMBIGUOUS (lower confidence, needs_review):
-- Amazon (could be either)
-- General bank transfers
-- Cash withdrawals
-- Restaurants (could be client entertainment)
-
-Transactions:
-${JSON.stringify(
-  transactions.map((t) => ({
+  const transactionList = transactions.map((t) => ({
     description: t.description,
     amount: t.amount,
+    type: t.transaction_type,
     date: t.timestamp,
     merchant: t.merchant_name,
-  })),
-  null,
-  2
-)}
-
-Respond with ONLY a JSON array (no markdown, no backticks):
-[{"category": "...", "is_business": true, "confidence": 0.95}, ...]`;
+  }));
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `Categorise these ${transactions.length} transactions:\n\n${JSON.stringify(transactionList, null, 2)}`,
+        },
+      ],
     });
 
     const content = response.content[0];
     if (content.type !== 'text') throw new Error('Unexpected response');
 
-    // Parse JSON
-    const jsonMatch = content.text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error('Could not parse response');
+    // Parse JSON - handle potential markdown wrapping
+    let responseText = content.text.trim();
+    if (responseText.startsWith('```')) {
+      responseText = responseText.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
 
-    const results = JSON.parse(jsonMatch[0]);
+    const results = JSON.parse(responseText);
 
     return transactions.map((t, i) => ({
       ...t,
@@ -124,14 +197,14 @@ Respond with ONLY a JSON array (no markdown, no backticks):
       confidence: results[i]?.confidence ?? 0.5,
     }));
   } catch (error) {
-    console.error('AI categorisation error:', error);
-    // Fallback - mark all as needs review
+    console.error('[AI Categorise] Error:', error);
+    // Fallback - mark all as needs review with low confidence
     return transactions.map((t) => ({
       ...t,
-      category: 'Other',
-      suggested_category: 'Other',
+      category: 'Needs Review',
+      suggested_category: 'Needs Review',
       is_business: false,
-      confidence: 0.5,
+      confidence: 0.3,
     }));
   }
 }
