@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, XCircle, Brain } from 'lucide-react';
+import { CheckCircle2, XCircle, Brain, Pencil } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Transaction } from '@/types/wizard';
 
@@ -9,6 +9,7 @@ interface TransactionRowProps {
   isSelected: boolean;
   onSelect: () => void;
   onStatusChange: (status: 'business' | 'personal') => void;
+  onEdit?: () => void;
 }
 
 export function TransactionRow({
@@ -16,6 +17,7 @@ export function TransactionRow({
   isSelected,
   onSelect,
   onStatusChange,
+  onEdit,
 }: TransactionRowProps) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -119,6 +121,15 @@ export function TransactionRow({
           >
             <XCircle className="h-5 w-5" />
           </button>
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              title="Edit Category"
+            >
+              <Pencil className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </td>
     </tr>

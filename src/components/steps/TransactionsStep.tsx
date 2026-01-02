@@ -4,6 +4,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { TransactionRow } from '@/components/transactions/TransactionRow';
+import { CategoryModal } from '@/components/transactions/CategoryModal';
+import { Transaction } from '@/types/wizard';
 import {
   CheckCircle2,
   XCircle,
@@ -45,6 +47,9 @@ export function TransactionsStep() {
   const [isCategorising, setIsCategorising] = useState(false);
   const [categoriseProgress, setCategoriseProgress] = useState(0);
   const [categoriseStatus, setCategoriseStatus] = useState('');
+
+  // Category modal state
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const transactions = data.transactions || [];
 
@@ -208,6 +213,23 @@ export function TransactionsStep() {
   // Handle status change for single transaction
   const handleStatusChange = (id: string, status: 'business' | 'personal') => {
     updateTransaction(id, { status });
+  };
+
+  // Handle category selection from modal
+  const handleCategorySelect = (categoryId: string, isBusiness: boolean) => {
+    if (!editingTransaction) return;
+    updateTransaction(editingTransaction.id, {
+      category: categoryId,
+      status: isBusiness ? 'business' : 'personal',
+    });
+  };
+
+  // Handle mark as personal from modal
+  const handleMarkPersonal = () => {
+    if (!editingTransaction) return;
+    updateTransaction(editingTransaction.id, {
+      status: 'personal',
+    });
   };
 
   // Handle bulk actions
@@ -488,6 +510,7 @@ export function TransactionsStep() {
                 onStatusChange={(status) =>
                   handleStatusChange(transaction.id, status)
                 }
+                onEdit={() => setEditingTransaction(transaction)}
               />
             ))}
           </tbody>
@@ -586,6 +609,17 @@ export function TransactionsStep() {
         continueLabel="Continue to Summary"
         onContinue={handleContinue}
       />
+
+      {/* Category Edit Modal */}
+      {editingTransaction && (
+        <CategoryModal
+          isOpen={!!editingTransaction}
+          onClose={() => setEditingTransaction(null)}
+          transaction={editingTransaction}
+          onSelectCategory={handleCategorySelect}
+          onMarkPersonal={handleMarkPersonal}
+        />
+      )}
     </div>
   );
 }
