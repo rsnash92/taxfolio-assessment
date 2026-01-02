@@ -181,16 +181,25 @@ export function WizardProvider({
   }, []);
 
   const goNext = useCallback(() => {
-    console.log('[WizardProvider] goNext called, currentStep:', currentStep);
-    const nextStep = getNextStep(currentStep, data);
-    console.log('[WizardProvider] nextStep:', nextStep);
-    if (nextStep) {
-      console.log('[WizardProvider] Setting step to:', nextStep);
-      setCurrentStep(nextStep);
-    } else {
-      console.log('[WizardProvider] No next step available!');
-    }
-  }, [currentStep, data]);
+    // Use functional update to ensure we have latest data
+    setData((currentData) => {
+      console.log('[WizardProvider] goNext called, currentStep:', currentStep);
+      console.log('[WizardProvider] Current data incomeSources:', currentData.incomeSources);
+      console.log('[WizardProvider] Current data connectionMethod:', currentData.connectionMethod);
+
+      const nextStep = getNextStep(currentStep, currentData);
+      console.log('[WizardProvider] nextStep:', nextStep);
+
+      if (nextStep) {
+        console.log('[WizardProvider] Setting step to:', nextStep);
+        setCurrentStep(nextStep);
+      } else {
+        console.log('[WizardProvider] No next step available!');
+      }
+
+      return currentData; // Don't actually change data
+    });
+  }, [currentStep]);
 
   const goBack = useCallback(() => {
     const prevStep = getPreviousStep(currentStep, data);

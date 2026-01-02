@@ -224,15 +224,8 @@ export function TransactionsStep() {
   // Handle continue
   const handleContinue = () => {
     console.log('[TransactionsStep] handleContinue called');
-    console.log('[TransactionsStep] Current data:', data);
-    console.log('[TransactionsStep] Income sources:', data.incomeSources);
-    console.log('[TransactionsStep] Connection method:', data.connectionMethod);
     updateData({ transactionsReviewed: true });
-    // Use setTimeout to allow state to update before navigation
-    setTimeout(() => {
-      console.log('[TransactionsStep] Calling goNext() after timeout');
-      goNext();
-    }, 0);
+    goNext();
   };
 
   return (
