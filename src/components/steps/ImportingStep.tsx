@@ -5,48 +5,24 @@ import { useWizard } from '@/providers/WizardProvider';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { CheckCircle, Building2, FileText, Loader2 } from 'lucide-react';
 
-interface BankImportData {
-  accountCount: number;
-  transactionCount: number;
-  bankName: string;
-}
-
 export function ImportingStep() {
   const { data, goNext } = useWizard();
-  const [importData, setImportData] = useState<BankImportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Get import data from wizard state (persisted in localStorage)
+  const importData = data.bankImportData;
+
   useEffect(() => {
-    // Read import data from cookie
-    const getCookie = (name: string) => {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) {
-        const cookieValue = parts.pop()?.split(';').shift();
-        return cookieValue ? decodeURIComponent(cookieValue) : null;
-      }
-      return null;
-    };
-
-    const bankImportCookie = getCookie('bank_import_data');
-
-    if (bankImportCookie) {
-      try {
-        const parsed = JSON.parse(bankImportCookie);
-        setImportData(parsed);
-      } catch (e) {
-        console.error('Failed to parse bank import data:', e);
-      }
-    }
-
-    // Simulate a brief loading animation
-    setTimeout(() => {
+    // Show loading animation briefly, then reveal success
+    const loadingTimer = setTimeout(() => {
       setIsLoading(false);
       setTimeout(() => {
         setShowSuccess(true);
       }, 300);
     }, 1500);
+
+    return () => clearTimeout(loadingTimer);
   }, []);
 
   if (isLoading) {

@@ -30,6 +30,7 @@ const initialData: WizardData = {
   incomeSources: [],
   connectionMethod: null,
   bankConnected: false,
+  bankImportData: null,
   transactions: [],
   transactionsReviewed: false,
   selfEmployment: {
@@ -108,11 +109,48 @@ export function WizardProvider({
 
       if (bankConnected) {
         console.log('Bank connected! Transaction count:', txCount);
-        // Update data with bank connected status
+
+        // Read bank import data from cookie
+        const getCookie = (name: string) => {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) {
+            const cookieValue = parts.pop()?.split(';').shift();
+            return cookieValue ? decodeURIComponent(cookieValue) : null;
+          }
+          return null;
+        };
+
+        let bankImportData = null;
+        const bankImportCookie = getCookie('bank_import_data');
+        if (bankImportCookie) {
+          try {
+            bankImportData = JSON.parse(bankImportCookie);
+            console.log('Parsed bank import data:', bankImportData);
+          } catch (e) {
+            console.error('Failed to parse bank import cookie:', e);
+            // Fallback to URL params
+            bankImportData = {
+              accountCount: 1,
+              transactionCount: parseInt(txCount || '0', 10),
+              bankName: 'Connected Bank',
+            };
+          }
+        } else {
+          // Fallback to URL params if cookie not found
+          bankImportData = {
+            accountCount: 1,
+            transactionCount: parseInt(txCount || '0', 10),
+            bankName: 'Connected Bank',
+          };
+        }
+
+        // Update data with bank connected status and import data
         setData((prev) => ({
           ...prev,
           bankConnected: true,
           connectionMethod: 'bank',
+          bankImportData,
         }));
         // Move to next step (importing or transactions)
         setCurrentStep('importing');

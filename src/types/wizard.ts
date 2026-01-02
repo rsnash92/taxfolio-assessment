@@ -101,6 +101,11 @@ export interface WizardData {
   // Connect
   connectionMethod: 'bank' | 'upload' | 'manual' | null;
   bankConnected: boolean;
+  bankImportData: {
+    accountCount: number;
+    transactionCount: number;
+    bankName: string;
+  } | null;
 
   // Transactions
   transactions: Transaction[];
