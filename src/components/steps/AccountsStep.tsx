@@ -10,6 +10,7 @@ import {
   Loader2,
   AlertCircle,
   Download,
+  Circle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ interface BankAccount {
 export function AccountsStep() {
   const { updateData, goNext } = useWizard();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [bankName, setBankName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
@@ -40,6 +42,8 @@ export function AccountsStep() {
         if (data.connected) {
           setAccounts(data.accounts);
           setBankName(data.bankName);
+          // Select all accounts by default
+          setSelectedAccounts(new Set(data.accounts.map((a: BankAccount) => a.account_id)));
         } else {
           setError(data.error || 'No bank connection found');
         }
@@ -53,8 +57,33 @@ export function AccountsStep() {
     fetchAccounts();
   }, []);
 
-  // Import transactions from all accounts
+  // Toggle account selection
+  const toggleAccount = (accountId: string) => {
+    const newSelected = new Set(selectedAccounts);
+    if (newSelected.has(accountId)) {
+      newSelected.delete(accountId);
+    } else {
+      newSelected.add(accountId);
+    }
+    setSelectedAccounts(newSelected);
+  };
+
+  // Select/deselect all accounts
+  const toggleAll = () => {
+    if (selectedAccounts.size === accounts.length) {
+      setSelectedAccounts(new Set());
+    } else {
+      setSelectedAccounts(new Set(accounts.map((a) => a.account_id)));
+    }
+  };
+
+  // Import transactions from selected accounts
   const handleImport = async () => {
+    if (selectedAccounts.size === 0) {
+      setError('Please select at least one account to import from');
+      return;
+    }
+
     setIsImporting(true);
     setImportProgress('Connecting to bank...');
     setError(null);
@@ -65,7 +94,9 @@ export function AccountsStep() {
       const response = await fetch('/api/transactions/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}), // Import from all accounts
+        body: JSON.stringify({
+          account_ids: Array.from(selectedAccounts),
+        }),
       });
 
       const data = await response.json();
@@ -142,7 +173,7 @@ export function AccountsStep() {
         </h1>
         <p className="text-gray-600">
           We found {accounts.length} account{accounts.length !== 1 ? 's' : ''} from{' '}
-          {bankName}. Import transactions to categorise them for your tax return.
+          {bankName}. Select which accounts to import transactions from.
         </p>
       </div>
 
@@ -164,31 +195,63 @@ export function AccountsStep() {
 
       {/* Account List */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="font-medium text-gray-900">Accounts to Import</h3>
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-medium text-gray-900">Select Accounts to Import</h3>
+          <button
+            onClick={toggleAll}
+            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+          >
+            {selectedAccounts.size === accounts.length ? 'Deselect all' : 'Select all'}
+          </button>
         </div>
         <div className="divide-y divide-gray-100">
-          {accounts.map((account) => (
-            <div
-              key={account.account_id}
-              className="p-4 flex items-center gap-4"
-            >
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <CreditCard className="h-5 w-5 text-gray-500" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">
-                  {account.display_name}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {account.account_type === 'TRANSACTION'
-                    ? 'Current Account'
-                    : account.account_type}
-                </p>
-              </div>
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            </div>
-          ))}
+          {accounts.map((account) => {
+            const isSelected = selectedAccounts.has(account.account_id);
+            return (
+              <button
+                key={account.account_id}
+                onClick={() => toggleAccount(account.account_id)}
+                className={cn(
+                  'w-full p-4 flex items-center gap-4 text-left transition-colors',
+                  isSelected ? 'bg-emerald-50' : 'hover:bg-gray-50'
+                )}
+              >
+                <div
+                  className={cn(
+                    'w-10 h-10 rounded-lg flex items-center justify-center',
+                    isSelected ? 'bg-emerald-100' : 'bg-gray-100'
+                  )}
+                >
+                  <CreditCard
+                    className={cn(
+                      'h-5 w-5',
+                      isSelected ? 'text-emerald-600' : 'text-gray-500'
+                    )}
+                  />
+                </div>
+                <div className="flex-1">
+                  <p
+                    className={cn(
+                      'font-medium',
+                      isSelected ? 'text-emerald-900' : 'text-gray-900'
+                    )}
+                  >
+                    {account.display_name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {account.account_type === 'TRANSACTION'
+                      ? 'Current Account'
+                      : account.account_type}
+                  </p>
+                </div>
+                {isSelected ? (
+                  <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                ) : (
+                  <Circle className="h-6 w-6 text-gray-300" />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -206,7 +269,7 @@ export function AccountsStep() {
       <div className="mb-8">
         <Button
           onClick={handleImport}
-          disabled={isImporting}
+          disabled={isImporting || selectedAccounts.size === 0}
           className={cn(
             'w-full h-14 text-lg font-medium',
             isImporting
@@ -222,7 +285,10 @@ export function AccountsStep() {
           ) : (
             <div className="flex items-center gap-3">
               <Download className="h-5 w-5" />
-              <span>Import Transactions</span>
+              <span>
+                Import from {selectedAccounts.size} Account
+                {selectedAccounts.size !== 1 ? 's' : ''}
+              </span>
             </div>
           )}
         </Button>
