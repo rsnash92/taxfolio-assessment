@@ -15,8 +15,8 @@ export const TRUELAYER_CONFIG = {
       ? 'https://api.truelayer-sandbox.com'
       : 'https://api.truelayer.com',
 
-  // Redirect URI
-  redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/truelayer/callback`,
+  // Redirect URI - must match TrueLayer console settings
+  redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/truelayer/auth/callback`,
 
   // Scopes we need
   scopes: ['info', 'accounts', 'balance', 'transactions', 'offline_access'],
