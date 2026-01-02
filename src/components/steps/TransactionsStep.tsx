@@ -8,10 +8,9 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Sparkles,
+  Brain,
   Search,
   Loader2,
-  Wand2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -199,8 +198,9 @@ export function TransactionsStep() {
     }
   };
 
-  // Can continue only if no transactions need review
-  const canContinue = stats.needsReview === 0;
+  // Can always continue - allow users to proceed even with uncategorised transactions
+  // They can come back and review later
+  const canContinue = stats.total > 0;
 
   // Handle continue
   const handleContinue = () => {
@@ -223,11 +223,11 @@ export function TransactionsStep() {
 
       {/* AI Categorise Banner - show if transactions need review */}
       {stats.needsReview > 0 && !stats.hasSuggestions && (
-        <div className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 rounded-xl p-4 mb-6">
+        <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-violet-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Wand2 className="h-5 w-5 text-white" />
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Brain className="h-5 w-5 text-white" />
               </div>
               <div>
                 <p className="font-medium text-gray-900 mb-1">
@@ -241,7 +241,7 @@ export function TransactionsStep() {
             <Button
               onClick={handleCategorise}
               disabled={isCategorising}
-              className="bg-violet-500 hover:bg-violet-600 text-white"
+              className="bg-blue-500 hover:bg-blue-600 text-white"
             >
               {isCategorising ? (
                 <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export function TransactionsStep() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
+                  <Brain className="h-4 w-4" />
                   <span>Categorise All</span>
                 </div>
               )}
@@ -264,9 +264,9 @@ export function TransactionsStep() {
                 <span>{categoriseStatus}</span>
                 <span>{categoriseProgress}%</span>
               </div>
-              <div className="h-2 bg-violet-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-violet-500 transition-all duration-300"
+                  className="h-full bg-blue-500 transition-all duration-300"
                   style={{ width: `${categoriseProgress}%` }}
                 />
               </div>
@@ -280,7 +280,7 @@ export function TransactionsStep() {
         <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Sparkles className="h-5 w-5 text-white" />
+              <Brain className="h-5 w-5 text-white" />
             </div>
             <div>
               <p className="font-medium text-gray-900 mb-1">
@@ -467,18 +467,18 @@ export function TransactionsStep() {
         )}
       </div>
 
-      {/* Warning if items need review */}
+      {/* Info if items need review */}
       {stats.needsReview > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-800">
+              <p className="text-sm font-medium text-blue-800">
                 {stats.needsReview} transaction
                 {stats.needsReview !== 1 ? 's' : ''} still need review
               </p>
-              <p className="text-sm text-amber-600">
-                Mark all transactions as business or personal before continuing.
+              <p className="text-sm text-blue-600">
+                You can continue and come back to review these later, or categorise them now.
               </p>
             </div>
           </div>
@@ -488,7 +488,9 @@ export function TransactionsStep() {
       <WizardNavigation
         canContinue={canContinue}
         continueLabel={
-          canContinue ? 'Continue' : `Review ${stats.needsReview} remaining`
+          stats.needsReview > 0
+            ? `Continue (${stats.needsReview} uncategorised)`
+            : 'Continue'
         }
         onContinue={handleContinue}
       />

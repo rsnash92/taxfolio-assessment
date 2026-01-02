@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, XCircle, Sparkles } from 'lucide-react';
+import { CheckCircle2, XCircle, Brain } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Transaction } from '@/types/wizard';
 
@@ -26,11 +26,14 @@ export function TransactionRow({
     });
   };
 
+  const isPersonal = transaction.status === 'personal';
+
   return (
     <tr
       className={cn(
         'hover:bg-gray-50 transition-colors',
-        transaction.status === 'needs_review' && 'bg-amber-50/50'
+        transaction.status === 'needs_review' && 'bg-amber-50/50',
+        isPersonal && 'opacity-50 bg-gray-50'
       )}
     >
       {/* Checkbox */}
@@ -44,19 +47,22 @@ export function TransactionRow({
       </td>
 
       {/* Date */}
-      <td className="p-3 text-sm text-gray-600">
+      <td className={cn('p-3 text-sm', isPersonal ? 'text-gray-400' : 'text-gray-600')}>
         {formatDate(transaction.date)}
       </td>
 
       {/* Description */}
       <td className="p-3">
-        <p className="text-sm font-medium text-gray-900 truncate max-w-xs">
+        <p className={cn(
+          'text-sm font-medium truncate max-w-xs',
+          isPersonal ? 'text-gray-500' : 'text-gray-900'
+        )}>
           {transaction.description}
         </p>
         {transaction.status === 'needs_review' &&
           transaction.suggested_category && (
             <p className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
-              <Sparkles className="h-3 w-3" />
+              <Brain className="h-3 w-3" />
               AI suggests: {transaction.suggested_category}
             </p>
           )}
@@ -64,7 +70,7 @@ export function TransactionRow({
 
       {/* Category */}
       <td className="p-3">
-        <span className="text-sm text-gray-600">
+        <span className={cn('text-sm', isPersonal ? 'text-gray-400' : 'text-gray-600')}>
           {transaction.category || transaction.suggested_category || '-'}
         </span>
       </td>
@@ -74,7 +80,11 @@ export function TransactionRow({
         <span
           className={cn(
             'text-sm font-medium',
-            transaction.type === 'income' ? 'text-emerald-600' : 'text-gray-900'
+            isPersonal
+              ? 'text-gray-400'
+              : transaction.type === 'income'
+                ? 'text-emerald-600'
+                : 'text-gray-900'
           )}
         >
           {transaction.type === 'income' ? '+' : '-'}
