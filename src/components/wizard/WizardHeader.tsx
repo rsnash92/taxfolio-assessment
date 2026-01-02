@@ -46,12 +46,12 @@ export function WizardHeader() {
             <span className="text-sm text-gray-500">Tax liability:</span>
             <span
               className={`text-lg font-bold ${
-                taxCalculation.totalTaxDue > 0
+                (taxCalculation?.totalTaxDue || 0) > 0
                   ? 'text-amber-600'
                   : 'text-emerald-600'
               }`}
             >
-              {formatCurrency(taxCalculation.totalTaxDue)}
+              {formatCurrency(taxCalculation?.totalTaxDue || 0)}
             </span>
             <button className="text-gray-400 hover:text-gray-600">
               <HelpCircle className="h-4 w-4" />

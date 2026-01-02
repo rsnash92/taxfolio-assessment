@@ -62,15 +62,9 @@ const initialData: WizardData = {
     address: '',
     postcode: '',
   },
-  taxCalculation: {
-    totalIncome: 0,
-    totalExpenses: 0,
-    totalDeductions: 0,
-    taxableProfit: 0,
-    incomeTax: 0,
-    nationalInsurance: 0,
-    totalTaxDue: 0,
-  },
+  taxCalculation: null,
+  payment: null,
+  submission: null,
 };
 
 const WizardContext = createContext<WizardContextType | undefined>(undefined);
@@ -386,14 +380,6 @@ export function WizardProvider({
             data.otherIncome.interest > 0 ||
             data.otherIncome.dividends > 0 ||
             data.otherIncome.pension > 0
-          )
-            return 'in_progress';
-          return 'not_started';
-        case 'deductions':
-          if (
-            data.deductions.mileage.miles > 0 ||
-            data.deductions.homeOffice.amount > 0 ||
-            data.deductions.pensionContributions > 0
           )
             return 'in_progress';
           return 'not_started';

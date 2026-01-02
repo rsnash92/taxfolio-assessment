@@ -34,6 +34,14 @@ import {
   VentureCapitalStep,
 } from '@/components/steps/general';
 
+// Review Steps (Payment, Summary, Submit, Confirmation)
+import {
+  ReviewPaymentStep,
+  ReviewSummaryStep,
+  ReviewSubmitStep,
+  ReviewConfirmationStep,
+} from '@/components/steps/review';
+
 export function WizardContainer() {
   const { currentStep, isLoading } = useWizard();
 
@@ -112,15 +120,19 @@ export function WizardContainer() {
       case 'general-venture-capital':
         return <VentureCapitalStep />;
 
-      // Personal & Review
+      // Personal
       case 'personal-info':
         return <PlaceholderStep title="Personal Details" />;
-      case 'review':
-        return <PlaceholderStep title="Review Your Return" />;
-      case 'submit':
-        return <PlaceholderStep title="Submit to HMRC" />;
-      case 'confirmation':
-        return <PlaceholderStep title="Confirmation" />;
+
+      // Review & Submit
+      case 'review-payment':
+        return <ReviewPaymentStep />;
+      case 'review-summary':
+        return <ReviewSummaryStep />;
+      case 'review-submit':
+        return <ReviewSubmitStep />;
+      case 'review-confirmation':
+        return <ReviewConfirmationStep />;
 
       // Special
       case 'not-supported':

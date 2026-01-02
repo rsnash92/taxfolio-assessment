@@ -231,24 +231,33 @@ export const ALL_STEPS: StepConfig[] = [
     showInSidebar: true,
   },
 
-  // Review & Submit
+  // Review & Submit Section
   {
-    id: 'review',
+    id: 'review-payment',
     section: 'review',
-    title: 'Review',
+    title: 'Payment',
     showInSidebar: true,
   },
   {
-    id: 'submit',
+    id: 'review-summary',
+    section: 'review',
+    title: 'Tax Summary',
+    showInSidebar: false,
+    condition: (data) => data.payment?.status === 'paid',
+  },
+  {
+    id: 'review-submit',
     section: 'review',
     title: 'Submit to HMRC',
     showInSidebar: false,
+    condition: (data) => data.payment?.status === 'paid',
   },
   {
-    id: 'confirmation',
+    id: 'review-confirmation',
     section: 'review',
     title: 'Confirmation',
     showInSidebar: false,
+    condition: (data) => data.submission?.status === 'submitted',
   },
 ];
 
@@ -375,6 +384,31 @@ export function getNextStep(
 
   if (currentStep === 'general-venture-capital') {
     return 'personal-info';
+  }
+
+  // Handle personal-info to review-payment
+  if (currentStep === 'personal-info') {
+    return 'review-payment';
+  }
+
+  // Handle review section progression
+  if (currentStep === 'review-payment') {
+    if (data.payment?.status === 'paid') {
+      return 'review-summary';
+    }
+    // Stay on payment if not paid
+    return null;
+  }
+
+  if (currentStep === 'review-summary') {
+    return 'review-submit';
+  }
+
+  if (currentStep === 'review-submit') {
+    if (data.submission?.status === 'submitted') {
+      return 'review-confirmation';
+    }
+    return null;
   }
 
   // Default step progression

@@ -225,9 +225,9 @@ export function WizardSidebar() {
           <SidebarItem
             icon={Send}
             label="Review & Submit"
-            isActive={currentStep === 'review' || currentStep === 'submit'}
+            isActive={currentStep.startsWith('review-')}
             isComplete={getSectionStatus('review') === 'completed'}
-            onClick={() => goToStep('review')}
+            onClick={() => goToStep('review-payment')}
           />
         </ul>
       </nav>

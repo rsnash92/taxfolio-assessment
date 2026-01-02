@@ -31,11 +31,13 @@ export type StepId =
   | 'general-pension'
   | 'general-charitable'
   | 'general-venture-capital'
-  // Personal & Review
+  // Personal
   | 'personal-info'
-  | 'review'
-  | 'submit'
-  | 'confirmation'
+  // Review & Submit
+  | 'review-payment'
+  | 'review-summary'
+  | 'review-submit'
+  | 'review-confirmation'
   // Special
   | 'not-supported';
 
@@ -206,6 +208,72 @@ export interface GeneralData {
   };
 }
 
+// Payment Data
+export interface PaymentData {
+  status: 'pending' | 'paid' | 'failed';
+  plan: 'self-file' | 'accountant' | null;
+  amount: number;
+  discountCode?: string;
+  discountAmount?: number;
+  stripePaymentIntentId?: string;
+  stripeCustomerId?: string;
+  paidAt?: string;
+  receiptUrl?: string;
+}
+
+// Tax Calculation
+export interface TaxCalculation {
+  // Income
+  totalIncome: number;
+  selfEmploymentIncome: number;
+  employmentIncome: number;
+  rentalIncome: number;
+  otherIncome: number;
+
+  // Expenses & Deductions
+  totalExpenses: number;
+  allowableExpenses: number;
+  capitalAllowances: number;
+
+  // Reliefs
+  pensionRelief: number;
+  giftAidRelief: number;
+  ventureCapitalRelief: number;
+  marriageAllowance: number;
+  blindAllowance: number;
+
+  // Tax Calculation
+  taxableIncome: number;
+  personalAllowance: number;
+  taxableAfterAllowance: number;
+
+  // Tax Bands
+  basicRateTax: number;
+  higherRateTax: number;
+  additionalRateTax: number;
+
+  // National Insurance
+  class2NIC: number;
+  class4NIC: number;
+
+  // Final
+  totalTaxDue: number;
+  totalNICDue: number;
+  totalDue: number;
+
+  // Or refund
+  refundDue?: number;
+}
+
+// Submission Data
+export interface SubmissionData {
+  status: 'pending' | 'submitted' | 'accepted' | 'rejected';
+  submittedAt?: string;
+  hmrcReferenceNumber?: string;
+  declarationAccepted: boolean;
+  declarationTimestamp?: string;
+}
+
 export interface WizardData {
   // Session
   sessionId: string | null;
@@ -271,15 +339,13 @@ export interface WizardData {
   };
 
   // Calculations
-  taxCalculation: {
-    totalIncome: number;
-    totalExpenses: number;
-    totalDeductions: number;
-    taxableProfit: number;
-    incomeTax: number;
-    nationalInsurance: number;
-    totalTaxDue: number;
-  };
+  taxCalculation: TaxCalculation | null;
+
+  // Payment
+  payment: PaymentData | null;
+
+  // Submission
+  submission: SubmissionData | null;
 }
 
 export interface WizardContextType {
