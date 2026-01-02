@@ -203,13 +203,13 @@ export function WizardSidebar() {
             />
           )}
 
-          {/* General (Deductions) */}
+          {/* General (Tax Reliefs & Allowances) */}
           <SidebarItem
             icon={Calculator}
             label="General"
-            isActive={currentStep === 'deductions-overview'}
-            isComplete={getSectionStatus('deductions') === 'completed'}
-            onClick={() => goToStep('deductions-overview')}
+            isActive={currentStep.startsWith('general-')}
+            isComplete={getSectionStatus('general') === 'completed'}
+            onClick={() => goToStep('general-overview')}
           />
 
           {/* Personal Info */}
