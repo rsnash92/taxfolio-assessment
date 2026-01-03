@@ -33,6 +33,34 @@ import {
   RentalSummaryStep,
 } from '@/components/steps/rental';
 
+// Employment Steps
+import {
+  EmploymentListStep,
+  EmploymentIncomeStep,
+} from '@/components/steps/employment';
+
+// CIS Steps
+import { CISIncomeStep } from '@/components/steps/cis';
+
+// Dividends Steps
+import { DividendsStep } from '@/components/steps/dividends';
+
+// Interest Steps
+import { InterestStep } from '@/components/steps/interest';
+
+// Capital Gains Steps
+import {
+  CapitalGainsOverviewStep,
+  CapitalGainsDisposalsStep,
+  CapitalGainsSummaryStep,
+} from '@/components/steps/capital-gains';
+
+// Pension Income Steps
+import { PensionIncomeStep } from '@/components/steps/pension-income';
+
+// State Benefits Steps
+import { StateBenefitsStep } from '@/components/steps/state-benefits';
+
 // General Steps (Tax Reliefs & Allowances)
 import {
   GeneralOverviewStep,
@@ -113,6 +141,46 @@ export function WizardContainer() {
       case 'rental-summary':
         return <RentalSummaryStep />;
 
+      // Employment (PAYE)
+      case 'employment-list':
+        return <EmploymentListStep />;
+      case 'employment-details':
+        return <PlaceholderStep title="Employer Details" />;
+      case 'employment-income':
+        return <EmploymentIncomeStep />;
+      case 'employment-benefits':
+        return <PlaceholderStep title="Benefits in Kind" />;
+      case 'employment-expenses':
+        return <PlaceholderStep title="Employment Expenses" />;
+
+      // CIS
+      case 'cis-income':
+        return <CISIncomeStep />;
+
+      // Dividends
+      case 'dividends':
+        return <DividendsStep />;
+
+      // Interest
+      case 'interest':
+        return <InterestStep />;
+
+      // Capital Gains
+      case 'capital-gains-overview':
+        return <CapitalGainsOverviewStep />;
+      case 'capital-gains-disposals':
+        return <CapitalGainsDisposalsStep />;
+      case 'capital-gains-summary':
+        return <CapitalGainsSummaryStep />;
+
+      // Pension Income
+      case 'pension-income':
+        return <PensionIncomeStep />;
+
+      // State Benefits
+      case 'state-benefits':
+        return <StateBenefitsStep />;
+
       // Other Income
       case 'other-income':
         return <PlaceholderStep title="Other Income" />;
@@ -170,7 +238,9 @@ export function WizardContainer() {
             currentStep === 'self-employment-income' ||
             currentStep === 'self-employment-expenses' ||
             currentStep === 'self-employment-list' ||
-            currentStep === 'rental-list'
+            currentStep === 'rental-list' ||
+            currentStep === 'employment-list' ||
+            currentStep === 'capital-gains-disposals'
               ? 'max-w-4xl mx-auto'
               : 'max-w-3xl mx-auto'
           }>

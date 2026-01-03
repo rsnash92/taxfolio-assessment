@@ -17,6 +17,7 @@ import {
   SectionId,
   SelfEmploymentBusiness,
   RentalProperty,
+  EmploymentData,
 } from '@/types/wizard';
 import {
   getVisibleSteps,
@@ -39,6 +40,13 @@ const initialData: WizardData = {
   transactionsReviewed: false,
   selfEmploymentData: {},
   rentalData: {},
+  employmentData: {},
+  cisData: {},
+  dividendsData: {},
+  interestData: {},
+  capitalGainsData: {},
+  pensionIncomeData: {},
+  stateBenefitsData: {},
   general: {
     selectedReliefs: [],
   },
@@ -79,6 +87,7 @@ export function WizardProvider({
   const [currentStep, setCurrentStep] = useState<StepId>('residency');
   const [currentBusinessId, setCurrentBusinessId] = useState<string | null>(null);
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
+  const [currentEmployerId, setCurrentEmployerId] = useState<string | null>(null);
   const [data, setData] = useState<WizardData>(initialData);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -205,12 +214,21 @@ export function WizardProvider({
   const goToBusinessStep = useCallback((businessId: string, step: StepId) => {
     setCurrentBusinessId(businessId);
     setCurrentPropertyId(null);
+    setCurrentEmployerId(null);
     setCurrentStep(step);
   }, []);
 
   const goToPropertyStep = useCallback((propertyId: string, step: StepId) => {
     setCurrentPropertyId(propertyId);
     setCurrentBusinessId(null);
+    setCurrentEmployerId(null);
+    setCurrentStep(step);
+  }, []);
+
+  const goToEmployerStep = useCallback((employerId: string, step: StepId) => {
+    setCurrentEmployerId(employerId);
+    setCurrentBusinessId(null);
+    setCurrentPropertyId(null);
     setCurrentStep(step);
   }, []);
 
@@ -270,6 +288,23 @@ export function WizardProvider({
           ...prev.rentalData,
           [propertyId]: {
             ...prev.rentalData[propertyId],
+            ...updates,
+          },
+        },
+      }));
+    },
+    []
+  );
+
+  // Employment data updates
+  const updateEmployerData = useCallback(
+    (employerId: string, updates: Partial<EmploymentData>) => {
+      setData((prev) => ({
+        ...prev,
+        employmentData: {
+          ...prev.employmentData,
+          [employerId]: {
+            ...prev.employmentData[employerId],
             ...updates,
           },
         },
@@ -401,12 +436,14 @@ export function WizardProvider({
     currentStep,
     currentBusinessId,
     currentPropertyId,
+    currentEmployerId,
     data,
     isLoading,
     isSaving,
     goToStep,
     goToBusinessStep,
     goToPropertyStep,
+    goToEmployerStep,
     goNext,
     goBack,
     canGoNext,
@@ -414,6 +451,7 @@ export function WizardProvider({
     updateData,
     updateBusinessData,
     updatePropertyData,
+    updateEmployerData,
     addIncomeSource,
     updateIncomeSource,
     deleteIncomeSource,

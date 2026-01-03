@@ -23,7 +23,27 @@ export type StepId =
   | 'rental-income'
   | 'rental-expenses'
   | 'rental-summary'
-  // Other Income Types (simple amounts)
+  // Employment (PAYE)
+  | 'employment-list'
+  | 'employment-details'
+  | 'employment-income'
+  | 'employment-benefits'
+  | 'employment-expenses'
+  // CIS
+  | 'cis-income'
+  // Dividends
+  | 'dividends'
+  // Interest
+  | 'interest'
+  // Capital Gains
+  | 'capital-gains-overview'
+  | 'capital-gains-disposals'
+  | 'capital-gains-summary'
+  // Pension Income
+  | 'pension-income'
+  // State Benefits
+  | 'state-benefits'
+  // Other Income (simple amounts)
   | 'other-income'
   // General (Tax Reliefs & Allowances)
   | 'general-overview'
@@ -47,6 +67,13 @@ export type SectionId =
   | 'connect'
   | 'self-employment'
   | 'rental'
+  | 'employment'
+  | 'cis'
+  | 'dividends'
+  | 'interest'
+  | 'capital-gains'
+  | 'pension-income'
+  | 'state-benefits'
   | 'other-income'
   | 'general'
   | 'personal'
@@ -161,6 +188,171 @@ export interface RentalProperty {
 
   // Completion status
   isComplete: boolean;
+}
+
+// Employment Income (PAYE)
+export interface EmploymentData {
+  id: string;
+  employerName: string;
+  employerPAYERef?: string; // e.g., 123/AB12345
+  jobTitle?: string;
+  startDate?: string;
+  endDate?: string; // If left during tax year
+
+  // From P60/P45
+  payReceived: number; // Box 1 - Total pay
+  taxDeducted: number; // Box 2 - Tax deducted
+
+  // Benefits in Kind (P11D)
+  hasP11D: boolean;
+  companyCarBenefit?: number;
+  fuelBenefit?: number;
+  medicalInsuranceBenefit?: number;
+  otherBenefits?: number;
+
+  // Expenses (if claiming)
+  claimingExpenses: boolean;
+  travelExpenses?: number;
+  professionalFees?: number; // Professional subscriptions
+  workingFromHome?: number;
+  otherExpenses?: number;
+
+  // Tips & other
+  tipsReceived?: number;
+
+  // Student Loan
+  hasStudentLoan?: boolean;
+  studentLoanDeducted?: number;
+  studentLoanPlanType?: '1' | '2' | '4' | 'postgrad';
+
+  // Completion status
+  isComplete: boolean;
+}
+
+// CIS Income
+export interface CISContractor {
+  id: string;
+  contractorName: string;
+  contractorUTR?: string;
+
+  grossPayments: number; // Total gross received
+  cisDeductions: number; // Tax deducted at source (20% or 30%)
+  materialsDeducted?: number; // Materials cost if applicable
+
+  // Net = Gross - CIS Deductions
+  netPayments: number;
+}
+
+export interface CISData {
+  contractors: CISContractor[];
+  hasAllCISStatements: boolean;
+  totalGross: number;
+  totalDeductions: number;
+  totalNet: number;
+}
+
+// Dividends
+export interface DividendsData {
+  ukDividends: number; // UK company dividends
+  ukDividendsFromUnitTrusts?: number;
+  foreignDividends?: number;
+  foreignTaxPaid?: number; // For tax credit
+
+  // Stock dividends
+  stockDividends?: number;
+
+  // Totals
+  totalDividends: number;
+  taxableDividends: number; // After £500 allowance
+}
+
+// Interest Income
+export interface InterestData {
+  // Untaxed interest (most savings now)
+  untaxedUKInterest: number; // Bank/building society
+  untaxedForeignInterest?: number;
+
+  // Taxed interest (rare now)
+  taxedUKInterest?: number;
+  taxDeducted?: number;
+
+  // Gilts and bonds
+  giltsInterest?: number;
+
+  // Total
+  totalInterest: number;
+}
+
+// Capital Gains
+export interface CapitalGainsDisposal {
+  id: string;
+  assetType: 'shares' | 'property' | 'crypto' | 'other';
+  assetDescription: string;
+  dateAcquired?: string;
+  dateSold: string;
+  proceedsAmount: number; // Sale price
+  acquisitionCost: number; // Purchase price
+  allowableCosts?: number; // Fees, improvements
+  gain: number; // Calculated
+  loss: number; // Calculated
+}
+
+export interface CapitalGainsData {
+  // Asset types selected
+  assetTypes: string[];
+
+  // Disposals
+  disposals: CapitalGainsDisposal[];
+
+  // Summary
+  totalGains: number;
+  totalLosses: number;
+  lossesFromPreviousYears?: number;
+  annualExemptAmount: number; // £3,000 for 2024/25
+  taxableGains: number;
+
+  // Residential property (different rates)
+  residentialPropertyGains?: number;
+}
+
+// Pension Income
+export interface PrivatePension {
+  id: string;
+  providerName: string;
+  pensionAmount: number;
+  taxDeducted: number;
+  isLumpSum: boolean;
+}
+
+export interface PensionIncomeData {
+  // State Pension
+  statePension?: number;
+  statePensionLumpSum?: number;
+
+  // Private/Workplace Pensions
+  privatePensions: PrivatePension[];
+
+  // Total
+  totalPensionIncome: number;
+  totalTaxDeducted: number;
+}
+
+// State Benefits
+export interface StateBenefitsData {
+  // Taxable benefits
+  jobseekersAllowance?: number; // JSA (contribution-based)
+  employmentSupportAllowance?: number; // ESA (contribution-based)
+  carersAllowance?: number;
+  bereavementAllowance?: number;
+  incapacityBenefit?: number;
+
+  // High Income Child Benefit Charge
+  hasHighIncomeChildBenefit: boolean; // If income > £60,000
+  childBenefitReceived?: number;
+  childBenefitCharge?: number; // HICBC to pay back
+
+  // Total
+  totalTaxableBenefits: number;
 }
 
 // General Section Data (Tax Reliefs & Allowances)
@@ -318,7 +510,28 @@ export interface WizardData {
   // Rental Data (keyed by property ID from incomeSources)
   rentalData: Record<string, Partial<RentalProperty>>;
 
-  // Other Income (simple types)
+  // Employment Data (keyed by employer ID from incomeSources)
+  employmentData: Record<string, Partial<EmploymentData>>;
+
+  // CIS Data
+  cisData: Partial<CISData>;
+
+  // Dividends Data
+  dividendsData: Partial<DividendsData>;
+
+  // Interest Data
+  interestData: Partial<InterestData>;
+
+  // Capital Gains Data
+  capitalGainsData: Partial<CapitalGainsData>;
+
+  // Pension Income Data
+  pensionIncomeData: Partial<PensionIncomeData>;
+
+  // State Benefits Data
+  stateBenefitsData: Partial<StateBenefitsData>;
+
+  // Other Income (simple types - legacy, may be removed)
   otherIncome: {
     interest: number;
     dividends: number;
@@ -362,6 +575,7 @@ export interface WizardContextType {
   currentStep: StepId;
   currentBusinessId: string | null;
   currentPropertyId: string | null;
+  currentEmployerId: string | null;
   data: WizardData;
   isLoading: boolean;
   isSaving: boolean;
@@ -370,6 +584,7 @@ export interface WizardContextType {
   goToStep: (step: StepId) => void;
   goToBusinessStep: (businessId: string, step: StepId) => void;
   goToPropertyStep: (propertyId: string, step: StepId) => void;
+  goToEmployerStep: (employerId: string, step: StepId) => void;
   goNext: () => void;
   goBack: () => void;
   canGoNext: boolean;
@@ -379,6 +594,7 @@ export interface WizardContextType {
   updateData: (updates: Partial<WizardData>) => void;
   updateBusinessData: (businessId: string, updates: Partial<SelfEmploymentBusiness>) => void;
   updatePropertyData: (propertyId: string, updates: Partial<RentalProperty>) => void;
+  updateEmployerData: (employerId: string, updates: Partial<EmploymentData>) => void;
 
   // Income sources
   addIncomeSource: (source: Omit<IncomeSource, 'id'>) => void;

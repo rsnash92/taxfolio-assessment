@@ -28,6 +28,21 @@ export const RENTAL_STEPS: { id: StepId; label: string }[] = [
   { id: 'rental-summary', label: 'Summary' },
 ];
 
+// Employment sub-steps (per employer)
+export const EMPLOYMENT_STEPS: { id: StepId; label: string }[] = [
+  { id: 'employment-details', label: 'Employer Details' },
+  { id: 'employment-income', label: 'Income & Tax' },
+  { id: 'employment-benefits', label: 'Benefits' },
+  { id: 'employment-expenses', label: 'Expenses' },
+];
+
+// Capital Gains sub-steps
+export const CAPITAL_GAINS_STEPS: { id: StepId; label: string }[] = [
+  { id: 'capital-gains-overview', label: 'Overview' },
+  { id: 'capital-gains-disposals', label: 'Disposals' },
+  { id: 'capital-gains-summary', label: 'Summary' },
+];
+
 export const ALL_STEPS: StepConfig[] = [
   // Getting Started
   {
@@ -176,16 +191,119 @@ export const ALL_STEPS: StepConfig[] = [
     condition: (data) => data.incomeSources.some((s) => s.type === 'rental'),
   },
 
-  // Other Income (simple amounts)
+  // Employment (PAYE) - SA102
+  {
+    id: 'employment-list',
+    section: 'employment',
+    title: 'Employment Income',
+    showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'employment'),
+  },
+  {
+    id: 'employment-details',
+    section: 'employment',
+    title: 'Employer Details',
+    showInSidebar: false,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'employment'),
+  },
+  {
+    id: 'employment-income',
+    section: 'employment',
+    title: 'Income & Tax',
+    showInSidebar: false,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'employment'),
+  },
+  {
+    id: 'employment-benefits',
+    section: 'employment',
+    title: 'Benefits in Kind',
+    showInSidebar: false,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'employment'),
+  },
+  {
+    id: 'employment-expenses',
+    section: 'employment',
+    title: 'Employment Expenses',
+    showInSidebar: false,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'employment'),
+  },
+
+  // CIS Income
+  {
+    id: 'cis-income',
+    section: 'cis',
+    title: 'CIS Income',
+    showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'cis'),
+  },
+
+  // Dividends
+  {
+    id: 'dividends',
+    section: 'dividends',
+    title: 'Dividends',
+    showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'dividends'),
+  },
+
+  // Interest
+  {
+    id: 'interest',
+    section: 'interest',
+    title: 'Interest Income',
+    showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'interest'),
+  },
+
+  // Capital Gains - SA108
+  {
+    id: 'capital-gains-overview',
+    section: 'capital-gains',
+    title: 'Capital Gains',
+    showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'capital-gains'),
+  },
+  {
+    id: 'capital-gains-disposals',
+    section: 'capital-gains',
+    title: 'Disposals',
+    showInSidebar: false,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'capital-gains'),
+  },
+  {
+    id: 'capital-gains-summary',
+    section: 'capital-gains',
+    title: 'CGT Summary',
+    showInSidebar: false,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'capital-gains'),
+  },
+
+  // Pension Income
+  {
+    id: 'pension-income',
+    section: 'pension-income',
+    title: 'Pension Income',
+    showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'pension'),
+  },
+
+  // State Benefits
+  {
+    id: 'state-benefits',
+    section: 'state-benefits',
+    title: 'State Benefits',
+    showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'state-benefits'),
+  },
+
+  // Other Income (catch-all for remaining types)
   {
     id: 'other-income',
     section: 'other-income',
     title: 'Other Income',
     showInSidebar: true,
     condition: (data) =>
-      data.incomeSources.some((s) =>
-        ['interest', 'dividends', 'pension', 'state-benefits', 'employment', 'cis', 'capital-gains'].includes(s.type)
-      ),
+      data.incomeSources.some((s) => s.type === 'other'),
   },
 
   // General (Tax Reliefs & Allowances)
@@ -284,25 +402,63 @@ export function getNextStep(
 ): StepId | null {
   // Handle self-employment list step
   if (currentStep === 'self-employment-list') {
-    // From list, go to next section (rental or other-income or general)
+    // From list, go to next section
     const hasRental = data.incomeSources.some((s) => s.type === 'rental');
     if (hasRental) return 'rental-list';
 
-    const hasOtherIncome = data.incomeSources.some((s) =>
-      ['interest', 'dividends', 'pension', 'state-benefits', 'employment', 'cis', 'capital-gains'].includes(s.type)
-    );
-    if (hasOtherIncome) return 'other-income';
+    const hasEmployment = data.incomeSources.some((s) => s.type === 'employment');
+    if (hasEmployment) return 'employment-list';
+
+    const hasCIS = data.incomeSources.some((s) => s.type === 'cis');
+    if (hasCIS) return 'cis-income';
+
+    const hasDividends = data.incomeSources.some((s) => s.type === 'dividends');
+    if (hasDividends) return 'dividends';
+
+    const hasInterest = data.incomeSources.some((s) => s.type === 'interest');
+    if (hasInterest) return 'interest';
+
+    const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+    if (hasCapitalGains) return 'capital-gains-overview';
+
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
 
     return 'general-overview';
   }
 
   // Handle rental list step
   if (currentStep === 'rental-list') {
-    // From list, go to next section (other-income or general)
-    const hasOtherIncome = data.incomeSources.some((s) =>
-      ['interest', 'dividends', 'pension', 'state-benefits', 'employment', 'cis', 'capital-gains'].includes(s.type)
-    );
-    if (hasOtherIncome) return 'other-income';
+    // From list, go to next section
+    const hasEmployment = data.incomeSources.some((s) => s.type === 'employment');
+    if (hasEmployment) return 'employment-list';
+
+    const hasCIS = data.incomeSources.some((s) => s.type === 'cis');
+    if (hasCIS) return 'cis-income';
+
+    const hasDividends = data.incomeSources.some((s) => s.type === 'dividends');
+    if (hasDividends) return 'dividends';
+
+    const hasInterest = data.incomeSources.some((s) => s.type === 'interest');
+    if (hasInterest) return 'interest';
+
+    const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+    if (hasCapitalGains) return 'capital-gains-overview';
+
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
 
     return 'general-overview';
   }
@@ -328,7 +484,7 @@ export function getNextStep(
     return 'rental-list';
   }
 
-  // Handle transition from accounts to self-employment list
+  // Handle transition from accounts to first income section
   if (currentStep === 'accounts') {
     const hasSelfEmployment = data.incomeSources.some((s) => s.type === 'self-employment');
     if (hasSelfEmployment) return 'self-employment-list';
@@ -336,10 +492,162 @@ export function getNextStep(
     const hasRental = data.incomeSources.some((s) => s.type === 'rental');
     if (hasRental) return 'rental-list';
 
-    const hasOtherIncome = data.incomeSources.some((s) =>
-      ['interest', 'dividends', 'pension', 'state-benefits', 'employment', 'cis', 'capital-gains'].includes(s.type)
-    );
-    if (hasOtherIncome) return 'other-income';
+    const hasEmployment = data.incomeSources.some((s) => s.type === 'employment');
+    if (hasEmployment) return 'employment-list';
+
+    const hasCIS = data.incomeSources.some((s) => s.type === 'cis');
+    if (hasCIS) return 'cis-income';
+
+    const hasDividends = data.incomeSources.some((s) => s.type === 'dividends');
+    if (hasDividends) return 'dividends';
+
+    const hasInterest = data.incomeSources.some((s) => s.type === 'interest');
+    if (hasInterest) return 'interest';
+
+    const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+    if (hasCapitalGains) return 'capital-gains-overview';
+
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
+
+    return 'general-overview';
+  }
+
+  // Handle employment section navigation
+  if (currentStep === 'employment-list') {
+    const hasCIS = data.incomeSources.some((s) => s.type === 'cis');
+    if (hasCIS) return 'cis-income';
+
+    const hasDividends = data.incomeSources.some((s) => s.type === 'dividends');
+    if (hasDividends) return 'dividends';
+
+    const hasInterest = data.incomeSources.some((s) => s.type === 'interest');
+    if (hasInterest) return 'interest';
+
+    const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+    if (hasCapitalGains) return 'capital-gains-overview';
+
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
+
+    return 'general-overview';
+  }
+
+  // Handle employment income step (last step in employment flow)
+  if (currentStep === 'employment-income') {
+    // Go back to list after completing employer details
+    return 'employment-list';
+  }
+
+  // Handle CIS to next section
+  if (currentStep === 'cis-income') {
+    const hasDividends = data.incomeSources.some((s) => s.type === 'dividends');
+    if (hasDividends) return 'dividends';
+
+    const hasInterest = data.incomeSources.some((s) => s.type === 'interest');
+    if (hasInterest) return 'interest';
+
+    const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+    if (hasCapitalGains) return 'capital-gains-overview';
+
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
+
+    return 'general-overview';
+  }
+
+  // Handle dividends to next section
+  if (currentStep === 'dividends') {
+    const hasInterest = data.incomeSources.some((s) => s.type === 'interest');
+    if (hasInterest) return 'interest';
+
+    const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+    if (hasCapitalGains) return 'capital-gains-overview';
+
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
+
+    return 'general-overview';
+  }
+
+  // Handle interest to next section
+  if (currentStep === 'interest') {
+    const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+    if (hasCapitalGains) return 'capital-gains-overview';
+
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
+
+    return 'general-overview';
+  }
+
+  // Handle capital gains section navigation
+  if (currentStep === 'capital-gains-overview') {
+    return 'capital-gains-disposals';
+  }
+
+  if (currentStep === 'capital-gains-disposals') {
+    return 'capital-gains-summary';
+  }
+
+  if (currentStep === 'capital-gains-summary') {
+    const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+    if (hasPension) return 'pension-income';
+
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
+
+    return 'general-overview';
+  }
+
+  // Handle pension income to next section
+  if (currentStep === 'pension-income') {
+    const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+    if (hasStateBenefits) return 'state-benefits';
+
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
+
+    return 'general-overview';
+  }
+
+  // Handle state benefits to next section
+  if (currentStep === 'state-benefits') {
+    const hasOther = data.incomeSources.some((s) => s.type === 'other');
+    if (hasOther) return 'other-income';
 
     return 'general-overview';
   }
