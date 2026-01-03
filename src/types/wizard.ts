@@ -230,6 +230,14 @@ export interface EmploymentData {
 }
 
 // CIS Income
+export interface CISPayment {
+  periodStart?: string;
+  periodEnd?: string;
+  grossAmount: number;
+  cisDeducted: number;
+  materialsAmount?: number;
+}
+
 export interface CISContractor {
   id: string;
   contractorName: string;
@@ -238,6 +246,10 @@ export interface CISContractor {
   grossPayments: number; // Total gross received
   cisDeductions: number; // Tax deducted at source (20% or 30%)
   materialsDeducted?: number; // Materials cost if applicable
+  deductionRate?: '20' | '30' | '0'; // Registered, unregistered, or gross
+
+  // Individual payments (for detailed submission)
+  payments?: CISPayment[];
 
   // Net = Gross - CIS Deductions
   netPayments: number;
@@ -247,7 +259,10 @@ export interface CISData {
   contractors: CISContractor[];
   hasAllCISStatements: boolean;
   totalGross: number;
+  totalGrossPayments?: number; // Alias for HMRC mapper
   totalDeductions: number;
+  totalCISDeductions?: number; // Alias for HMRC mapper
+  totalMaterials?: number;
   totalNet: number;
 }
 
@@ -257,9 +272,21 @@ export interface DividendsData {
   ukDividendsFromUnitTrusts?: number;
   foreignDividends?: number;
   foreignTaxPaid?: number; // For tax credit
+  foreignDividendsCountry?: string; // Country code for foreign dividends
+  claimForeignTaxCredit?: boolean; // Claim tax credit for foreign tax paid
+
+  // Foreign dividends by country (for multiple countries)
+  foreignDividendsByCountry?: Array<{
+    countryCode: string;
+    amount: number;
+    taxPaid?: number;
+  }>;
 
   // Stock dividends
   stockDividends?: number;
+
+  // Close company loans written off
+  closeCompanyLoansWrittenOff?: number;
 
   // Totals
   totalDividends: number;
@@ -275,26 +302,64 @@ export interface InterestData {
   // Taxed interest (rare now)
   taxedUKInterest?: number;
   taxDeducted?: number;
+  taxDeductedFromInterest?: number; // Alias for HMRC mapper
 
   // Gilts and bonds
   giltsInterest?: number;
+
+  // Foreign interest details
+  foreignInterest?: number;
+  foreignInterestCountry?: string;
+  foreignTaxPaidOnInterest?: number;
+  claimForeignTaxCreditOnInterest?: boolean;
+
+  // Foreign interest by country (for multiple countries)
+  foreignInterestByCountry?: Array<{
+    countryCode: string;
+    amount: number;
+    taxPaid?: number;
+  }>;
+
+  // Savings accounts (for detailed tracking)
+  savingsAccounts?: Array<{
+    accountName: string;
+    interestReceived: number;
+    isTaxed: boolean;
+  }>;
 
   // Total
   totalInterest: number;
 }
 
 // Capital Gains
+export type CapitalGainsAssetType =
+  | 'shares'
+  | 'listed-shares'
+  | 'unlisted-shares'
+  | 'property'
+  | 'residential-property'
+  | 'other-property'
+  | 'crypto'
+  | 'other';
+
 export interface CapitalGainsDisposal {
   id: string;
-  assetType: 'shares' | 'property' | 'crypto' | 'other';
+  assetType: CapitalGainsAssetType;
   assetDescription: string;
   dateAcquired?: string;
   dateSold: string;
   proceedsAmount: number; // Sale price
   acquisitionCost: number; // Purchase price
   allowableCosts?: number; // Fees, improvements
+  improvementCosts?: number; // Property improvement costs
+  additionalCosts?: number; // Legal fees, etc.
   gain: number; // Calculated
   loss: number; // Calculated
+
+  // Reliefs
+  reliefClaimed?: boolean;
+  reliefAmount?: number;
+  privateResidenceRelief?: number; // PRR for residential property
 }
 
 export interface CapitalGainsData {
@@ -308,6 +373,7 @@ export interface CapitalGainsData {
   totalGains: number;
   totalLosses: number;
   lossesFromPreviousYears?: number;
+  lossesThisYear?: number; // Losses from disposals this year
   annualExemptAmount: number; // £3,000 for 2024/25
   taxableGains: number;
 
@@ -320,8 +386,16 @@ export interface PrivatePension {
   id: string;
   providerName: string;
   pensionAmount: number;
+  grossAmount?: number; // Gross pension amount before tax
   taxDeducted: number;
   isLumpSum: boolean;
+}
+
+export interface ForeignPension {
+  id: string;
+  countryCode: string;
+  pensionAmount: number;
+  taxPaid?: number;
 }
 
 export interface PensionIncomeData {
@@ -332,6 +406,13 @@ export interface PensionIncomeData {
   // Private/Workplace Pensions
   privatePensions: PrivatePension[];
 
+  // Foreign Pensions
+  foreignPensions?: ForeignPension[];
+  foreignPensionTotal?: number;
+  foreignPensionCountry?: string;
+  foreignPensionTaxPaid?: number;
+  claimForeignPensionTaxCredit?: boolean;
+
   // Total
   totalPensionIncome: number;
   totalTaxDeducted: number;
@@ -341,10 +422,33 @@ export interface PensionIncomeData {
 export interface StateBenefitsData {
   // Taxable benefits
   jobseekersAllowance?: number; // JSA (contribution-based)
+  jsaStartDate?: string;
+  jsaEndDate?: string;
+  taxDeductedFromJSA?: number;
+
   employmentSupportAllowance?: number; // ESA (contribution-based)
+  esaStartDate?: string;
+  esaEndDate?: string;
+  taxDeductedFromESA?: number;
+
   carersAllowance?: number;
+
   bereavementAllowance?: number;
+  bereavementStartDate?: string;
+  bereavementEndDate?: string;
+
   incapacityBenefit?: number;
+  taxDeductedFromIncapacityBenefit?: number;
+
+  // State Pension (also accessible here for convenience)
+  statePension?: number;
+  statePensionStartDate?: string;
+  statePensionLumpSum?: number;
+  statePensionLumpSumDate?: string;
+  taxOnStatePensionLumpSum?: number;
+
+  // Other taxable benefits
+  otherTaxableBenefits?: number;
 
   // High Income Child Benefit Charge
   hasHighIncomeChildBenefit: boolean; // If income > £60,000
@@ -362,9 +466,13 @@ export interface GeneralData {
   // Marriage Allowance
   marriageAllowance?: {
     type: 'transfer' | 'receive' | null;
+    transferType?: 'transfer' | 'receive'; // Alias for type
     spouseNino?: string;
     spouseName?: string;
+    spouseFirstName?: string;
+    spouseSurname?: string;
     spouseDob?: string;
+    spouseDateOfBirth?: string; // Alias for spouseDob
   };
 
   // Blind Person's Allowance
@@ -396,6 +504,7 @@ export interface GeneralData {
 
   // Venture Capital Schemes
   ventureCapital?: {
+    // Simple totals
     eisInvestments?: number;
     eisReliefClaimed?: number;
     eisCarryBack?: boolean;
@@ -406,6 +515,28 @@ export interface GeneralData {
     vctReliefClaimed?: number;
     sitrInvestments?: number;
     sitrReliefClaimed?: number;
+
+    // Aggregated totals (calculated from investments or entered directly)
+    totalVCT?: number;
+    totalEIS?: number;
+    totalSEIS?: number;
+
+    // Detailed investments (optional, for detailed tracking)
+    vctInvestmentsList?: Array<{
+      companyName?: string;
+      amount: number;
+      dateInvested?: string;
+    }>;
+    eisInvestmentsList?: Array<{
+      companyName?: string;
+      amount: number;
+      dateInvested?: string;
+    }>;
+    seisInvestmentsList?: Array<{
+      companyName?: string;
+      amount: number;
+      dateInvested?: string;
+    }>;
   };
 }
 

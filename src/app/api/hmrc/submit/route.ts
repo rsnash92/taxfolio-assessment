@@ -1,0 +1,172 @@
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  submitSelfAssessment,
+  validateForSubmission,
+  setTokenStore,
+} from '@/lib/hmrc';
+import { WizardData } from '@/types/wizard';
+
+// Configure token store (in production, this would use your auth system)
+// For now, we'll use a placeholder that should be configured at app startup
+const mockTokenStore = {
+  async getTokens(userId: string) {
+    // In production, fetch from your database
+    // This is a placeholder
+    console.log('Getting tokens for user:', userId);
+    return null; // Will trigger "no tokens" error if not configured
+  },
+};
+
+// Set the token store
+setTokenStore(mockTokenStore);
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      userId,
+      nino,
+      taxYear,
+      wizardData,
+      options,
+    }: {
+      userId: string;
+      nino: string;
+      taxYear: string;
+      wizardData: WizardData;
+      options?: {
+        skipCalculation?: boolean;
+        skipFinalDeclaration?: boolean;
+        validateOnly?: boolean;
+      };
+    } = body;
+
+    // Validate required fields
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Missing userId' },
+        { status: 400 }
+      );
+    }
+
+    if (!nino) {
+      return NextResponse.json(
+        { error: 'Missing NINO' },
+        { status: 400 }
+      );
+    }
+
+    if (!taxYear) {
+      return NextResponse.json(
+        { error: 'Missing taxYear' },
+        { status: 400 }
+      );
+    }
+
+    if (!wizardData) {
+      return NextResponse.json(
+        { error: 'Missing wizardData' },
+        { status: 400 }
+      );
+    }
+
+    // Validate NINO format
+    const ninoRegex = /^[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/;
+    if (!ninoRegex.test(nino.replace(/\s/g, '').toUpperCase())) {
+      return NextResponse.json(
+        { error: 'Invalid NINO format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate tax year format
+    const taxYearRegex = /^\d{4}-\d{2}$/;
+    if (!taxYearRegex.test(taxYear)) {
+      return NextResponse.json(
+        { error: 'Invalid tax year format. Expected: YYYY-YY (e.g., 2024-25)' },
+        { status: 400 }
+      );
+    }
+
+    // If validate only, just run validation
+    if (options?.validateOnly) {
+      const validation = validateForSubmission(wizardData);
+      return NextResponse.json({
+        validation,
+      });
+    }
+
+    // Run pre-submission validation
+    const validation = validateForSubmission(wizardData);
+    if (!validation.isValid) {
+      return NextResponse.json(
+        {
+          error: 'Validation failed',
+          validation,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Submit to HMRC
+    const result = await submitSelfAssessment(
+      userId,
+      nino.replace(/\s/g, '').toUpperCase(),
+      taxYear,
+      wizardData,
+      {
+        skipCalculation: options?.skipCalculation,
+        skipFinalDeclaration: options?.skipFinalDeclaration,
+      }
+    );
+
+    if (result.success) {
+      return NextResponse.json({
+        success: true,
+        calculationId: result.calculationId,
+        hmrcReferenceNumber: result.hmrcReferenceNumber,
+        calculation: result.calculation,
+        steps: result.steps,
+        warnings: result.warnings,
+      });
+    } else {
+      return NextResponse.json(
+        {
+          success: false,
+          errors: result.errors,
+          steps: result.steps,
+          warnings: result.warnings,
+        },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error('HMRC submission error:', error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// GET endpoint for retrieving submission status/calculation
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const calculationId = searchParams.get('calculationId');
+
+  if (!calculationId) {
+    return NextResponse.json(
+      { error: 'Missing calculationId parameter' },
+      { status: 400 }
+    );
+  }
+
+  // In production, you would retrieve the calculation from HMRC here
+  // For now, return a placeholder
+  return NextResponse.json({
+    message: 'Use POST endpoint to retrieve calculation with full user context',
+    calculationId,
+  });
+}
