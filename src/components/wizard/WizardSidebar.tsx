@@ -14,6 +14,12 @@ import {
   Send,
   Plus,
   Coins,
+  TrendingUp,
+  Landmark,
+  Heart,
+  Banknote,
+  HardHat,
+  PiggyBank,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StepId } from '@/types/wizard';
@@ -36,13 +42,22 @@ export function WizardSidebar() {
     (s) => s.type === 'self-employment'
   );
   const rentalProperties = data.incomeSources.filter((s) => s.type === 'rental');
-  const hasOtherIncome = data.incomeSources.some((s) =>
-    ['interest', 'dividends', 'pension', 'state-benefits', 'employment', 'cis', 'capital-gains'].includes(s.type)
-  );
+
+  // Check for each income type
+  const hasEmployment = data.incomeSources.some((s) => s.type === 'employment');
+  const hasCIS = data.incomeSources.some((s) => s.type === 'cis');
+  const hasDividends = data.incomeSources.some((s) => s.type === 'dividends');
+  const hasInterest = data.incomeSources.some((s) => s.type === 'interest');
+  const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
+  const hasPension = data.incomeSources.some((s) => s.type === 'pension');
+  const hasStateBenefits = data.incomeSources.some((s) => s.type === 'state-benefits');
+  const hasOtherIncome = data.incomeSources.some((s) => s.type === 'other');
 
   // Check if sections are active/expanded
   const isSelfEmploymentActive = currentStep.startsWith('self-employment');
   const isRentalActive = currentStep.startsWith('rental');
+  const isEmploymentActive = currentStep.startsWith('employment');
+  const isCapitalGainsActive = currentStep.startsWith('capital-gains');
 
   return (
     <aside className="w-full h-full bg-white border-r border-gray-200 hidden lg:block">
@@ -192,10 +207,87 @@ export function WizardSidebar() {
             </li>
           )}
 
+          {/* Employment (PAYE) */}
+          {hasEmployment && (
+            <SidebarItem
+              icon={Building2}
+              label="Employment"
+              isActive={isEmploymentActive}
+              isComplete={getSectionStatus('employment') === 'completed'}
+              onClick={() => goToStep('employment-list')}
+            />
+          )}
+
+          {/* CIS Income */}
+          {hasCIS && (
+            <SidebarItem
+              icon={HardHat}
+              label="CIS Income"
+              isActive={currentStep === 'cis-income'}
+              isComplete={getSectionStatus('cis') === 'completed'}
+              onClick={() => goToStep('cis-income')}
+            />
+          )}
+
+          {/* Dividends */}
+          {hasDividends && (
+            <SidebarItem
+              icon={Coins}
+              label="Dividends"
+              isActive={currentStep === 'dividends'}
+              isComplete={getSectionStatus('dividends') === 'completed'}
+              onClick={() => goToStep('dividends')}
+            />
+          )}
+
+          {/* Interest */}
+          {hasInterest && (
+            <SidebarItem
+              icon={PiggyBank}
+              label="Interest"
+              isActive={currentStep === 'interest'}
+              isComplete={getSectionStatus('interest') === 'completed'}
+              onClick={() => goToStep('interest')}
+            />
+          )}
+
+          {/* Capital Gains */}
+          {hasCapitalGains && (
+            <SidebarItem
+              icon={TrendingUp}
+              label="Capital Gains"
+              isActive={isCapitalGainsActive}
+              isComplete={getSectionStatus('capital-gains') === 'completed'}
+              onClick={() => goToStep('capital-gains-overview')}
+            />
+          )}
+
+          {/* Pension Income */}
+          {hasPension && (
+            <SidebarItem
+              icon={Landmark}
+              label="Pension Income"
+              isActive={currentStep === 'pension-income'}
+              isComplete={getSectionStatus('pension-income') === 'completed'}
+              onClick={() => goToStep('pension-income')}
+            />
+          )}
+
+          {/* State Benefits */}
+          {hasStateBenefits && (
+            <SidebarItem
+              icon={Heart}
+              label="State Benefits"
+              isActive={currentStep === 'state-benefits'}
+              isComplete={getSectionStatus('state-benefits') === 'completed'}
+              onClick={() => goToStep('state-benefits')}
+            />
+          )}
+
           {/* Other Income */}
           {hasOtherIncome && (
             <SidebarItem
-              icon={Coins}
+              icon={Banknote}
               label="Other Income"
               isActive={currentStep === 'other-income'}
               isComplete={getSectionStatus('other-income') === 'completed'}
