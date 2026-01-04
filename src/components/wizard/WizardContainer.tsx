@@ -227,13 +227,13 @@ export function WizardContainer() {
       <WizardHeader />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Fixed sidebar */}
-        <div className="w-64 flex-shrink-0 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
+        {/* Fixed sidebar - wider to match main app */}
+        <div className="w-56 flex-shrink-0 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
           <WizardSidebar />
         </div>
 
-        {/* Scrollable main content */}
-        <main className="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)]">
+        {/* Scrollable main content - gray bg with white card */}
+        <main className="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)] bg-gray-100">
           <div className={
             currentStep === 'self-employment-income' ||
             currentStep === 'self-employment-expenses' ||
@@ -244,7 +244,9 @@ export function WizardContainer() {
               ? 'max-w-4xl mx-auto'
               : 'max-w-3xl mx-auto'
           }>
-            {renderStep()}
+            <div className="bg-white rounded-xl shadow-sm p-8">
+              {renderStep()}
+            </div>
           </div>
         </main>
       </div>
