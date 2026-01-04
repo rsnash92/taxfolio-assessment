@@ -29,63 +29,65 @@ export function WizardHeader() {
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
       <div className="flex items-center justify-between px-6 py-4">
-        {/* Logo */}
-        <Link
-          href="https://app.taxfolio.io/dashboard"
-          className="flex items-center"
-        >
-          <Image
-            src="/taxfolio.png"
-            alt="TaxFolio"
-            width={140}
-            height={35}
-            className="h-8 w-auto"
-          />
-        </Link>
+        {/* Logo and Stats Bar - grouped on left */}
+        <div className="flex items-center gap-8">
+          <Link
+            href="https://app.taxfolio.io/dashboard"
+            className="flex items-center"
+          >
+            <Image
+              src="/taxfolio.png"
+              alt="TaxFolio"
+              width={120}
+              height={30}
+              className="h-7 w-auto"
+            />
+          </Link>
 
-        {/* Stats Bar */}
-        <div className="hidden md:flex items-center gap-8">
-          {/* Tax Liability */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Tax liability:</span>
-            <span
-              className={`text-lg font-bold ${
-                (taxCalculation?.totalTaxDue || 0) > 0
-                  ? 'text-amber-600'
-                  : 'text-[#00c4d4]'
-              }`}
-            >
-              {formatCurrency(taxCalculation?.totalTaxDue || 0)}
-            </span>
-            <button className="text-gray-400 hover:text-gray-600">
-              <HelpCircle className="h-4 w-4" />
-            </button>
-          </div>
+          {/* Stats Bar */}
+          <div className="hidden md:flex items-center gap-8">
+            {/* Tax Liability */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Tax liability:</span>
+              <span
+                className={`text-lg font-bold ${
+                  (taxCalculation?.totalTaxDue || 0) > 0
+                    ? 'text-amber-600'
+                    : 'text-[#00c4d4]'
+                }`}
+              >
+                {formatCurrency(taxCalculation?.totalTaxDue || 0)}
+              </span>
+              <button className="text-gray-400 hover:text-gray-600">
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </div>
 
-          {/* Divider */}
-          <div className="h-6 w-px bg-gray-200" />
+            {/* Divider */}
+            <div className="h-6 w-px bg-gray-200" />
 
-          {/* Tax Year */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Tax year:</span>
-            <span className="text-sm font-semibold text-[#00c4d4]">
-              {taxYear}
-            </span>
-          </div>
+            {/* Tax Year */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Tax year:</span>
+              <span className="text-sm font-semibold text-[#00c4d4]">
+                {taxYear}
+              </span>
+            </div>
 
-          {/* Save Status */}
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                <span>Saved</span>
-              </>
-            )}
+            {/* Save Status */}
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  <span>Saved</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
