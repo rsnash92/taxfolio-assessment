@@ -70,14 +70,14 @@ export function MarriageAllowanceStep() {
             className={cn(
               'p-4 rounded-xl border-2 text-left transition-all',
               form.type === 'transfer'
-                ? 'border-emerald-500 bg-emerald-50'
+                ? 'border-[#00e3ec] bg-[#e6fafb]'
                 : 'border-gray-200 hover:border-gray-300'
             )}
           >
             <ArrowRight
               className={cn(
                 'h-6 w-6 mb-2',
-                form.type === 'transfer' ? 'text-emerald-600' : 'text-gray-400'
+                form.type === 'transfer' ? 'text-[#00c4d4]' : 'text-gray-400'
               )}
             />
             <p className="font-medium text-gray-900">Transfer to spouse</p>
@@ -91,14 +91,14 @@ export function MarriageAllowanceStep() {
             className={cn(
               'p-4 rounded-xl border-2 text-left transition-all',
               form.type === 'receive'
-                ? 'border-emerald-500 bg-emerald-50'
+                ? 'border-[#00e3ec] bg-[#e6fafb]'
                 : 'border-gray-200 hover:border-gray-300'
             )}
           >
             <ArrowLeft
               className={cn(
                 'h-6 w-6 mb-2',
-                form.type === 'receive' ? 'text-emerald-600' : 'text-gray-400'
+                form.type === 'receive' ? 'text-[#00c4d4]' : 'text-gray-400'
               )}
             />
             <p className="font-medium text-gray-900">Receive from spouse</p>
@@ -157,8 +157,8 @@ export function MarriageAllowanceStep() {
 
       {/* Tax Saving Info */}
       {form.type === 'receive' && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-emerald-800">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
+          <p className="text-sm text-[#006b70]">
             <strong>Potential saving:</strong> Up to £252 off your tax bill for
             2024/25.
           </p>

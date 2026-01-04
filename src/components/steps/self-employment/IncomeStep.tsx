@@ -294,23 +294,23 @@ export function SelfEmploymentIncomeStep() {
       </div>
 
       {/* Income Summary Card */}
-      <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-#00e3ec to-#00c4d4 rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
             <PoundSterling className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-emerald-100 text-sm">Total Business Income</p>
+            <p className="text-[#ccf5f7] text-sm">Total Business Income</p>
             <p className="text-3xl font-bold">{formatCurrency(totalIncome)}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-emerald-100">From Bank Transactions</p>
+            <p className="text-[#ccf5f7]">From Bank Transactions</p>
             <p className="text-lg font-semibold">{formatCurrency(businessTotal)}</p>
           </div>
           <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-emerald-100">Manual Entries</p>
+            <p className="text-[#ccf5f7]">Manual Entries</p>
             <p className="text-lg font-semibold">{formatCurrency(manualTotal)}</p>
           </div>
         </div>
@@ -362,14 +362,14 @@ export function SelfEmploymentIncomeStep() {
 
       {/* Progress bar when categorising */}
       {isCategorising && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span>{categoriseStatus}</span>
             <span>{categoriseProgress}%</span>
           </div>
-          <div className="h-2 bg-emerald-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-[#ccf5f7] rounded-full overflow-hidden">
             <div
-              className="h-full bg-emerald-500 transition-all duration-300"
+              className="h-full bg-[#00e3ec] transition-all duration-300"
               style={{ width: `${categoriseProgress}%` }}
             />
           </div>
@@ -381,13 +381,13 @@ export function SelfEmploymentIncomeStep() {
         <button
           onClick={() => setFilter(filter === 'business' ? 'all' : 'business')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-emerald-300',
-            filter === 'business' ? 'border-emerald-500 ring-1 ring-emerald-500/30' : 'border-gray-200'
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-#66eff4',
+            filter === 'business' ? 'border-[#00e3ec] ring-1 ring-#00e3ec/30' : 'border-gray-200'
           )}
         >
           <div className="flex items-center gap-3">
-            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', filter === 'business' ? 'bg-emerald-100' : 'bg-gray-100')}>
-              <Briefcase className="h-5 w-5 text-emerald-600" />
+            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', filter === 'business' ? 'bg-[#ccf5f7]' : 'bg-gray-100')}>
+              <Briefcase className="h-5 w-5 text-[#00c4d4]" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{stats.business}</p>
@@ -526,7 +526,7 @@ export function SelfEmploymentIncomeStep() {
               <div className="flex-1">
                 <p className="font-medium text-gray-900">{entry.description}</p>
               </div>
-              <p className="text-emerald-600 font-medium">{formatCurrency(entry.amount)}</p>
+              <p className="text-[#00c4d4] font-medium">{formatCurrency(entry.amount)}</p>
               <button onClick={() => removeManualEntry(index)} className="text-gray-400 hover:text-red-500">
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -562,7 +562,7 @@ export function SelfEmploymentIncomeStep() {
           ) : (
             <button
               onClick={() => setShowManualEntry(true)}
-              className="w-full p-4 flex items-center gap-2 text-emerald-600 hover:bg-emerald-50"
+              className="w-full p-4 flex items-center gap-2 text-[#00c4d4] hover:bg-[#e6fafb]"
             >
               <Plus className="h-4 w-4" />
               Add Other Income

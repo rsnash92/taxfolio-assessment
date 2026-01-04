@@ -146,7 +146,7 @@ export function InterestStep() {
           </div>
 
           {totalInterest <= PSA_BASIC && (
-            <p className="text-xs text-emerald-600 mt-3">
+            <p className="text-xs text-[#00c4d4] mt-3">
               Your interest is within the Personal Savings Allowance for basic
               rate taxpayers - likely no tax due on this income.
             </p>
@@ -164,7 +164,7 @@ export function InterestStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
           >
             Continue
           </Button>

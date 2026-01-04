@@ -170,7 +170,7 @@ export function ReviewSummaryStep() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00e3ec]" />
         <span className="ml-3 text-gray-600">Calculating your tax...</span>
       </div>
     );
@@ -183,14 +183,14 @@ export function ReviewSummaryStep() {
       {/* Progress Steps */}
       <div className="flex items-center justify-between mb-10 max-w-lg">
         <div className="flex flex-col items-center">
-          <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#00e3ec] text-white rounded-full flex items-center justify-center">
             <CheckCircle2 className="h-5 w-5" />
           </div>
-          <span className="text-xs text-emerald-600 mt-1">Paid</span>
+          <span className="text-xs text-[#00c4d4] mt-1">Paid</span>
         </div>
-        <div className="flex-1 h-px bg-emerald-500 mx-2" />
+        <div className="flex-1 h-px bg-[#00e3ec] mx-2" />
         <div className="flex flex-col items-center">
-          <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+          <div className="w-8 h-8 bg-[#00e3ec] text-white rounded-full flex items-center justify-center text-sm font-medium">
             2
           </div>
           <span className="text-xs text-gray-600 mt-1">Review summary</span>
@@ -220,7 +220,7 @@ export function ReviewSummaryStep() {
         className={cn(
           'rounded-2xl p-6 mb-8',
           isRefund
-            ? 'bg-emerald-50 border-2 border-emerald-200'
+            ? 'bg-[#e6fafb] border-2 border-[#99ebef]'
             : 'bg-amber-50 border-2 border-amber-200'
         )}
       >
@@ -229,7 +229,7 @@ export function ReviewSummaryStep() {
             <p
               className={cn(
                 'text-sm font-medium mb-1',
-                isRefund ? 'text-emerald-600' : 'text-amber-600'
+                isRefund ? 'text-[#00c4d4]' : 'text-amber-600'
               )}
             >
               {isRefund ? 'Estimated Refund' : 'Estimated Tax Due'}
@@ -237,7 +237,7 @@ export function ReviewSummaryStep() {
             <p
               className={cn(
                 'text-4xl font-bold',
-                isRefund ? 'text-emerald-700' : 'text-amber-700'
+                isRefund ? 'text-[#00a8b0]' : 'text-amber-700'
               )}
             >
               {formatCurrency(
@@ -250,13 +250,13 @@ export function ReviewSummaryStep() {
           <div
             className={cn(
               'w-16 h-16 rounded-full flex items-center justify-center',
-              isRefund ? 'bg-emerald-100' : 'bg-amber-100'
+              isRefund ? 'bg-[#ccf5f7]' : 'bg-amber-100'
             )}
           >
             <FileText
               className={cn(
                 'h-8 w-8',
-                isRefund ? 'text-emerald-600' : 'text-amber-600'
+                isRefund ? 'text-[#00c4d4]' : 'text-amber-600'
               )}
             />
           </div>
@@ -278,7 +278,7 @@ export function ReviewSummaryStep() {
           </div>
           <div>
             <p className="text-xs text-gray-500">Tax Reliefs</p>
-            <p className="text-lg font-semibold text-emerald-600">
+            <p className="text-lg font-semibold text-[#00c4d4]">
               -
               {formatCurrency(
                 (calculation?.pensionRelief || 0) +

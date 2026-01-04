@@ -69,7 +69,7 @@ export function WizardNavigation({
         disabled={!canContinue || isSubmitting || isSaving}
         className={showCheckmark
           ? "bg-blue-500 hover:bg-blue-600 px-6 py-2 h-auto rounded-full"
-          : "bg-emerald-500 hover:bg-emerald-600"
+          : "bg-[#00e3ec] hover:bg-[#00c4d4]"
         }
       >
         {isSubmitting ? (

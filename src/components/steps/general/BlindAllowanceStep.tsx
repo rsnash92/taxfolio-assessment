@@ -112,13 +112,13 @@ export function BlindAllowanceStep() {
       </div>
 
       {/* Allowance Summary */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-        <p className="text-sm text-emerald-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
+        <p className="text-sm text-[#006b70]">
           <strong>Your allowance:</strong> £3,070
           {form.surplusFromSpouse > 0 &&
             ` + £${form.surplusFromSpouse.toLocaleString()} surplus = £${(3070 + form.surplusFromSpouse).toLocaleString()}`}
         </p>
-        <p className="text-sm text-emerald-600 mt-1">
+        <p className="text-sm text-[#00c4d4] mt-1">
           Tax saving: Up to £
           {((3070 + (form.surplusFromSpouse || 0)) * 0.2).toLocaleString()}
         </p>

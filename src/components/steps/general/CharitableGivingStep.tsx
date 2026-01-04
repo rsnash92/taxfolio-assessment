@@ -103,11 +103,11 @@ export function CharitableGivingStep() {
 
       {/* Relief Summary */}
       {form.giftAidDonations > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-          <p className="text-sm font-medium text-emerald-800 mb-2">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
+          <p className="text-sm font-medium text-[#006b70] mb-2">
             Gift Aid breakdown:
           </p>
-          <div className="space-y-1 text-sm text-emerald-700">
+          <div className="space-y-1 text-sm text-[#00a8b0]">
             <div className="flex justify-between">
               <span>You donated:</span>
               <span>{formatCurrency(totalGiftAid)}</span>
@@ -121,7 +121,7 @@ export function CharitableGivingStep() {
               <span>{formatCurrency(higherRateRelief)}</span>
             </div>
           </div>
-          <p className="text-xs text-emerald-600 mt-2">
+          <p className="text-xs text-[#00c4d4] mt-2">
             *Higher rate relief only applies if you&apos;re a higher rate
             taxpayer
           </p>

@@ -53,9 +53,9 @@ export default function SignUpPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-[#ccf5f7] rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
-                className="w-8 h-8 text-emerald-500"
+                className="w-8 h-8 text-[#00e3ec]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -77,7 +77,7 @@ export default function SignUpPage() {
             </p>
             <Button
               onClick={() => router.push('/login')}
-              className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+              className="w-full h-11 bg-[#00e3ec] hover:bg-[#00c4d4] text-white font-medium"
             >
               Back to login
             </Button>
@@ -93,7 +93,7 @@ export default function SignUpPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            <span className="text-emerald-500">Tax</span>Folio
+            <span className="text-[#00e3ec]">Tax</span>Folio
           </h1>
           <p className="text-gray-600 mt-2">Self Assessment</p>
         </div>
@@ -163,7 +163,7 @@ export default function SignUpPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+              className="w-full h-11 bg-[#00e3ec] hover:bg-[#00c4d4] text-white font-medium"
               disabled={loading}
             >
               {loading ? (
@@ -179,7 +179,7 @@ export default function SignUpPage() {
 
           <div className="mt-6 text-center text-sm text-gray-500">
             Already have an account?{' '}
-            <Link href="/login" className="text-emerald-600 hover:underline font-medium">
+            <Link href="/login" className="text-[#00c4d4] hover:underline font-medium">
               Sign in
             </Link>
           </div>

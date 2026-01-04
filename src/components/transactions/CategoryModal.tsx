@@ -157,7 +157,7 @@ export function CategoryModal({
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm font-medium text-white">{categoryTitle}</span>
-              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">
+              <span className="px-2 py-0.5 bg-[#00e3ec]/20 text-[#33e9f0] text-xs rounded-full">
                 SA103
               </span>
             </div>

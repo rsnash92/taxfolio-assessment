@@ -421,7 +421,7 @@ export function PensionIncomeStep() {
           </div>
 
           {totalTaxDeducted > 0 && (
-            <div className="flex justify-between text-emerald-400">
+            <div className="flex justify-between text-[#33e9f0]">
               <span>Tax Already Deducted</span>
               <span>{formatCurrency(totalTaxDeducted)}</span>
             </div>
@@ -439,7 +439,7 @@ export function PensionIncomeStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
           >
             Continue
           </Button>

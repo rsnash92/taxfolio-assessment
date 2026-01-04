@@ -336,7 +336,7 @@ export function RentalSummaryStep() {
         </Button>
         <Button
           onClick={handleComplete}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-[#00e3ec] hover:bg-[#00c4d4]"
         >
           <Check className="h-4 w-4 mr-2" />
           Complete Property

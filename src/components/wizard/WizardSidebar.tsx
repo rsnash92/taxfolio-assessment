@@ -99,17 +99,17 @@ export function WizardSidebar() {
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   isSelfEmploymentActive
-                    ? 'bg-emerald-50 text-emerald-700'
+                    ? 'bg-[#e6fafb] text-[#00a8b0]'
                     : 'text-gray-700 hover:bg-gray-50'
                 )}
               >
                 {getSectionStatus('self-employment') === 'completed' ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
                 ) : (
                   <Briefcase
                     className={cn(
                       'h-5 w-5',
-                      isSelfEmploymentActive ? 'text-emerald-600' : 'text-gray-400'
+                      isSelfEmploymentActive ? 'text-[#00c4d4]' : 'text-gray-400'
                     )}
                   />
                 )}
@@ -138,7 +138,7 @@ export function WizardSidebar() {
                   <li>
                     <button
                       onClick={() => goToStep('income-sources')}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#00c4d4] hover:bg-[#e6fafb] rounded-lg"
                     >
                       <Plus className="h-4 w-4" />
                       Add Self Employment
@@ -159,17 +159,17 @@ export function WizardSidebar() {
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   isRentalActive
-                    ? 'bg-emerald-50 text-emerald-700'
+                    ? 'bg-[#e6fafb] text-[#00a8b0]'
                     : 'text-gray-700 hover:bg-gray-50'
                 )}
               >
                 {getSectionStatus('rental') === 'completed' ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
                 ) : (
                   <Home
                     className={cn(
                       'h-5 w-5',
-                      isRentalActive ? 'text-emerald-600' : 'text-gray-400'
+                      isRentalActive ? 'text-[#00c4d4]' : 'text-gray-400'
                     )}
                   />
                 )}
@@ -196,7 +196,7 @@ export function WizardSidebar() {
                   <li>
                     <button
                       onClick={() => goToStep('income-sources')}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#00c4d4] hover:bg-[#e6fafb] rounded-lg"
                     >
                       <Plus className="h-4 w-4" />
                       Add Property
@@ -348,7 +348,7 @@ function BusinessSubMenu({
         <p
           className={cn(
             'text-sm font-medium mb-1',
-            isActive ? 'text-emerald-700' : 'text-gray-700'
+            isActive ? 'text-[#00a8b0]' : 'text-gray-700'
           )}
         >
           {businessName}
@@ -363,7 +363,7 @@ function BusinessSubMenu({
                   className={cn(
                     'w-full text-left px-2 py-1.5 text-sm rounded transition-colors',
                     currentStep === step.id
-                      ? 'bg-emerald-100 text-emerald-700 font-medium'
+                      ? 'bg-[#ccf5f7] text-[#00a8b0] font-medium'
                       : 'text-gray-600 hover:bg-gray-100'
                   )}
                 >
@@ -399,7 +399,7 @@ function PropertySubMenu({
         <p
           className={cn(
             'text-sm font-medium mb-1',
-            isActive ? 'text-emerald-700' : 'text-gray-700'
+            isActive ? 'text-[#00a8b0]' : 'text-gray-700'
           )}
         >
           {propertyAddress}
@@ -414,7 +414,7 @@ function PropertySubMenu({
                   className={cn(
                     'w-full text-left px-2 py-1.5 text-sm rounded transition-colors',
                     currentStep === step.id
-                      ? 'bg-emerald-100 text-emerald-700 font-medium'
+                      ? 'bg-[#ccf5f7] text-[#00a8b0] font-medium'
                       : 'text-gray-600 hover:bg-gray-100'
                   )}
                 >
@@ -450,15 +450,15 @@ function SidebarItem({
         className={cn(
           'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
           isActive
-            ? 'bg-emerald-50 text-emerald-700'
+            ? 'bg-[#e6fafb] text-[#00a8b0]'
             : 'text-gray-700 hover:bg-gray-50'
         )}
       >
         {isComplete ? (
-          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+          <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
         ) : (
           <Icon
-            className={cn('h-5 w-5', isActive ? 'text-emerald-600' : 'text-gray-400')}
+            className={cn('h-5 w-5', isActive ? 'text-[#00c4d4]' : 'text-gray-400')}
           />
         )}
         <span>{label}</span>

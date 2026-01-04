@@ -45,14 +45,14 @@ export function ResidencyStep() {
           className={cn(
             'w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
             selected === true
-              ? 'border-emerald-500 bg-emerald-50'
+              ? 'border-[#00e3ec] bg-[#e6fafb]'
               : 'border-gray-200 hover:border-gray-300 bg-white'
           )}
         >
           <div
             className={cn(
               'w-10 h-10 rounded-full flex items-center justify-center',
-              selected === true ? 'bg-emerald-500' : 'bg-gray-100'
+              selected === true ? 'bg-[#00e3ec]' : 'bg-gray-100'
             )}
           >
             <CheckCircle2

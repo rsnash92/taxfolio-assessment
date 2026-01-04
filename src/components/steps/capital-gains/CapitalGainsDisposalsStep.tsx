@@ -151,7 +151,7 @@ export function CapitalGainsDisposalsStep() {
                     <span
                       className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full ${
                         isGain
-                          ? 'bg-emerald-100 text-emerald-700'
+                          ? 'bg-[#ccf5f7] text-[#00a8b0]'
                           : 'bg-red-100 text-red-700'
                       }`}
                     >
@@ -315,7 +315,7 @@ export function CapitalGainsDisposalsStep() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Total gains</span>
-              <span className="font-medium text-emerald-600">
+              <span className="font-medium text-[#00c4d4]">
                 {formatCurrency(totalGains)}
               </span>
             </div>
@@ -329,7 +329,7 @@ export function CapitalGainsDisposalsStep() {
               <span className="font-medium text-gray-900">Net position</span>
               <span
                 className={`font-bold ${
-                  netGain >= 0 ? 'text-emerald-600' : 'text-red-500'
+                  netGain >= 0 ? 'text-[#00c4d4]' : 'text-red-500'
                 }`}
               >
                 {formatCurrency(netGain)}
@@ -349,7 +349,7 @@ export function CapitalGainsDisposalsStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
             disabled={!isValid}
           >
             Continue

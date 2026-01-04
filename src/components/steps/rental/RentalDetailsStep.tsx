@@ -279,7 +279,7 @@ export function RentalDetailsStep() {
         </Button>
         <Button
           onClick={goNext}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-[#00e3ec] hover:bg-[#00c4d4]"
           disabled={!isValid}
         >
           Continue to Income

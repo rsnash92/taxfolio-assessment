@@ -227,7 +227,7 @@ export function RentalIncomeStep() {
         </Button>
         <Button
           onClick={goNext}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-[#00e3ec] hover:bg-[#00c4d4]"
         >
           Continue to Expenses
         </Button>

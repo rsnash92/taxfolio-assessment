@@ -28,8 +28,8 @@ export function ImportingStep() {
   if (isLoading) {
     return (
       <div className="text-center py-16">
-        <div className="w-20 h-20 mx-auto mb-6 bg-emerald-100 rounded-full flex items-center justify-center">
-          <Loader2 className="h-10 w-10 text-emerald-500 animate-spin" />
+        <div className="w-20 h-20 mx-auto mb-6 bg-[#ccf5f7] rounded-full flex items-center justify-center">
+          <Loader2 className="h-10 w-10 text-[#00e3ec] animate-spin" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Importing your data...
@@ -45,11 +45,11 @@ export function ImportingStep() {
     <div>
       <div className="text-center py-8">
         <div
-          className={`w-20 h-20 mx-auto mb-6 bg-emerald-100 rounded-full flex items-center justify-center transition-all duration-500 ${
+          className={`w-20 h-20 mx-auto mb-6 bg-[#ccf5f7] rounded-full flex items-center justify-center transition-all duration-500 ${
             showSuccess ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
           }`}
         >
-          <CheckCircle className="h-10 w-10 text-emerald-500" />
+          <CheckCircle className="h-10 w-10 text-[#00e3ec]" />
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -64,8 +64,8 @@ export function ImportingStep() {
       <div className="max-w-md mx-auto mt-8 space-y-4">
         {/* Bank Connected */}
         <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200">
-          <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-            <Building2 className="h-6 w-6 text-emerald-600" />
+          <div className="w-12 h-12 bg-[#ccf5f7] rounded-xl flex items-center justify-center">
+            <Building2 className="h-6 w-6 text-[#00c4d4]" />
           </div>
           <div className="flex-1">
             <p className="font-medium text-gray-900">
@@ -75,7 +75,7 @@ export function ImportingStep() {
               {importData?.accountCount || 1} account{(importData?.accountCount || 1) !== 1 ? 's' : ''} linked
             </p>
           </div>
-          <CheckCircle className="h-5 w-5 text-emerald-500" />
+          <CheckCircle className="h-5 w-5 text-[#00e3ec]" />
         </div>
 
         {/* Transactions */}
@@ -91,7 +91,7 @@ export function ImportingStep() {
               Tax year 2024-25
             </p>
           </div>
-          <CheckCircle className="h-5 w-5 text-emerald-500" />
+          <CheckCircle className="h-5 w-5 text-[#00e3ec]" />
         </div>
       </div>
 

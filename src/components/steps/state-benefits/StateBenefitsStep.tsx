@@ -334,7 +334,7 @@ export function StateBenefitsStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
           >
             Continue
           </Button>

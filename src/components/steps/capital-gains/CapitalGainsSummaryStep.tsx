@@ -80,7 +80,7 @@ export function CapitalGainsSummaryStep() {
             <span className="text-gray-600">
               Total gains ({capitalGains.disposals?.length || 0} disposals)
             </span>
-            <span className="font-medium text-emerald-600">
+            <span className="font-medium text-[#00c4d4]">
               {formatCurrency(totalGains)}
             </span>
           </div>
@@ -95,7 +95,7 @@ export function CapitalGainsSummaryStep() {
             <span
               className={`font-medium ${
                 totalGains - totalLosses >= 0
-                  ? 'text-emerald-600'
+                  ? 'text-[#00c4d4]'
                   : 'text-red-500'
               }`}
             >
@@ -161,7 +161,7 @@ export function CapitalGainsSummaryStep() {
           )}
           <div className="flex justify-between">
             <span className="text-gray-300">Less: Annual Exempt Amount</span>
-            <span className="text-emerald-400">
+            <span className="text-[#33e9f0]">
               -{formatCurrency(Math.min(ANNUAL_EXEMPT_AMOUNT, Math.max(0, netGains)))}
             </span>
           </div>
@@ -174,7 +174,7 @@ export function CapitalGainsSummaryStep() {
         </div>
 
         {taxableGains === 0 && netGains <= ANNUAL_EXEMPT_AMOUNT && (
-          <div className="mt-4 pt-4 border-t border-gray-700 flex items-center gap-2 text-emerald-400">
+          <div className="mt-4 pt-4 border-t border-gray-700 flex items-center gap-2 text-[#33e9f0]">
             <Check className="h-5 w-5" />
             <span className="text-sm">
               No Capital Gains Tax due - gains within annual exempt amount
@@ -214,7 +214,7 @@ export function CapitalGainsSummaryStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
           >
             Continue
           </Button>

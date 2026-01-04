@@ -52,7 +52,7 @@ export function NavigationButtons({
           onClick={handleContinue}
           disabled={!canContinue || loading}
           className={cn(
-            'gap-2 bg-emerald-500 hover:bg-emerald-600',
+            'gap-2 bg-[#00e3ec] hover:bg-[#00c4d4]',
             !canContinue && 'opacity-50 cursor-not-allowed'
           )}
         >

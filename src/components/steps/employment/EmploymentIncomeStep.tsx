@@ -407,7 +407,7 @@ export function EmploymentIncomeStep() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Tax Already Paid</span>
-              <span className="font-medium text-emerald-600">
+              <span className="font-medium text-[#00c4d4]">
                 {formatCurrency(employmentData.taxDeducted || 0)}
               </span>
             </div>
@@ -434,7 +434,7 @@ export function EmploymentIncomeStep() {
             handleUpdate('isComplete', true);
             goToStep('employment-list');
           }}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-[#00e3ec] hover:bg-[#00c4d4]"
           disabled={!employmentData.employerName || !employmentData.payReceived}
         >
           Save & Continue

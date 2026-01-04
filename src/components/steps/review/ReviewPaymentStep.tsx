@@ -66,8 +66,8 @@ export function ReviewPaymentStep() {
   if (data.payment?.status === 'paid') {
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Check className="h-8 w-8 text-emerald-600" />
+        <div className="w-16 h-16 bg-[#ccf5f7] rounded-full flex items-center justify-center mx-auto mb-6">
+          <Check className="h-8 w-8 text-[#00c4d4]" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Payment Complete
@@ -77,7 +77,7 @@ export function ReviewPaymentStep() {
         </p>
         <Button
           onClick={goNext}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-[#00e3ec] hover:bg-[#00c4d4]"
         >
           Review Tax Summary
           <ChevronRight className="h-4 w-4 ml-2" />
@@ -101,7 +101,7 @@ export function ReviewPaymentStep() {
 
       {/* HMRC Badge */}
       <div className="flex items-center gap-2 mb-8">
-        <Award className="h-6 w-6 text-emerald-600" />
+        <Award className="h-6 w-6 text-[#00c4d4]" />
         <span className="text-sm font-medium text-gray-700">
           HMRC Recognised Software
         </span>
@@ -110,7 +110,7 @@ export function ReviewPaymentStep() {
       {/* Progress Steps */}
       <div className="flex items-center justify-between mb-10 max-w-lg">
         <div className="flex flex-col items-center">
-          <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+          <div className="w-8 h-8 bg-[#00e3ec] text-white rounded-full flex items-center justify-center text-sm font-medium">
             1
           </div>
           <span className="text-xs text-gray-600 mt-1">Pay securely</span>
@@ -147,13 +147,13 @@ export function ReviewPaymentStep() {
               className={cn(
                 'relative flex flex-col p-6 rounded-2xl border-2 text-left transition-all',
                 isSelected
-                  ? 'border-emerald-500 bg-emerald-50/50'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]/50'
                   : 'border-gray-200 hover:border-gray-300 bg-white'
               )}
             >
               {/* Popular Badge */}
               {plan.popular && (
-                <span className="absolute -top-3 left-4 bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                <span className="absolute -top-3 left-4 bg-[#00e3ec] text-white text-xs font-semibold px-3 py-1 rounded-full">
                   MOST POPULAR
                 </span>
               )}
@@ -163,7 +163,7 @@ export function ReviewPaymentStep() {
                 className={cn(
                   'absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center',
                   isSelected
-                    ? 'border-emerald-500 bg-emerald-500'
+                    ? 'border-[#00e3ec] bg-[#00e3ec]'
                     : 'border-gray-300'
                 )}
               >
@@ -198,7 +198,7 @@ export function ReviewPaymentStep() {
               <ul className="space-y-2 mb-6">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start gap-2 text-sm">
-                    <Check className="h-5 w-5 text-emerald-500 shrink-0" />
+                    <Check className="h-5 w-5 text-[#00e3ec] shrink-0" />
                     <span className="text-gray-600">{feature}</span>
                   </li>
                 ))}
@@ -210,7 +210,7 @@ export function ReviewPaymentStep() {
                   className={cn(
                     'w-full py-3 rounded-xl text-center font-medium transition-colors',
                     isSelected
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-[#00e3ec] text-white'
                       : 'bg-gray-100 text-gray-700'
                   )}
                 >
@@ -251,7 +251,7 @@ export function ReviewPaymentStep() {
           ) : (
             <button
               onClick={() => setShowDiscountInput(true)}
-              className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700"
+              className="flex items-center gap-2 text-sm text-[#00c4d4] hover:text-[#00a8b0]"
             >
               <Tag className="h-4 w-4" />
               Have a discount code?
@@ -262,14 +262,14 @@ export function ReviewPaymentStep() {
           )}
         </div>
       ) : (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-8">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-emerald-700">
+            <div className="flex items-center gap-2 text-sm text-[#00a8b0]">
               <Tag className="h-4 w-4" />
               <span className="font-medium">
                 Code &quot;{appliedDiscount}&quot; applied!
               </span>
-              <span className="text-emerald-600">
+              <span className="text-[#00c4d4]">
                 You save {formatCurrency(pricing?.discountAmount || 0)}
               </span>
             </div>
@@ -296,7 +296,7 @@ export function ReviewPaymentStep() {
             </span>
           </div>
           {pricing && pricing.discountAmount > 0 && (
-            <div className="flex justify-between text-emerald-600">
+            <div className="flex justify-between text-[#00c4d4]">
               <span>Discount ({appliedDiscount})</span>
               <span>-{formatCurrency(pricing.discountAmount)}</span>
             </div>
@@ -323,7 +323,7 @@ export function ReviewPaymentStep() {
         <Button
           onClick={handlePayment}
           disabled={isProcessing}
-          className="bg-emerald-500 hover:bg-emerald-600 px-8 py-6 text-lg"
+          className="bg-[#00e3ec] hover:bg-[#00c4d4] px-8 py-6 text-lg"
         >
           {isProcessing ? (
             <>

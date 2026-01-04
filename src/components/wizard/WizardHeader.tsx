@@ -33,7 +33,7 @@ export function WizardHeader() {
           href="https://app.taxfolio.io/dashboard"
           className="flex items-center gap-2"
         >
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#00e3ec] rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">TF</span>
           </div>
           <span className="text-xl font-bold text-gray-900">taxfolio</span>
@@ -48,7 +48,7 @@ export function WizardHeader() {
               className={`text-lg font-bold ${
                 (taxCalculation?.totalTaxDue || 0) > 0
                   ? 'text-amber-600'
-                  : 'text-emerald-600'
+                  : 'text-[#00c4d4]'
               }`}
             >
               {formatCurrency(taxCalculation?.totalTaxDue || 0)}
@@ -64,7 +64,7 @@ export function WizardHeader() {
           {/* Tax Year */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">Tax year:</span>
-            <span className="text-sm font-semibold text-emerald-600">
+            <span className="text-sm font-semibold text-[#00c4d4]">
               {taxYear}
             </span>
           </div>

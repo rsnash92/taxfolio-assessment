@@ -192,7 +192,7 @@ export function DividendsStep() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Dividend allowance</span>
-              <span className="text-emerald-600">
+              <span className="text-[#00c4d4]">
                 -{formatCurrency(Math.min(DIVIDEND_ALLOWANCE, totalDividends))}
               </span>
             </div>
@@ -203,7 +203,7 @@ export function DividendsStep() {
           </div>
 
           {taxableDividends === 0 && (
-            <p className="text-xs text-emerald-600 mt-3">
+            <p className="text-xs text-[#00c4d4] mt-3">
               Your dividends are within the tax-free allowance - no tax due on
               this income.
             </p>
@@ -221,7 +221,7 @@ export function DividendsStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
           >
             Continue
           </Button>

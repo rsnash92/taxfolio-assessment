@@ -158,7 +158,7 @@ export function AccountsStep() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#00e3ec] mx-auto mb-4" />
           <p className="text-gray-600">Loading accounts...</p>
         </div>
       </div>
@@ -199,14 +199,14 @@ export function AccountsStep() {
       </div>
 
       {/* Bank Card */}
-      <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-#00e3ec to-#00c4d4 rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
             <Building2 className="h-6 w-6" />
           </div>
           <div>
             <h2 className="text-xl font-semibold">{bankName}</h2>
-            <p className="text-emerald-100 text-sm">
+            <p className="text-[#ccf5f7] text-sm">
               Connected successfully
             </p>
           </div>
@@ -220,7 +220,7 @@ export function AccountsStep() {
           <h3 className="font-medium text-gray-900">Select Accounts to Import</h3>
           <button
             onClick={toggleAll}
-            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+            className="text-sm text-[#00c4d4] hover:text-[#00a8b0] font-medium"
           >
             {selectedAccounts.size === accounts.length ? 'Deselect all' : 'Select all'}
           </button>
@@ -234,19 +234,19 @@ export function AccountsStep() {
                 onClick={() => toggleAccount(account.account_id)}
                 className={cn(
                   'w-full p-4 flex items-center gap-4 text-left transition-colors',
-                  isSelected ? 'bg-emerald-50' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-[#e6fafb]' : 'hover:bg-gray-50'
                 )}
               >
                 <div
                   className={cn(
                     'w-10 h-10 rounded-lg flex items-center justify-center',
-                    isSelected ? 'bg-emerald-100' : 'bg-gray-100'
+                    isSelected ? 'bg-[#ccf5f7]' : 'bg-gray-100'
                   )}
                 >
                   <CreditCard
                     className={cn(
                       'h-5 w-5',
-                      isSelected ? 'text-emerald-600' : 'text-gray-500'
+                      isSelected ? 'text-[#00c4d4]' : 'text-gray-500'
                     )}
                   />
                 </div>
@@ -254,7 +254,7 @@ export function AccountsStep() {
                   <p
                     className={cn(
                       'font-medium',
-                      isSelected ? 'text-emerald-900' : 'text-gray-900'
+                      isSelected ? 'text-[#004a4e]' : 'text-gray-900'
                     )}
                   >
                     {account.display_name}
@@ -266,7 +266,7 @@ export function AccountsStep() {
                   </p>
                 </div>
                 {isSelected ? (
-                  <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                  <CheckCircle2 className="h-6 w-6 text-[#00e3ec]" />
                 ) : (
                   <Circle className="h-6 w-6 text-gray-300" />
                 )}
@@ -294,8 +294,8 @@ export function AccountsStep() {
           className={cn(
             'w-full h-14 text-lg font-medium',
             isImporting
-              ? 'bg-emerald-100 text-emerald-700'
-              : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+              ? 'bg-[#ccf5f7] text-[#00a8b0]'
+              : 'bg-[#00e3ec] hover:bg-[#00c4d4] text-white'
           )}
         >
           {isImporting ? (

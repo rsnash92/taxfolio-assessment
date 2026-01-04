@@ -38,8 +38,8 @@ export function ReviewConfirmationStep() {
   return (
     <div className="max-w-2xl mx-auto text-center">
       {/* Success Icon */}
-      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+      <div className="w-20 h-20 bg-[#ccf5f7] rounded-full flex items-center justify-center mx-auto mb-6">
+        <CheckCircle2 className="h-10 w-10 text-[#00c4d4]" />
       </div>
 
       {/* Header */}
@@ -51,21 +51,21 @@ export function ReviewConfirmationStep() {
       </p>
 
       {/* Reference Number */}
-      <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-6 mb-8">
-        <p className="text-sm text-emerald-600 mb-2">HMRC Reference Number</p>
+      <div className="bg-[#e6fafb] border-2 border-[#99ebef] rounded-2xl p-6 mb-8">
+        <p className="text-sm text-[#00c4d4] mb-2">HMRC Reference Number</p>
         <div className="flex items-center justify-center gap-3">
-          <span className="text-2xl font-mono font-bold text-emerald-700">
+          <span className="text-2xl font-mono font-bold text-[#00a8b0]">
             {data.submission?.hmrcReferenceNumber || 'XXXXXXXXXXXXXX'}
           </span>
           <button
             onClick={copyReference}
-            className="p-2 hover:bg-emerald-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-[#ccf5f7] rounded-lg transition-colors"
             title="Copy reference"
           >
-            <Copy className="h-5 w-5 text-emerald-600" />
+            <Copy className="h-5 w-5 text-[#00c4d4]" />
           </button>
         </div>
-        <p className="text-xs text-emerald-600 mt-2">
+        <p className="text-xs text-[#00c4d4] mt-2">
           Keep this reference safe for your records
         </p>
       </div>
@@ -128,7 +128,7 @@ export function ReviewConfirmationStep() {
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button className="bg-emerald-500 hover:bg-emerald-600 gap-2">
+        <Button className="bg-[#00e3ec] hover:bg-[#00c4d4] gap-2">
           <Download className="h-4 w-4" />
           Download Tax Return (PDF)
         </Button>
@@ -149,7 +149,7 @@ export function ReviewConfirmationStep() {
       <div className="mt-8">
         <a
           href="/dashboard"
-          className="text-sm text-emerald-600 hover:text-emerald-700"
+          className="text-sm text-[#00c4d4] hover:text-[#00a8b0]"
         >
           Return to Dashboard →
         </a>

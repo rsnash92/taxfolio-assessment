@@ -75,7 +75,7 @@ export function SelfEmploymentSummaryStep() {
         className={cn(
           'rounded-xl p-6 mb-6 text-white',
           isProfit
-            ? 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+            ? 'bg-gradient-to-br from-#00e3ec to-#00c4d4'
             : isLoss
             ? 'bg-gradient-to-br from-red-500 to-red-600'
             : 'bg-gradient-to-br from-gray-500 to-gray-600'
@@ -122,9 +122,9 @@ export function SelfEmploymentSummaryStep() {
             icon={PoundSterling}
             label="Total Income"
             amount={income}
-            iconBg="bg-emerald-100"
-            iconColor="text-emerald-600"
-            amountColor="text-emerald-600"
+            iconBg="bg-[#ccf5f7]"
+            iconColor="text-[#00c4d4]"
+            amountColor="text-[#00c4d4]"
           />
 
           {/* Expenses */}
@@ -177,13 +177,13 @@ export function SelfEmploymentSummaryStep() {
           {/* Net Profit */}
           <div className={cn(
             'p-4',
-            isProfit ? 'bg-emerald-50' : isLoss ? 'bg-red-50' : 'bg-gray-50'
+            isProfit ? 'bg-[#e6fafb]' : isLoss ? 'bg-red-50' : 'bg-gray-50'
           )}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Briefcase className={cn(
                   'h-5 w-5',
-                  isProfit ? 'text-emerald-600' : isLoss ? 'text-red-600' : 'text-gray-600'
+                  isProfit ? 'text-[#00c4d4]' : isLoss ? 'text-red-600' : 'text-gray-600'
                 )} />
                 <span className="font-medium text-gray-900">
                   Net {isProfit ? 'Profit' : isLoss ? 'Loss' : 'Result'}
@@ -191,7 +191,7 @@ export function SelfEmploymentSummaryStep() {
               </div>
               <span className={cn(
                 'text-lg font-bold',
-                isProfit ? 'text-emerald-600' : isLoss ? 'text-red-600' : 'text-gray-600'
+                isProfit ? 'text-[#00c4d4]' : isLoss ? 'text-red-600' : 'text-gray-600'
               )}>
                 {formatCurrency(Math.abs(profit))}
               </span>
@@ -234,14 +234,14 @@ export function SelfEmploymentSummaryStep() {
       </div>
 
       {/* Completion Status */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+          <CheckCircle2 className="h-6 w-6 text-[#00e3ec]" />
           <div>
-            <p className="font-medium text-emerald-900">
+            <p className="font-medium text-[#004a4e]">
               Self-employment section complete
             </p>
-            <p className="text-sm text-emerald-700">
+            <p className="text-sm text-[#00a8b0]">
               This business is ready for your tax return
             </p>
           </div>

@@ -143,7 +143,7 @@ export function SelfEmploymentListStep() {
                     className={cn(
                       'w-12 h-12 rounded-xl flex items-center justify-center',
                       status === 'complete'
-                        ? 'bg-emerald-100'
+                        ? 'bg-[#ccf5f7]'
                         : status === 'in_progress'
                           ? 'bg-amber-100'
                           : 'bg-gray-100'
@@ -153,7 +153,7 @@ export function SelfEmploymentListStep() {
                       className={cn(
                         'h-6 w-6',
                         status === 'complete'
-                          ? 'text-emerald-600'
+                          ? 'text-[#00c4d4]'
                           : status === 'in_progress'
                             ? 'text-amber-600'
                             : 'text-gray-400'
@@ -168,7 +168,7 @@ export function SelfEmploymentListStep() {
                         {businessName}
                       </h3>
                       {status === 'complete' && (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 text-[#00e3ec] flex-shrink-0" />
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -176,7 +176,7 @@ export function SelfEmploymentListStep() {
                         className={cn(
                           'text-xs px-2 py-0.5 rounded-full',
                           status === 'complete'
-                            ? 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-[#ccf5f7] text-[#00a8b0]'
                             : status === 'in_progress'
                               ? 'bg-amber-100 text-amber-700'
                               : 'bg-gray-100 text-gray-600'
@@ -237,7 +237,7 @@ export function SelfEmploymentListStep() {
       {/* Add Business Button */}
       <button
         onClick={handleAddBusiness}
-        className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
+        className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-#33e9f0 hover:text-[#00c4d4] hover:bg-[#e6fafb] transition-colors flex items-center justify-center gap-2"
       >
         <Plus className="h-5 w-5" />
         <span className="font-medium">Add Self-Employed Business</span>
@@ -296,14 +296,14 @@ export function SelfEmploymentListStep() {
       )}
 
       {allComplete && (
-        <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+        <div className="mt-6 bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+            <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
             <div>
-              <p className="font-medium text-emerald-900">
+              <p className="font-medium text-[#004a4e]">
                 All businesses complete!
               </p>
-              <p className="text-sm text-emerald-700">
+              <p className="text-sm text-[#00a8b0]">
                 You can continue to the next section or add more businesses
               </p>
             </div>

@@ -48,7 +48,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            <span className="text-emerald-500">Tax</span>Folio
+            <span className="text-[#00e3ec]">Tax</span>Folio
           </h1>
           <p className="text-gray-600 mt-2">Self Assessment</p>
         </div>
@@ -88,7 +88,7 @@ export default function LoginPage() {
                 <Label htmlFor="password">Password</Label>
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-emerald-600 hover:underline"
+                  className="text-sm text-[#00c4d4] hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -106,7 +106,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+              className="w-full h-11 bg-[#00e3ec] hover:bg-[#00c4d4] text-white font-medium"
               disabled={loading}
             >
               {loading ? (
@@ -122,7 +122,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center text-sm text-gray-500">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-emerald-600 hover:underline font-medium">
+            <Link href="/signup" className="text-[#00c4d4] hover:underline font-medium">
               Create one
             </Link>
           </div>

@@ -56,21 +56,21 @@ export function ReviewSubmitStep() {
       {/* Progress Steps */}
       <div className="flex items-center justify-between mb-10 max-w-lg mx-auto">
         <div className="flex flex-col items-center">
-          <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#00e3ec] text-white rounded-full flex items-center justify-center">
             <CheckCircle2 className="h-5 w-5" />
           </div>
-          <span className="text-xs text-emerald-600 mt-1">Paid</span>
+          <span className="text-xs text-[#00c4d4] mt-1">Paid</span>
         </div>
-        <div className="flex-1 h-px bg-emerald-500 mx-2" />
+        <div className="flex-1 h-px bg-[#00e3ec] mx-2" />
         <div className="flex flex-col items-center">
-          <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#00e3ec] text-white rounded-full flex items-center justify-center">
             <CheckCircle2 className="h-5 w-5" />
           </div>
-          <span className="text-xs text-emerald-600 mt-1">Reviewed</span>
+          <span className="text-xs text-[#00c4d4] mt-1">Reviewed</span>
         </div>
-        <div className="flex-1 h-px bg-emerald-500 mx-2" />
+        <div className="flex-1 h-px bg-[#00e3ec] mx-2" />
         <div className="flex flex-col items-center">
-          <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+          <div className="w-8 h-8 bg-[#00e3ec] text-white rounded-full flex items-center justify-center text-sm font-medium">
             3
           </div>
           <span className="text-xs text-gray-600 mt-1">Submit to HMRC</span>
@@ -79,8 +79,8 @@ export function ReviewSubmitStep() {
 
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileCheck className="h-8 w-8 text-emerald-600" />
+        <div className="w-16 h-16 bg-[#ccf5f7] rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileCheck className="h-8 w-8 text-[#00c4d4]" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Ready to Submit
@@ -154,7 +154,7 @@ export function ReviewSubmitStep() {
             type="checkbox"
             checked={declarationAccepted}
             onChange={(e) => setDeclarationAccepted(e.target.checked)}
-            className="w-5 h-5 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500 mt-0.5"
+            className="w-5 h-5 rounded border-gray-300 text-[#00e3ec] focus:ring-#00e3ec mt-0.5"
           />
           <span className="text-sm text-gray-900">
             I confirm that I have read and agree to the above declaration, and
@@ -177,7 +177,7 @@ export function ReviewSubmitStep() {
         className={cn(
           'w-full py-6 text-lg font-medium',
           declarationAccepted
-            ? 'bg-emerald-500 hover:bg-emerald-600'
+            ? 'bg-[#00e3ec] hover:bg-[#00c4d4]'
             : 'bg-gray-300 cursor-not-allowed'
         )}
       >

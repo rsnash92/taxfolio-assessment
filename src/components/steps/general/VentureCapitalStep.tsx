@@ -84,7 +84,7 @@ export function VentureCapitalStep() {
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
+                <span className="text-sm font-semibold text-[#00c4d4] bg-[#ccf5f7] px-2 py-0.5 rounded">
                   30% relief
                 </span>
               </div>
@@ -122,7 +122,7 @@ export function VentureCapitalStep() {
 
           {form.eisInvestments > 0 && (
             <>
-              <div className="text-sm text-emerald-600 mb-3">
+              <div className="text-sm text-[#00c4d4] mb-3">
                 Tax relief: {formatCurrency(eisRelief)}
               </div>
 
@@ -133,7 +133,7 @@ export function VentureCapitalStep() {
                   onChange={(e) =>
                     setForm({ ...form, eisCarryBack: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-gray-300 text-emerald-500"
+                  className="w-4 h-4 rounded border-gray-300 text-[#00e3ec]"
                 />
                 <span className="text-sm text-gray-700">
                   Carry back to previous year (2023/24)
@@ -197,7 +197,7 @@ export function VentureCapitalStep() {
                   onChange={(e) =>
                     setForm({ ...form, seisCarryBack: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-gray-300 text-emerald-500"
+                  className="w-4 h-4 rounded border-gray-300 text-[#00e3ec]"
                 />
                 <span className="text-sm text-gray-700">
                   Carry back to previous year (2023/24)
@@ -258,17 +258,17 @@ export function VentureCapitalStep() {
 
       {/* Total Relief Summary */}
       {totalRelief > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-emerald-600">
+              <p className="text-sm text-[#00c4d4]">
                 Total venture capital tax relief
               </p>
-              <p className="text-2xl font-bold text-emerald-700">
+              <p className="text-2xl font-bold text-[#00a8b0]">
                 {formatCurrency(totalRelief)}
               </p>
             </div>
-            <TrendingUp className="h-8 w-8 text-emerald-500" />
+            <TrendingUp className="h-8 w-8 text-[#00e3ec]" />
           </div>
         </div>
       )}

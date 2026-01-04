@@ -148,7 +148,7 @@ export function SelfEmploymentBasicsStep() {
             <Button
               onClick={() => setStep('changed')}
               disabled={!isDetailsValid}
-              className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 h-auto rounded-full text-white"
+              className="bg-[#00e3ec] hover:bg-[#00c4d4] px-6 py-2 h-auto rounded-full text-white"
             >
               Next
               <Check className="h-4 w-4 ml-2" />
@@ -189,7 +189,7 @@ export function SelfEmploymentBasicsStep() {
               className={cn(
                 'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
                 businessData.detailsChanged === true
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  ? 'border-[#00e3ec] bg-[#e6fafb] text-[#00a8b0]'
                   : 'border-gray-200 text-gray-700 hover:border-gray-300'
               )}
             >
@@ -200,7 +200,7 @@ export function SelfEmploymentBasicsStep() {
               className={cn(
                 'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
                 businessData.detailsChanged === false
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  ? 'border-[#00e3ec] bg-[#e6fafb] text-[#00a8b0]'
                   : 'border-gray-200 text-gray-700 hover:border-gray-300'
               )}
             >
@@ -221,7 +221,7 @@ export function SelfEmploymentBasicsStep() {
             <Button
               onClick={() => setStep('industry')}
               disabled={!isChangedAnswered}
-              className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 h-auto rounded-full text-white"
+              className="bg-[#00e3ec] hover:bg-[#00c4d4] px-6 py-2 h-auto rounded-full text-white"
             >
               Next
               <Check className="h-4 w-4 ml-2" />
@@ -271,16 +271,16 @@ export function SelfEmploymentBasicsStep() {
                 className={cn(
                   'w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-colors text-left',
                   isSelected
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    ? 'border-[#00e3ec] bg-[#e6fafb] text-[#00a8b0]'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
                 )}
               >
-                <Icon className={cn('h-5 w-5', isSelected ? 'text-emerald-600' : 'text-gray-400')} />
+                <Icon className={cn('h-5 w-5', isSelected ? 'text-[#00c4d4]' : 'text-gray-400')} />
                 <span className="flex-1 font-medium">{industry.label}</span>
                 <div
                   className={cn(
                     'w-5 h-5 rounded-full border-2 flex items-center justify-center',
-                    isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'
+                    isSelected ? 'border-[#00e3ec] bg-[#00e3ec]' : 'border-gray-300'
                   )}
                 >
                   {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
@@ -303,7 +303,7 @@ export function SelfEmploymentBasicsStep() {
           <Button
             onClick={goNext}
             disabled={!isIndustrySelected}
-            className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 h-auto rounded-full text-white"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4] px-6 py-2 h-auto rounded-full text-white"
           >
             Next
             <Check className="h-4 w-4 ml-2" />

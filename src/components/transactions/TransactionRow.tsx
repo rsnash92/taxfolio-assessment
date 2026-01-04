@@ -85,7 +85,7 @@ export function TransactionRow({
             isPersonal
               ? 'text-gray-400'
               : transaction.type === 'income'
-                ? 'text-emerald-600'
+                ? 'text-[#00c4d4]'
                 : 'text-gray-900'
           )}
         >
@@ -102,8 +102,8 @@ export function TransactionRow({
             className={cn(
               'p-1.5 rounded-lg transition-colors',
               transaction.status === 'business'
-                ? 'bg-emerald-100 text-emerald-600'
-                : 'hover:bg-gray-100 text-gray-400 hover:text-emerald-600'
+                ? 'bg-[#ccf5f7] text-[#00c4d4]'
+                : 'hover:bg-gray-100 text-gray-400 hover:text-[#00c4d4]'
             )}
             title="Mark as Business"
           >

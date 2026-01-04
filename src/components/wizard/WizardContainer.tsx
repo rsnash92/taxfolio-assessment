@@ -86,7 +86,7 @@ export function WizardContainer() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#00e3ec] mx-auto mb-4" />
           <p className="text-gray-600">Loading your tax return...</p>
         </div>
       </div>
@@ -273,7 +273,7 @@ function PlaceholderStep({ title }: { title: string }) {
         {canGoNext && (
           <button
             onClick={goNext}
-            className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+            className="px-6 py-2 bg-[#00e3ec] text-white rounded-lg hover:bg-[#00c4d4]"
           >
             Continue
           </button>

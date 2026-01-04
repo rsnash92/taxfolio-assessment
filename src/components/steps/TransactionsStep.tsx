@@ -351,9 +351,9 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'business' ? 'all' : 'business')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-emerald-300',
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-#66eff4',
             filter === 'business'
-              ? 'border-emerald-500 ring-1 ring-emerald-500/30'
+              ? 'border-[#00e3ec] ring-1 ring-#00e3ec/30'
               : 'border-gray-200'
           )}
         >
@@ -361,10 +361,10 @@ export function TransactionsStep() {
             <div
               className={cn(
                 'w-10 h-10 rounded-lg flex items-center justify-center',
-                filter === 'business' ? 'bg-emerald-100' : 'bg-gray-100'
+                filter === 'business' ? 'bg-[#ccf5f7]' : 'bg-gray-100'
               )}
             >
-              <Briefcase className="h-5 w-5 text-emerald-600" />
+              <Briefcase className="h-5 w-5 text-[#00c4d4]" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{stats.business}</p>
@@ -450,7 +450,7 @@ export function TransactionsStep() {
             size="sm"
             variant="outline"
             onClick={() => handleBulkAction('business')}
-            className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+            className="text-[#00c4d4] border-[#99ebef] hover:bg-[#e6fafb]"
           >
             <CheckCircle2 className="h-4 w-4 mr-1" />
             Business
@@ -561,7 +561,7 @@ export function TransactionsStep() {
                       className={cn(
                         'w-8 h-8 rounded-md text-sm font-medium transition-colors',
                         currentPage === pageNum
-                          ? 'bg-emerald-500 text-white'
+                          ? 'bg-[#00e3ec] text-white'
                           : 'text-gray-600 hover:bg-gray-100'
                       )}
                     >

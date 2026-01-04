@@ -115,8 +115,8 @@ export function IncomeSourcesStep() {
       {/* Add Income Source Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="w-full mb-8 p-4 border-2 border-dashed border-emerald-300 rounded-xl
-                   text-emerald-600 font-medium hover:border-emerald-500 hover:bg-emerald-50
+        className="w-full mb-8 p-4 border-2 border-dashed border-#66eff4 rounded-xl
+                   text-[#00c4d4] font-medium hover:border-[#00e3ec] hover:bg-[#e6fafb]
                    transition-colors flex items-center justify-center gap-2"
       >
         <Plus className="h-5 w-5" />
@@ -140,8 +140,8 @@ export function IncomeSourcesStep() {
                   key={source.id}
                   className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl"
                 >
-                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-emerald-600" />
+                  <div className="w-10 h-10 bg-[#ccf5f7] rounded-lg flex items-center justify-center">
+                    <Icon className="h-5 w-5 text-[#00c4d4]" />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{source.label}</p>
@@ -205,7 +205,7 @@ export function IncomeSourcesStep() {
                     'w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
                     isAdded
                       ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-                      : 'border-gray-200 hover:border-emerald-500 hover:bg-emerald-50'
+                      : 'border-gray-200 hover:border-[#00e3ec] hover:bg-[#e6fafb]'
                   )}
                 >
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">

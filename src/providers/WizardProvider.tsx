@@ -25,6 +25,11 @@ import {
   getPreviousStep,
 } from '@/lib/wizard/steps';
 import { calculateTaxLiability } from '@/lib/wizard/calculations';
+import {
+  fetchIntroData,
+  applyIntroDataToWizard,
+  hasIntroData,
+} from '@/lib/wizard/intro-data';
 
 const initialData: WizardData = {
   sessionId: null,
@@ -108,11 +113,25 @@ export function WizardProvider({
       if (savedData) {
         try {
           loadedData = { ...initialData, ...JSON.parse(savedData) };
-          setData(loadedData);
         } catch {
           // Use initial data if parse fails
         }
       }
+
+      // Fetch intro data if user is authenticated and we don't already have it
+      if (userId && !hasIntroData(loadedData)) {
+        try {
+          const introResult = await fetchIntroData(userId);
+          if (introResult.success && introResult.data) {
+            console.log('Applying intro data to wizard:', introResult.data);
+            loadedData = applyIntroDataToWizard(introResult.data, loadedData) as WizardData;
+          }
+        } catch (error) {
+          console.warn('Failed to fetch intro data:', error);
+        }
+      }
+
+      setData(loadedData);
 
       if (savedStep) {
         setCurrentStep(savedStep as StepId);

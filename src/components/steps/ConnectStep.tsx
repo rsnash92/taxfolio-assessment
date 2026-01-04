@@ -145,7 +145,7 @@ export function ConnectStep() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#00e3ec] mx-auto mb-4" />
           <p className="text-gray-600">Loading connected accounts...</p>
         </div>
       </div>
@@ -173,14 +173,14 @@ export function ConnectStep() {
         )}
 
         {/* Connected Bank Card */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 mb-4 text-white">
+        <div className="bg-gradient-to-br from-#00e3ec to-#00c4d4 rounded-xl p-6 mb-4 text-white">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
               <Building2 className="h-6 w-6" />
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-semibold">{bankName}</h2>
-              <p className="text-emerald-100 text-sm">
+              <p className="text-[#ccf5f7] text-sm">
                 {connectedAccounts.length} account
                 {connectedAccounts.length !== 1 ? 's' : ''} connected
               </p>
@@ -195,7 +195,7 @@ export function ConnectStep() {
             <h3 className="font-medium text-gray-900">Select Accounts to Import</h3>
             <button
               onClick={toggleAll}
-              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+              className="text-sm text-[#00c4d4] hover:text-[#00a8b0] font-medium"
             >
               {selectedAccounts.size === connectedAccounts.length ? 'Deselect all' : 'Select all'}
             </button>
@@ -209,19 +209,19 @@ export function ConnectStep() {
                   onClick={() => toggleAccount(account.account_id)}
                   className={cn(
                     'w-full p-4 flex items-center gap-4 text-left transition-colors',
-                    isSelected ? 'bg-emerald-50' : 'hover:bg-gray-50'
+                    isSelected ? 'bg-[#e6fafb]' : 'hover:bg-gray-50'
                   )}
                 >
                   <div
                     className={cn(
                       'w-10 h-10 rounded-lg flex items-center justify-center',
-                      isSelected ? 'bg-emerald-100' : 'bg-gray-100'
+                      isSelected ? 'bg-[#ccf5f7]' : 'bg-gray-100'
                     )}
                   >
                     <CreditCard
                       className={cn(
                         'h-5 w-5',
-                        isSelected ? 'text-emerald-600' : 'text-gray-500'
+                        isSelected ? 'text-[#00c4d4]' : 'text-gray-500'
                       )}
                     />
                   </div>
@@ -229,7 +229,7 @@ export function ConnectStep() {
                     <p
                       className={cn(
                         'font-medium',
-                        isSelected ? 'text-emerald-900' : 'text-gray-900'
+                        isSelected ? 'text-[#004a4e]' : 'text-gray-900'
                       )}
                     >
                       {account.display_name}
@@ -241,7 +241,7 @@ export function ConnectStep() {
                     </p>
                   </div>
                   {isSelected ? (
-                    <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                    <CheckCircle2 className="h-6 w-6 text-[#00e3ec]" />
                   ) : (
                     <Circle className="h-6 w-6 text-gray-300" />
                   )}
@@ -255,7 +255,7 @@ export function ConnectStep() {
         <Button
           onClick={handleGoToAccounts}
           disabled={selectedAccounts.size === 0}
-          className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white mb-4"
+          className="w-full h-12 bg-[#00e3ec] hover:bg-[#00c4d4] text-white mb-4"
         >
           <span>
             Import from {selectedAccounts.size} Account
@@ -304,14 +304,14 @@ export function ConnectStep() {
                 className={cn(
                   'w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
                   isSelected
-                    ? 'border-emerald-500 bg-emerald-50'
+                    ? 'border-[#00e3ec] bg-[#e6fafb]'
                     : 'border-gray-200 hover:border-gray-300 bg-white'
                 )}
               >
                 <div
                   className={cn(
                     'w-12 h-12 rounded-xl flex items-center justify-center',
-                    isSelected ? 'bg-emerald-500' : 'bg-gray-100'
+                    isSelected ? 'bg-[#00e3ec]' : 'bg-gray-100'
                   )}
                 >
                   <Icon
@@ -328,11 +328,11 @@ export function ConnectStep() {
                 <div
                   className={cn(
                     'w-6 h-6 rounded-full border-2 flex items-center justify-center',
-                    isSelected ? 'border-emerald-500' : 'border-gray-300'
+                    isSelected ? 'border-[#00e3ec]' : 'border-gray-300'
                   )}
                 >
                   {isSelected && (
-                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <div className="w-3 h-3 rounded-full bg-[#00e3ec]" />
                   )}
                 </div>
               </button>
@@ -393,7 +393,7 @@ export function ConnectStep() {
               className={cn(
                 'w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
                 isSelected
-                  ? 'border-emerald-500 bg-emerald-50'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
                   : 'border-gray-200 hover:border-gray-300 bg-white',
                 isConnecting && 'opacity-50 cursor-not-allowed'
               )}
@@ -401,7 +401,7 @@ export function ConnectStep() {
               <div
                 className={cn(
                   'w-12 h-12 rounded-xl flex items-center justify-center',
-                  isSelected ? 'bg-emerald-500' : 'bg-gray-100'
+                  isSelected ? 'bg-[#00e3ec]' : 'bg-gray-100'
                 )}
               >
                 <Icon
@@ -415,7 +415,7 @@ export function ConnectStep() {
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-gray-900">{option.label}</p>
                   {'recommended' in option && option.recommended && (
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
+                    <span className="px-2 py-0.5 bg-[#ccf5f7] text-[#00a8b0] text-xs font-medium rounded-full">
                       Recommended
                     </span>
                   )}
@@ -425,11 +425,11 @@ export function ConnectStep() {
               <div
                 className={cn(
                   'w-6 h-6 rounded-full border-2 flex items-center justify-center',
-                  isSelected ? 'border-emerald-500' : 'border-gray-300'
+                  isSelected ? 'border-[#00e3ec]' : 'border-gray-300'
                 )}
               >
                 {isSelected && (
-                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                  <div className="w-3 h-3 rounded-full bg-[#00e3ec]" />
                 )}
               </div>
             </button>
@@ -451,7 +451,7 @@ export function ConnectStep() {
       {/* Connecting State */}
       {isConnecting && (
         <div className="flex items-center justify-center gap-3 py-4 mb-8">
-          <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+          <Loader2 className="h-5 w-5 animate-spin text-[#00e3ec]" />
           <span className="text-gray-600">Connecting to your bank...</span>
         </div>
       )}

@@ -137,7 +137,7 @@ export function PensionContributionsStep() {
             onChange={(e) =>
               setForm({ ...form, carryForwardUsed: e.target.checked })
             }
-            className="w-5 h-5 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+            className="w-5 h-5 rounded border-gray-300 text-[#00e3ec] focus:ring-#00e3ec"
           />
           <div>
             <p className="font-medium text-gray-900">Use carry forward</p>
@@ -175,11 +175,11 @@ export function PensionContributionsStep() {
 
       {/* Tax Relief Summary */}
       {totalContributions > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-          <p className="text-sm font-medium text-emerald-800 mb-2">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
+          <p className="text-sm font-medium text-[#006b70] mb-2">
             Estimated tax relief:
           </p>
-          <div className="space-y-1 text-sm text-emerald-700">
+          <div className="space-y-1 text-sm text-[#00a8b0]">
             <div className="flex justify-between">
               <span>Total contributions:</span>
               <span>{formatCurrency(totalContributions)}</span>

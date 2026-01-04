@@ -215,7 +215,7 @@ export function RentalListStep() {
                               <span
                                 className={`font-medium ${
                                   summary.profit >= 0
-                                    ? 'text-emerald-600'
+                                    ? 'text-[#00c4d4]'
                                     : 'text-red-600'
                                 }`}
                               >
@@ -284,7 +284,7 @@ export function RentalListStep() {
               <p className="text-sm text-gray-500 mb-1">Net Profit</p>
               <p
                 className={`text-xl font-bold ${
-                  totals.profit >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  totals.profit >= 0 ? 'text-[#00c4d4]' : 'text-red-600'
                 }`}
               >
                 {formatCurrency(totals.profit)}
@@ -304,7 +304,7 @@ export function RentalListStep() {
         <div className="ml-auto">
           <Button
             onClick={goNext}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
             disabled={rentalProperties.length === 0}
           >
             {rentalProperties.length === 0 ? 'Add a Property to Continue' : 'Continue'}

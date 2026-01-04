@@ -185,7 +185,7 @@ export function EmploymentListStep() {
                             </div>
                             <div>
                               <span className="text-gray-500">Tax paid: </span>
-                              <span className="font-medium text-emerald-600">
+                              <span className="font-medium text-[#00c4d4]">
                                 {formatCurrency(summary.tax)}
                               </span>
                             </div>
@@ -243,7 +243,7 @@ export function EmploymentListStep() {
             </div>
             <div>
               <p className="text-sm text-gray-500 mb-1">Total Tax Paid</p>
-              <p className="text-xl font-bold text-emerald-600">
+              <p className="text-xl font-bold text-[#00c4d4]">
                 {formatCurrency(totals.totalTax)}
               </p>
             </div>
@@ -261,7 +261,7 @@ export function EmploymentListStep() {
         <div className="ml-auto">
           <Button
             onClick={goNext}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
             disabled={employments.length === 0}
           >
             {employments.length === 0 ? 'Add an Employer to Continue' : 'Continue'}

@@ -699,6 +699,16 @@ export interface WizardData {
 
   // Submission
   submission: SubmissionData | null;
+
+  // Intro wizard data (pre-filled from intro wizard)
+  introData?: {
+    intent: string | null;
+    incomeSource: string | null;
+    filingExperience: string | null;
+    situation: string | null;
+    experienceLevel: 'beginner' | 'intermediate' | 'expert';
+    suggestedSources: string[];
+  };
 }
 
 export interface WizardContextType {

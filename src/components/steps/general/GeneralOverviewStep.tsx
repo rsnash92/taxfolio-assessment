@@ -90,13 +90,13 @@ export function GeneralOverviewStep() {
               className={cn(
                 'relative flex flex-col items-start p-5 rounded-xl border-2 transition-all text-left',
                 isSelected
-                  ? 'border-emerald-500 bg-emerald-50'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
                   : 'border-gray-200 hover:border-gray-300 bg-white'
               )}
             >
               {/* Checkmark */}
               {isSelected && (
-                <div className="absolute top-3 right-3 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                <div className="absolute top-3 right-3 w-6 h-6 bg-[#00e3ec] rounded-full flex items-center justify-center">
                   <Check className="h-4 w-4 text-white" />
                 </div>
               )}
@@ -105,7 +105,7 @@ export function GeneralOverviewStep() {
               <Icon
                 className={cn(
                   'h-8 w-8 mb-3',
-                  isSelected ? 'text-emerald-600' : 'text-gray-400'
+                  isSelected ? 'text-[#00c4d4]' : 'text-gray-400'
                 )}
               />
 
@@ -113,7 +113,7 @@ export function GeneralOverviewStep() {
               <p
                 className={cn(
                   'font-medium',
-                  isSelected ? 'text-emerald-900' : 'text-gray-900'
+                  isSelected ? 'text-[#004a4e]' : 'text-gray-900'
                 )}
               >
                 {relief.label}
@@ -125,8 +125,8 @@ export function GeneralOverviewStep() {
 
       {/* Selected Summary */}
       {selected.length > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-emerald-800">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
+          <p className="text-sm text-[#006b70]">
             <strong>{selected.length}</strong> relief
             {selected.length !== 1 ? 's' : ''} selected. You&apos;ll answer a
             few questions about each.

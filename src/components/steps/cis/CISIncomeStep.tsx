@@ -275,8 +275,8 @@ export function CISIncomeStep() {
 
       {/* Totals Summary */}
       {totalGross > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6">
-          <h3 className="font-semibold text-emerald-900 mb-4">CIS Summary</h3>
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-6">
+          <h3 className="font-semibold text-[#004a4e] mb-4">CIS Summary</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Total Gross CIS Income</span>
@@ -286,11 +286,11 @@ export function CISIncomeStep() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Total CIS Tax Deducted</span>
-              <span className="font-semibold text-emerald-600">
+              <span className="font-semibold text-[#00c4d4]">
                 {formatCurrency(totalDeductions)}
               </span>
             </div>
-            <div className="flex justify-between pt-2 border-t border-emerald-200">
+            <div className="flex justify-between pt-2 border-t border-[#99ebef]">
               <span className="font-medium text-gray-900">Net Received</span>
               <span className="font-bold text-gray-900">
                 {formatCurrency(totalNet)}
@@ -298,7 +298,7 @@ export function CISIncomeStep() {
             </div>
           </div>
 
-          <p className="text-xs text-emerald-700 mt-4">
+          <p className="text-xs text-[#00a8b0] mt-4">
             The {formatCurrency(totalDeductions)} CIS tax you&apos;ve already paid
             will be offset against your final tax bill.
           </p>
@@ -315,7 +315,7 @@ export function CISIncomeStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
             disabled={!isValid}
           >
             Continue
