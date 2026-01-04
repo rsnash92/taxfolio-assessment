@@ -148,7 +148,7 @@ export function SelfEmploymentBasicsStep() {
             <Button
               onClick={() => setStep('changed')}
               disabled={!isDetailsValid}
-              className="bg-[#00e3ec] hover:bg-[#00c4d4] px-6 py-2 h-auto rounded-full text-white"
+              className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 py-2 h-auto rounded-full text-white"
             >
               Next
               <Check className="h-4 w-4 ml-2" />
@@ -221,7 +221,7 @@ export function SelfEmploymentBasicsStep() {
             <Button
               onClick={() => setStep('industry')}
               disabled={!isChangedAnswered}
-              className="bg-[#00e3ec] hover:bg-[#00c4d4] px-6 py-2 h-auto rounded-full text-white"
+              className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 py-2 h-auto rounded-full text-white"
             >
               Next
               <Check className="h-4 w-4 ml-2" />
@@ -303,7 +303,7 @@ export function SelfEmploymentBasicsStep() {
           <Button
             onClick={goNext}
             disabled={!isIndustrySelected}
-            className="bg-[#00e3ec] hover:bg-[#00c4d4] px-6 py-2 h-auto rounded-full text-white"
+            className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 py-2 h-auto rounded-full text-white"
           >
             Next
             <Check className="h-4 w-4 ml-2" />

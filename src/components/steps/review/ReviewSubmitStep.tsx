@@ -177,7 +177,7 @@ export function ReviewSubmitStep() {
         className={cn(
           'w-full py-6 text-lg font-medium',
           declarationAccepted
-            ? 'bg-[#00e3ec] hover:bg-[#00c4d4]'
+            ? 'bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]'
             : 'bg-gray-300 cursor-not-allowed'
         )}
       >

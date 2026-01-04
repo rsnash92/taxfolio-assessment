@@ -128,7 +128,7 @@ export function ReviewConfirmationStep() {
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button className="bg-[#00e3ec] hover:bg-[#00c4d4] gap-2">
+        <Button className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] gap-2">
           <Download className="h-4 w-4" />
           Download Tax Return (PDF)
         </Button>

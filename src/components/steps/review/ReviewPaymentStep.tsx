@@ -77,7 +77,7 @@ export function ReviewPaymentStep() {
         </p>
         <Button
           onClick={goNext}
-          className="bg-[#00e3ec] hover:bg-[#00c4d4]"
+          className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]"
         >
           Review Tax Summary
           <ChevronRight className="h-4 w-4 ml-2" />
@@ -323,7 +323,7 @@ export function ReviewPaymentStep() {
         <Button
           onClick={handlePayment}
           disabled={isProcessing}
-          className="bg-[#00e3ec] hover:bg-[#00c4d4] px-8 py-6 text-lg"
+          className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-8 py-6 text-lg"
         >
           {isProcessing ? (
             <>

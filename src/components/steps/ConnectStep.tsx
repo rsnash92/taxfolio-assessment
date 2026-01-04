@@ -255,7 +255,7 @@ export function ConnectStep() {
         <Button
           onClick={handleGoToAccounts}
           disabled={selectedAccounts.size === 0}
-          className="w-full h-12 bg-[#00e3ec] hover:bg-[#00c4d4] text-white mb-4"
+          className="w-full h-12 bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white mb-4"
         >
           <span>
             Import from {selectedAccounts.size} Account

@@ -38,7 +38,7 @@ export function NotSupportedStep() {
           href="https://www.gov.uk/self-assessment-tax-returns"
           target="_blank"
         >
-          <Button className="bg-[#00e3ec] hover:bg-[#00c4d4]">
+          <Button className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]">
             Visit HMRC
             <ExternalLink className="h-4 w-4 ml-2" />
           </Button>

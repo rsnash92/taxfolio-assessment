@@ -273,7 +273,7 @@ function PlaceholderStep({ title }: { title: string }) {
         {canGoNext && (
           <button
             onClick={goNext}
-            className="px-6 py-2 bg-[#00e3ec] text-white rounded-lg hover:bg-[#00c4d4]"
+            className="px-6 py-2 bg-gradient-to-r from-[#0f172a] to-[#1e293b] text-white rounded-lg hover:from-[#1e293b] hover:to-[#334155]"
           >
             Continue
           </button>

@@ -78,7 +78,7 @@ export default function SignUpPage() {
             </p>
             <Button
               onClick={() => router.push('/login')}
-              className="w-full h-11 bg-[#00e3ec] hover:bg-[#00c4d4] text-white font-medium"
+              className="w-full h-11 bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white font-medium"
             >
               Back to login
             </Button>
@@ -168,7 +168,7 @@ export default function SignUpPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-[#00e3ec] hover:bg-[#00c4d4] text-white font-medium"
+              className="w-full h-11 bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white font-medium"
               disabled={loading}
             >
               {loading ? (

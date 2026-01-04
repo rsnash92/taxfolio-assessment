@@ -304,7 +304,7 @@ export function RentalListStep() {
         <div className="ml-auto">
           <Button
             onClick={goNext}
-            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
+            className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]"
             disabled={rentalProperties.length === 0}
           >
             {rentalProperties.length === 0 ? 'Add a Property to Continue' : 'Continue'}

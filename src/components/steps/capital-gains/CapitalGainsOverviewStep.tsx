@@ -142,7 +142,7 @@ export function CapitalGainsOverviewStep() {
         <div className="ml-auto">
           <Button
             onClick={handleContinue}
-            className="bg-[#00e3ec] hover:bg-[#00c4d4]"
+            className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]"
             disabled={selectedTypes.length === 0}
           >
             {selectedTypes.length > 0

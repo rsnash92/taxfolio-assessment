@@ -295,7 +295,7 @@ export function AccountsStep() {
             'w-full h-14 text-lg font-medium',
             isImporting
               ? 'bg-[#ccf5f7] text-[#00a8b0]'
-              : 'bg-[#00e3ec] hover:bg-[#00c4d4] text-white'
+              : 'bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white'
           )}
         >
           {isImporting ? (
