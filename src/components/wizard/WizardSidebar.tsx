@@ -60,13 +60,13 @@ export function WizardSidebar() {
   const isCapitalGainsActive = currentStep.startsWith('capital-gains');
 
   return (
-    <aside className="w-full h-full bg-white border-r border-gray-200 hidden lg:block">
-      <nav className="p-4">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+    <aside className="w-full h-full bg-white hidden lg:block">
+      <nav className="px-6 pt-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 px-5">
           Menu
         </p>
 
-        <ul className="space-y-1">
+        <ul className="space-y-2">
           {/* Getting Started */}
           <SidebarItem
             icon={PlayCircle}
@@ -97,27 +97,27 @@ export function WizardSidebar() {
                   goToBusinessStep(selfEmploymentBusinesses[0].id, 'self-employment-basics')
                 }
                 className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-colors',
+                  'w-full flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-colors',
                   isSelfEmploymentActive
-                    ? 'bg-[#e6fafb] text-[#00a8b0]'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'border-l-2 border-[#00e3ec] bg-[#00e3ec]/10 text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
                 {getSectionStatus('self-employment') === 'completed' ? (
-                  <CheckCircle2 className="h-6 w-6 text-[#00e3ec]" />
+                  <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
                 ) : (
                   <Briefcase
                     className={cn(
-                      'h-6 w-6',
-                      isSelfEmploymentActive ? 'text-[#00c4d4]' : 'text-gray-400'
+                      'h-5 w-5',
+                      isSelfEmploymentActive ? 'text-[#00e3ec]' : 'text-gray-400'
                     )}
                   />
                 )}
                 <span className="flex-1 text-left">Self Employed</span>
                 {isSelfEmploymentActive ? (
-                  <ChevronDown className="h-5 w-5" />
+                  <ChevronDown className="h-4 w-4" />
                 ) : (
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-4 w-4" />
                 )}
               </button>
 
@@ -157,27 +157,27 @@ export function WizardSidebar() {
                   goToPropertyStep(rentalProperties[0].id, 'rental-details')
                 }
                 className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-colors',
+                  'w-full flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-colors',
                   isRentalActive
-                    ? 'bg-[#e6fafb] text-[#00a8b0]'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'border-l-2 border-[#00e3ec] bg-[#00e3ec]/10 text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
                 {getSectionStatus('rental') === 'completed' ? (
-                  <CheckCircle2 className="h-6 w-6 text-[#00e3ec]" />
+                  <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
                 ) : (
                   <Home
                     className={cn(
-                      'h-6 w-6',
-                      isRentalActive ? 'text-[#00c4d4]' : 'text-gray-400'
+                      'h-5 w-5',
+                      isRentalActive ? 'text-[#00e3ec]' : 'text-gray-400'
                     )}
                   />
                 )}
                 <span className="flex-1 text-left">Rental</span>
                 {isRentalActive ? (
-                  <ChevronDown className="h-5 w-5" />
+                  <ChevronDown className="h-4 w-4" />
                 ) : (
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-4 w-4" />
                 )}
               </button>
 
@@ -429,7 +429,7 @@ function PropertySubMenu({
   );
 }
 
-// Reusable sidebar item - larger to match main app
+// Reusable sidebar item - matches main app styling
 function SidebarItem({
   icon: Icon,
   label,
@@ -448,17 +448,17 @@ function SidebarItem({
       <button
         onClick={onClick}
         className={cn(
-          'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-colors',
+          'w-full flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-colors',
           isActive
-            ? 'bg-[#e6fafb] text-[#00a8b0]'
-            : 'text-gray-700 hover:bg-gray-50'
+            ? 'border-l-2 border-[#00e3ec] bg-[#00e3ec]/10 text-gray-900'
+            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
         )}
       >
         {isComplete ? (
-          <CheckCircle2 className="h-6 w-6 text-[#00e3ec]" />
+          <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
         ) : (
           <Icon
-            className={cn('h-6 w-6', isActive ? 'text-[#00c4d4]' : 'text-gray-400')}
+            className={cn('h-5 w-5', isActive ? 'text-[#00e3ec]' : 'text-gray-400')}
           />
         )}
         <span>{label}</span>

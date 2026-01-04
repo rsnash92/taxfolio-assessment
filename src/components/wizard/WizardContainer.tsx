@@ -227,24 +227,24 @@ export function WizardContainer() {
       <WizardHeader />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Fixed sidebar - wider to match main app */}
-        <div className="w-56 flex-shrink-0 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
+        {/* Fixed sidebar - w-72 to match main app */}
+        <div className="w-72 flex-shrink-0 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
           <WizardSidebar />
         </div>
 
-        {/* Scrollable main content - gray bg with white card */}
-        <main className="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)] bg-gray-100">
-          <div className={
-            currentStep === 'self-employment-income' ||
-            currentStep === 'self-employment-expenses' ||
-            currentStep === 'self-employment-list' ||
-            currentStep === 'rental-list' ||
-            currentStep === 'employment-list' ||
-            currentStep === 'capital-gains-disposals'
-              ? 'max-w-4xl mx-auto'
-              : 'max-w-3xl mx-auto'
-          }>
-            <div className="bg-white rounded-xl shadow-sm p-8">
+        {/* Scrollable main content - matches main app styling */}
+        <main className="flex-1 p-4 overflow-y-auto h-[calc(100vh-64px)]">
+          <div className="bg-gray-100/60 rounded-2xl min-h-full">
+            <div className={
+              currentStep === 'self-employment-income' ||
+              currentStep === 'self-employment-expenses' ||
+              currentStep === 'self-employment-list' ||
+              currentStep === 'rental-list' ||
+              currentStep === 'employment-list' ||
+              currentStep === 'capital-gains-disposals'
+                ? 'max-w-4xl mx-auto py-6 px-4 md:px-6'
+                : 'max-w-3xl mx-auto py-6 px-4 md:px-6'
+            }>
               {renderStep()}
             </div>
           </div>
