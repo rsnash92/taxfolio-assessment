@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -47,9 +48,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            <span className="text-[#00e3ec]">Tax</span>Folio
-          </h1>
+          <Image
+            src="/taxfolio.png"
+            alt="TaxFolio"
+            width={160}
+            height={40}
+            className="h-10 w-auto mx-auto"
+          />
           <p className="text-gray-600 mt-2">Self Assessment</p>
         </div>
 

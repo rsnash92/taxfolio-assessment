@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useWizard } from '@/providers/WizardProvider';
 import { createClient } from '@/lib/supabase/client';
-import { HelpCircle, Save, Loader2, LogOut, User } from 'lucide-react';
+import { HelpCircle, Save, Loader2, LogOut } from 'lucide-react';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-GB', {
@@ -31,12 +32,15 @@ export function WizardHeader() {
         {/* Logo */}
         <Link
           href="https://app.taxfolio.io/dashboard"
-          className="flex items-center gap-2"
+          className="flex items-center"
         >
-          <div className="w-8 h-8 bg-[#00e3ec] rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">TF</span>
-          </div>
-          <span className="text-xl font-bold text-gray-900">taxfolio</span>
+          <Image
+            src="/taxfolio.png"
+            alt="TaxFolio"
+            width={140}
+            height={35}
+            className="h-8 w-auto"
+          />
         </Link>
 
         {/* Stats Bar */}
