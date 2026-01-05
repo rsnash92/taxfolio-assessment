@@ -626,6 +626,7 @@ export interface WizardData {
     account_type: string;
     provider_name: string;
   }>;
+  selectedAccountIds: string[]; // Persisted account selection
   bankName: string | null;
   bankImportData: {
     accountCount: number;

@@ -64,8 +64,13 @@ export function AccountsStep() {
           setAccounts(apiData.accounts);
           setBankName(apiData.bankName);
           setIsConnected(true); // Live connection
-          // Select all accounts by default
-          setSelectedAccounts(new Set(apiData.accounts.map((a: BankAccount) => a.account_id)));
+
+          // Restore previously selected accounts, or select all by default
+          if (wizardData.selectedAccountIds && wizardData.selectedAccountIds.length > 0) {
+            setSelectedAccounts(new Set(wizardData.selectedAccountIds));
+          } else {
+            setSelectedAccounts(new Set(apiData.accounts.map((a: BankAccount) => a.account_id)));
+          }
           setError(null); // Clear any previous error
 
           // Save accounts to wizard data for persistence
@@ -79,7 +84,13 @@ export function AccountsStep() {
           setAccounts(wizardData.bankAccounts);
           setBankName(wizardData.bankName || 'Connected Bank');
           setIsConnected(false); // Using cached data, connection expired
-          setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
+
+          // Restore previously selected accounts, or select all by default
+          if (wizardData.selectedAccountIds && wizardData.selectedAccountIds.length > 0) {
+            setSelectedAccounts(new Set(wizardData.selectedAccountIds));
+          } else {
+            setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
+          }
           setError(null); // Clear any previous error - we have valid saved accounts
         } else {
           setError(apiData.error || 'No bank connection found');
@@ -91,7 +102,13 @@ export function AccountsStep() {
           setAccounts(wizardData.bankAccounts);
           setBankName(wizardData.bankName || 'Connected Bank');
           setIsConnected(false); // Using cached data
-          setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
+
+          // Restore previously selected accounts, or select all by default
+          if (wizardData.selectedAccountIds && wizardData.selectedAccountIds.length > 0) {
+            setSelectedAccounts(new Set(wizardData.selectedAccountIds));
+          } else {
+            setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
+          }
           setError(null); // Clear any previous error - we have valid saved accounts
         } else {
           setError('Failed to fetch accounts');
@@ -123,6 +140,8 @@ export function AccountsStep() {
       newSelected.add(accountId);
     }
     setSelectedAccounts(newSelected);
+    // Persist selection to wizard data
+    updateData({ selectedAccountIds: Array.from(newSelected) });
   };
 
   // Confirm deselection and remove transactions
@@ -136,12 +155,16 @@ export function AccountsStep() {
       (tx) => tx.accountId !== accountId
     ) || [];
 
-    updateData({ transactions: filteredTransactions });
-
     // Deselect the account
     const newSelected = new Set(selectedAccounts);
     newSelected.delete(accountId);
     setSelectedAccounts(newSelected);
+
+    // Persist both transaction removal and selection change
+    updateData({
+      transactions: filteredTransactions,
+      selectedAccountIds: Array.from(newSelected),
+    });
 
     setPendingDeselect(null);
   };
@@ -164,8 +187,11 @@ export function AccountsStep() {
         return;
       }
       setSelectedAccounts(new Set());
+      updateData({ selectedAccountIds: [] });
     } else {
-      setSelectedAccounts(new Set(accounts.map((a) => a.account_id)));
+      const allIds = accounts.map((a) => a.account_id);
+      setSelectedAccounts(new Set(allIds));
+      updateData({ selectedAccountIds: allIds });
     }
   };
 

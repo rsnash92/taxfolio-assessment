@@ -39,6 +39,7 @@ const initialData: WizardData = {
   connectionMethod: null,
   bankConnected: false,
   bankAccounts: [],
+  selectedAccountIds: [],
   bankName: null,
   bankImportData: null,
   transactions: [],
