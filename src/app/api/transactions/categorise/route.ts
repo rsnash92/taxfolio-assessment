@@ -160,14 +160,49 @@ export async function POST(request: NextRequest) {
     date: tx.date,
   }));
 
-  // Process in batches of 20
-  const BATCH_SIZE = 20;
+  // Process in batches of 40 (increased from 20 for efficiency)
+  const BATCH_SIZE = 40;
+  // Process 3 batches in parallel for speed
+  const PARALLEL_BATCHES = 3;
+
   const batches: TransactionInput[][] = [];
   for (let i = 0; i < transactionList.length; i += BATCH_SIZE) {
     batches.push(transactionList.slice(i, i + BATCH_SIZE));
   }
 
-  console.log('[categorise] Split into', batches.length, 'batches');
+  console.log('[categorise] Split into', batches.length, 'batches of', BATCH_SIZE, '(processing', PARALLEL_BATCHES, 'in parallel)');
+
+  // Helper function to process a single batch
+  const processBatch = async (batch: TransactionInput[], batchIndex: number): Promise<{ index: number; results: CategoryResult[] | null; error?: string }> => {
+    try {
+      const message = await anthropic.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 8192, // Increased for larger batches
+        messages: [
+          {
+            role: 'user',
+            content: `Categorise these ${batch.length} transactions:\n\n${JSON.stringify(batch, null, 2)}`,
+          },
+        ],
+        system: SYSTEM_PROMPT,
+      });
+
+      const responseText =
+        message.content[0].type === 'text' ? message.content[0].text : '';
+
+      // Handle potential markdown wrapping
+      let jsonText = responseText.trim();
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+      }
+
+      const batchResults: CategoryResult[] = JSON.parse(jsonText);
+      return { index: batchIndex, results: batchResults };
+    } catch (error) {
+      console.error('[categorise] Error processing batch', batchIndex + 1, ':', error);
+      return { index: batchIndex, results: null, error: 'Failed to process batch' };
+    }
+  };
 
   // If streaming requested, use SSE
   if (stream) {
@@ -179,67 +214,57 @@ export async function POST(request: NextRequest) {
         };
 
         const allResults: CategoryResult[] = [];
+        let completedBatches = 0;
 
-        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-          const batch = batches[batchIndex];
-          const progress = Math.round(((batchIndex + 1) / batches.length) * 100);
+        // Process batches in parallel groups
+        for (let groupStart = 0; groupStart < batches.length; groupStart += PARALLEL_BATCHES) {
+          const groupEnd = Math.min(groupStart + PARALLEL_BATCHES, batches.length);
+          const batchGroup = batches.slice(groupStart, groupEnd);
+          const batchIndices = Array.from({ length: batchGroup.length }, (_, i) => groupStart + i);
 
           sendEvent({
             type: 'progress',
-            batch: batchIndex + 1,
+            batch: groupStart + 1,
             totalBatches: batches.length,
-            progress,
-            status: `Processing batch ${batchIndex + 1} of ${batches.length}...`,
+            progress: Math.round((groupStart / batches.length) * 100),
+            status: `Processing batches ${groupStart + 1}-${groupEnd} of ${batches.length} (${PARALLEL_BATCHES} in parallel)...`,
           });
 
-          try {
-            const message = await anthropic.messages.create({
-              model: 'claude-3-5-haiku-20241022',
-              max_tokens: 4096,
-              messages: [
-                {
-                  role: 'user',
-                  content: `Categorise these ${batch.length} transactions:\n\n${JSON.stringify(batch, null, 2)}`,
-                },
-              ],
-              system: SYSTEM_PROMPT,
-            });
+          // Process all batches in this group in parallel
+          const groupPromises = batchGroup.map((batch, i) =>
+            processBatch(batch, batchIndices[i])
+          );
 
-            const responseText =
-              message.content[0].type === 'text' ? message.content[0].text : '';
+          const groupResults = await Promise.all(groupPromises);
 
-            try {
-              // Handle potential markdown wrapping
-              let jsonText = responseText.trim();
-              if (jsonText.startsWith('```')) {
-                jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-              }
+          // Process results from parallel batch group
+          for (const result of groupResults) {
+            completedBatches++;
 
-              const batchResults: CategoryResult[] = JSON.parse(jsonText);
-              allResults.push(...batchResults);
-
-              // Send batch results
+            if (result.results) {
+              allResults.push(...result.results);
               sendEvent({
                 type: 'batch_complete',
-                batch: batchIndex + 1,
-                results: batchResults,
+                batch: result.index + 1,
+                results: result.results,
               });
-            } catch (parseError) {
-              console.error('[categorise] Failed to parse batch', batchIndex + 1);
+            } else {
               sendEvent({
                 type: 'batch_error',
-                batch: batchIndex + 1,
-                error: 'Failed to parse AI response',
+                batch: result.index + 1,
+                error: result.error || 'Failed to process batch',
               });
             }
-          } catch (batchError) {
-            console.error('[categorise] Error processing batch', batchIndex + 1, ':', batchError);
-            sendEvent({
-              type: 'batch_error',
-              batch: batchIndex + 1,
-              error: 'Failed to process batch',
-            });
           }
+
+          // Send updated progress after group completes
+          sendEvent({
+            type: 'progress',
+            batch: groupEnd,
+            totalBatches: batches.length,
+            progress: Math.round((completedBatches / batches.length) * 100),
+            status: `Completed ${completedBatches} of ${batches.length} batches...`,
+          });
         }
 
         sendEvent({
@@ -261,44 +286,32 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Non-streaming fallback
+  // Non-streaming fallback with parallel processing
   const allResults: CategoryResult[] = [];
 
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
-    console.log('[categorise] Processing batch', batchIndex + 1, 'of', batches.length);
+  // Process batches in parallel groups
+  for (let groupStart = 0; groupStart < batches.length; groupStart += PARALLEL_BATCHES) {
+    const groupEnd = Math.min(groupStart + PARALLEL_BATCHES, batches.length);
+    const batchGroup = batches.slice(groupStart, groupEnd);
+    const batchIndices = Array.from({ length: batchGroup.length }, (_, i) => groupStart + i);
 
-    try {
-      const message = await anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: `Categorise these ${batch.length} transactions:\n\n${JSON.stringify(batch, null, 2)}`,
-          },
-        ],
-        system: SYSTEM_PROMPT,
-      });
+    console.log('[categorise] Processing batches', groupStart + 1, '-', groupEnd, 'of', batches.length, 'in parallel');
 
-      const responseText =
-        message.content[0].type === 'text' ? message.content[0].text : '';
+    // Process all batches in this group in parallel
+    const groupPromises = batchGroup.map((batch, i) =>
+      processBatch(batch, batchIndices[i])
+    );
 
-      try {
-        // Handle potential markdown wrapping
-        let jsonText = responseText.trim();
-        if (jsonText.startsWith('```')) {
-          jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-        }
+    const groupResults = await Promise.all(groupPromises);
 
-        const batchResults: CategoryResult[] = JSON.parse(jsonText);
-        allResults.push(...batchResults);
-        console.log('[categorise] Batch', batchIndex + 1, 'parsed', batchResults.length, 'results');
-      } catch {
-        console.error('[categorise] Failed to parse batch', batchIndex + 1);
+    // Collect results
+    for (const result of groupResults) {
+      if (result.results) {
+        allResults.push(...result.results);
+        console.log('[categorise] Batch', result.index + 1, 'returned', result.results.length, 'results');
+      } else {
+        console.error('[categorise] Batch', result.index + 1, 'failed:', result.error);
       }
-    } catch (batchError) {
-      console.error('[categorise] Error processing batch', batchIndex + 1, ':', batchError);
     }
   }
 
