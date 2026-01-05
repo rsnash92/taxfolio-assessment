@@ -5,6 +5,8 @@ import { exchangeCode, getAccounts } from '@/lib/truelayer/client';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003';
 
 export async function GET(request: NextRequest) {
+  console.log('[TrueLayer Callback] Starting callback handler');
+  console.log('[TrueLayer Callback] APP_URL:', APP_URL);
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const state = searchParams.get('state');
@@ -40,21 +42,23 @@ export async function GET(request: NextRequest) {
 
   try {
     // Exchange code for tokens (fast!)
-    console.log('[Callback] Exchanging code for tokens...');
+    console.log('[TrueLayer Callback] Exchanging code for tokens...');
+    console.log('[TrueLayer Callback] Code received:', code?.substring(0, 20) + '...');
     const tokens = await exchangeCode(code);
 
     if (tokens.error) {
-      console.error('[Callback] Token exchange error:', tokens);
+      console.error('[TrueLayer Callback] Token exchange error:', tokens);
       return NextResponse.redirect(`${APP_URL}?bank_error=token_failed`);
     }
 
-    console.log('[Callback] Tokens received, fetching accounts...');
+    console.log('[TrueLayer Callback] Tokens received successfully, fetching accounts...');
 
     // Get accounts (lightweight call)
     const accountsRes = await getAccounts(tokens.access_token);
+    console.log('[TrueLayer Callback] Accounts response:', JSON.stringify(accountsRes).substring(0, 200));
     const accounts = accountsRes.results || [];
 
-    console.log(`[Callback] Found ${accounts.length} accounts`);
+    console.log(`[TrueLayer Callback] Found ${accounts.length} accounts`);
 
     // Clear state cookie and redirect back with success
     const response = NextResponse.redirect(`${APP_URL}?bank_connected=true`);
@@ -85,11 +89,12 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log('[Callback] Redirect with bank connection saved - fast callback complete!');
+    console.log('[TrueLayer Callback] Redirect with bank connection saved - fast callback complete!');
+    console.log('[TrueLayer Callback] Redirecting to:', `${APP_URL}?bank_connected=true`);
     return response;
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[Callback] Error:', errorMessage, err);
+    console.error('[TrueLayer Callback] Error:', errorMessage, err);
     return NextResponse.redirect(`${APP_URL}?bank_error=connection_failed`);
   }
 }
