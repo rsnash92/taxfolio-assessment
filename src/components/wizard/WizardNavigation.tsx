@@ -47,7 +47,7 @@ export function WizardNavigation({
   };
 
   return (
-    <div className="flex items-center justify-between pt-8 mt-8 border-t border-gray-200">
+    <div className="flex items-center justify-between pt-6 sm:pt-8 mt-6 sm:mt-8 border-t border-gray-200">
       {/* Back Button */}
       {showBack && canGoBack ? (
         <Button

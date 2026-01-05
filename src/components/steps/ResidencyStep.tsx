@@ -26,24 +26,24 @@ export function ResidencyStep() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <p className="text-sm text-gray-500 mb-2">Quick check before we start</p>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
           TaxFolio is designed for UK residents with UK income.
         </h1>
-        <p className="text-gray-600">
+        <p className="text-sm sm:text-base text-gray-600">
           Were you a UK resident for the full 2024/25 tax year?
-          <span className="text-gray-400 ml-1">(6 April 2024 - 5 April 2025)</span>
+          <span className="text-gray-400 ml-1 block sm:inline">(6 April 2024 - 5 April 2025)</span>
         </p>
       </div>
 
       {/* Options */}
-      <div className="space-y-3 mb-8">
+      <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
         {/* Yes option */}
         <button
           onClick={() => handleSelect(true)}
           className={cn(
-            'w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
+            'w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left',
             selected === true
               ? 'border-[#00e3ec] bg-[#e6fafb]'
               : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -51,22 +51,22 @@ export function ResidencyStep() {
         >
           <div
             className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center',
+              'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0',
               selected === true ? 'bg-[#00e3ec]' : 'bg-gray-100'
             )}
           >
             <CheckCircle2
               className={cn(
-                'h-5 w-5',
+                'h-4 w-4 sm:h-5 sm:w-5',
                 selected === true ? 'text-white' : 'text-gray-400'
               )}
             />
           </div>
           <div>
-            <p className="font-medium text-gray-900">
+            <p className="font-medium text-gray-900 text-sm sm:text-base">
               Yes, I lived in the UK the whole year
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs sm:text-sm text-gray-500">
               I was a UK resident for the full tax year
             </p>
           </div>
@@ -76,7 +76,7 @@ export function ResidencyStep() {
         <button
           onClick={() => handleSelect(false)}
           className={cn(
-            'w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
+            'w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left',
             selected === false
               ? 'border-amber-500 bg-amber-50'
               : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -84,22 +84,22 @@ export function ResidencyStep() {
         >
           <div
             className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center',
+              'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0',
               selected === false ? 'bg-amber-500' : 'bg-gray-100'
             )}
           >
             <Globe
               className={cn(
-                'h-5 w-5',
+                'h-4 w-4 sm:h-5 sm:w-5',
                 selected === false ? 'text-white' : 'text-gray-400'
               )}
             />
           </div>
           <div>
-            <p className="font-medium text-gray-900">
+            <p className="font-medium text-gray-900 text-sm sm:text-base">
               No, I lived abroad or moved during the year
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs sm:text-sm text-gray-500">
               I left/arrived in the UK, or had foreign income
             </p>
           </div>
@@ -107,10 +107,10 @@ export function ResidencyStep() {
       </div>
 
       {/* Info Note */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
-        <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-          <div className="text-sm">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 mb-6 sm:mb-8">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="text-xs sm:text-sm">
             <p className="text-blue-800 font-medium">Why do we ask this?</p>
             <p className="text-blue-600">
               If you lived abroad or moved during the tax year, you may need form

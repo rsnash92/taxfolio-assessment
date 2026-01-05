@@ -28,9 +28,9 @@ export function WizardHeader() {
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4">
         {/* Logo and Stats Bar - grouped on left */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 sm:gap-8">
           <Link
             href="https://app.taxfolio.io/dashboard"
             className="flex items-center"
@@ -40,7 +40,7 @@ export function WizardHeader() {
               alt="TaxFolio"
               width={120}
               height={30}
-              className="h-7 w-auto"
+              className="h-6 sm:h-7 w-auto"
             />
           </Link>
 

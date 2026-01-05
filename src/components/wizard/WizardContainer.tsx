@@ -250,13 +250,13 @@ export function WizardContainer() {
       <WizardProgressBar />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Fixed sidebar - w-72 to match main app */}
-        <div className="w-72 flex-shrink-0 h-[calc(100vh-64px-4px)] sticky top-[68px] overflow-y-auto bg-white">
+        {/* Fixed sidebar - hidden on mobile/tablet, visible on lg+ */}
+        <div className="hidden lg:block w-72 flex-shrink-0 h-[calc(100vh-64px-4px)] sticky top-[68px] overflow-y-auto bg-white">
           <WizardSidebar />
         </div>
 
-        {/* Scrollable main content - gray bg flows to top like main app */}
-        <main className="flex-1 overflow-y-auto h-[calc(100vh-64px-4px)] bg-gray-100/50 p-4">
+        {/* Scrollable main content - full width on mobile */}
+        <main className="flex-1 overflow-y-auto h-[calc(100vh-64px-4px)] bg-gray-100/50 p-2 sm:p-4">
           <div className={
             currentStep === 'self-employment-income' ||
             currentStep === 'self-employment-expenses' ||
@@ -264,8 +264,8 @@ export function WizardContainer() {
             currentStep === 'rental-list' ||
             currentStep === 'employment-list' ||
             currentStep === 'capital-gains-disposals'
-              ? 'max-w-4xl mx-auto py-6 px-4 md:px-6'
-              : 'max-w-3xl mx-auto py-6 px-4 md:px-6'
+              ? 'max-w-4xl mx-auto py-4 sm:py-6 px-2 sm:px-4 md:px-6'
+              : 'max-w-3xl mx-auto py-4 sm:py-6 px-2 sm:px-4 md:px-6'
           }>
             <AnimatePresence mode="wait" custom={navigationDirection}>
               <motion.div

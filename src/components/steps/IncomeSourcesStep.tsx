@@ -136,11 +136,11 @@ export function IncomeSourcesStep() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
           Tell us about your income sources
         </h1>
-        <p className="text-gray-600">
+        <p className="text-sm sm:text-base text-gray-600">
           Add every way you earned money (self-employed, rentals, etc.). Include
           as many as you need. You can always edit or add later.
         </p>
@@ -149,7 +149,7 @@ export function IncomeSourcesStep() {
       {/* Add Income Source Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="w-full mb-8 p-4 border-2 border-dashed border-#66eff4 rounded-xl
+        className="w-full mb-6 sm:mb-8 p-3 sm:p-4 border-2 border-dashed border-[#66eff4] rounded-xl
                    text-[#00c4d4] font-medium hover:border-[#00e3ec] hover:bg-[#e6fafb]
                    transition-colors flex items-center justify-center gap-2"
       >
@@ -159,12 +159,12 @@ export function IncomeSourcesStep() {
 
       {/* List of Income Sources */}
       {data.incomeSources.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 sm:mb-4">
             Your Income Sources
           </h2>
 
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {data.incomeSources.map((source) => {
               const typeInfo = INCOME_TYPES.find((t) => t.id === source.type);
               const Icon = typeInfo?.icon || Briefcase;
@@ -172,18 +172,18 @@ export function IncomeSourcesStep() {
               return (
                 <div
                   key={source.id}
-                  className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl"
+                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-gray-200 rounded-xl"
                 >
-                  <div className="w-10 h-10 bg-[#ccf5f7] rounded-lg flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-[#00c4d4]" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#ccf5f7] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-[#00c4d4]" />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{source.label}</p>
-                    <p className="text-sm text-gray-500">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 text-sm sm:text-base">{source.label}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 truncate">
                       {typeInfo?.description}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => deleteIncomeSource(source.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors"
