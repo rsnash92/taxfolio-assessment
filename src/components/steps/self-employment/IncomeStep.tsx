@@ -397,10 +397,13 @@ export function SelfEmploymentIncomeStep() {
           onClick={handleConfirmAll}
           disabled={stats.pendingConfirm === 0}
           variant="outline"
-          className="bg-white"
+          className={cn(
+            'bg-white',
+            stats.pendingConfirm > 0 && 'border-[#00e3ec] text-[#00c4d4]'
+          )}
         >
           <CheckCheck className="h-4 w-4 mr-2" />
-          Confirm All
+          Confirm All {stats.pendingConfirm > 0 ? stats.pendingConfirm : ''}
         </Button>
 
         {/* Continue button - only show when all transactions are reviewed */}
