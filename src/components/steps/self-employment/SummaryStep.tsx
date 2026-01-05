@@ -27,9 +27,29 @@ export function SelfEmploymentSummaryStep() {
   const incomeSource = data.incomeSources.find((s) => s.id === currentBusinessId);
   const businessName = businessData.businessName || incomeSource?.label || 'My Business';
 
-  // Calculate totals
-  const income = businessData.income?.total || 0;
-  const expenses = businessData.expenses?.total || 0;
+  // Calculate income from transactions (confirmed business income)
+  const incomeFromTransactions = useMemo(() => {
+    return data.transactions
+      .filter((t) => t.type === 'income' && t.status === 'business')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  }, [data.transactions]);
+
+  // Calculate expenses from transactions (confirmed business expenses)
+  const expensesFromTransactions = useMemo(() => {
+    return data.transactions
+      .filter((t) => t.type === 'expense' && t.status === 'business')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  }, [data.transactions]);
+
+  // Get manual entries
+  const manualIncome = businessData.income?.manual || [];
+  const manualExpenses = businessData.expenses?.manual || [];
+  const manualIncomeTotal = manualIncome.reduce((sum: number, e: { amount: number }) => sum + e.amount, 0);
+  const manualExpensesTotal = manualExpenses.reduce((sum: number, e: { amount: number }) => sum + e.amount, 0);
+
+  // Calculate totals - use saved data if available, otherwise calculate from transactions
+  const income = businessData.income?.total || (incomeFromTransactions + manualIncomeTotal);
+  const expenses = businessData.expenses?.total || (expensesFromTransactions + manualExpensesTotal);
   const capitalAllowances = businessData.capitalAllowances?.total || 0;
   const lossesBroughtForward = businessData.losses?.broughtForward || 0;
 
