@@ -720,6 +720,7 @@ export interface WizardContextType {
   data: WizardData;
   isLoading: boolean;
   isSaving: boolean;
+  navigationDirection: 'forward' | 'backward';
 
   // Navigation
   goToStep: (step: StepId) => void;

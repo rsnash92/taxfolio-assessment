@@ -3,7 +3,9 @@
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardHeader } from './WizardHeader';
 import { WizardSidebar } from './WizardSidebar';
+import { WizardProgressBar } from './WizardProgressBar';
 import { Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Import all step components
 import { ResidencyStep } from '@/components/steps/ResidencyStep';
@@ -80,7 +82,7 @@ import {
 } from '@/components/steps/review';
 
 export function WizardContainer() {
-  const { currentStep, isLoading } = useWizard();
+  const { currentStep, isLoading, navigationDirection } = useWizard();
 
   if (isLoading) {
     return (
@@ -222,18 +224,35 @@ export function WizardContainer() {
     }
   };
 
+  // Animation variants for slide transitions
+  const slideVariants = {
+    enter: (direction: 'forward' | 'backward') => ({
+      x: direction === 'forward' ? 50 : -50,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: 'forward' | 'backward') => ({
+      x: direction === 'forward' ? -50 : 50,
+      opacity: 0,
+    }),
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <WizardHeader />
+      <WizardProgressBar />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed sidebar - w-72 to match main app */}
-        <div className="w-72 flex-shrink-0 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto bg-white">
+        <div className="w-72 flex-shrink-0 h-[calc(100vh-64px-4px)] sticky top-[68px] overflow-y-auto bg-white">
           <WizardSidebar />
         </div>
 
         {/* Scrollable main content - gray bg flows to top like main app */}
-        <main className="flex-1 overflow-y-auto h-[calc(100vh-64px)] bg-gray-100/50 p-4">
+        <main className="flex-1 overflow-y-auto h-[calc(100vh-64px-4px)] bg-gray-100/50 p-4">
           <div className={
             currentStep === 'self-employment-income' ||
             currentStep === 'self-employment-expenses' ||
@@ -244,7 +263,22 @@ export function WizardContainer() {
               ? 'max-w-4xl mx-auto py-6 px-4 md:px-6'
               : 'max-w-3xl mx-auto py-6 px-4 md:px-6'
           }>
-            {renderStep()}
+            <AnimatePresence mode="wait" custom={navigationDirection}>
+              <motion.div
+                key={currentStep}
+                custom={navigationDirection}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{
+                  x: { type: 'spring', stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.2 },
+                }}
+              >
+                {renderStep()}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>

@@ -96,6 +96,7 @@ export function WizardProvider({
   const [data, setData] = useState<WizardData>(initialData);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [navigationDirection, setNavigationDirection] = useState<'forward' | 'backward'>('forward');
 
   // Load existing session on mount (simplified for dev)
   useEffect(() => {
@@ -260,6 +261,7 @@ export function WizardProvider({
 
     if (nextStep) {
       console.log('[WizardProvider] Setting step to:', nextStep);
+      setNavigationDirection('forward');
       setCurrentStep(nextStep);
     } else {
       console.log('[WizardProvider] No next step available!');
@@ -269,6 +271,7 @@ export function WizardProvider({
   const goBack = useCallback(() => {
     const prevStep = getPreviousStep(currentStep, data, currentBusinessId, currentPropertyId);
     if (prevStep) {
+      setNavigationDirection('backward');
       setCurrentStep(prevStep);
     }
   }, [currentStep, data, currentBusinessId, currentPropertyId]);
@@ -459,6 +462,7 @@ export function WizardProvider({
     data,
     isLoading,
     isSaving,
+    navigationDirection,
     goToStep,
     goToBusinessStep,
     goToPropertyStep,
