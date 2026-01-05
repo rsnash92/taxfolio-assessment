@@ -30,6 +30,8 @@ const HMRC_CATEGORY_LABELS: Record<string, string> = {
   interestOnBankOtherLoans: 'Loan Interest',
   adminCosts: 'Office & Admin',
   otherExpenses: 'Other Expenses',
+  // Special categories
+  personal: 'Personal',
 };
 
 export function formatCategory(category: string | null | undefined): string {

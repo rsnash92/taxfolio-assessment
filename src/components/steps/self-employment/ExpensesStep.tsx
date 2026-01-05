@@ -275,9 +275,13 @@ export function SelfEmploymentExpensesStep() {
         const result = results.find((r) => r.id === tx.id);
         if (result) {
           updatedCount++;
+          // If category is null but it's marked as personal, that's fine - use a placeholder
+          // If it's business but no category, default to otherExpenses
+          const category = result.category ||
+            (result.is_business ? 'otherExpenses' : 'personal');
           return {
             ...tx,
-            suggested_category: result.category,
+            suggested_category: category,
             suggested_is_business: result.is_business,
             confidence: result.confidence,
           };

@@ -208,9 +208,13 @@ export function SelfEmploymentIncomeStep() {
       const updatedTransactions = data.transactions.map((tx) => {
         const result = results.find((r) => r.id === tx.id);
         if (result) {
+          // If category is null but it's marked as personal, that's fine - use a placeholder
+          // If it's business but no category, default to turnover for income
+          const category = result.category ||
+            (result.is_business ? 'turnover' : 'personal');
           return {
             ...tx,
-            suggested_category: result.category,
+            suggested_category: category,
             suggested_is_business: result.is_business,
             confidence: result.confidence,
           };
