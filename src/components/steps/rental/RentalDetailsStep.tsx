@@ -57,7 +57,7 @@ export function RentalDetailsStep() {
     property.address &&
     property.postcode &&
     property.propertyType &&
-    property.ownershipShare > 0;
+    (property.ownershipShare ?? 0) > 0;
 
   return (
     <div className="space-y-8">
