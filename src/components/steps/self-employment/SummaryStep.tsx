@@ -71,40 +71,36 @@ export function SelfEmploymentSummaryStep() {
       </div>
 
       {/* Profit/Loss Card */}
-      <div
-        className={cn(
-          'rounded-xl p-6 mb-6 text-white',
-          isProfit
-            ? 'bg-gradient-to-br from-[#00e3ec] to-[#00c4d4]'
-            : isLoss
-            ? 'bg-gradient-to-br from-red-500 to-red-600'
-            : 'bg-gradient-to-br from-gray-500 to-gray-600'
-        )}
-      >
+      <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
             {isProfit ? (
-              <TrendingUp className="h-6 w-6" />
+              <TrendingUp className="h-6 w-6 text-[#00e3ec]" />
             ) : isLoss ? (
-              <TrendingDown className="h-6 w-6" />
+              <TrendingDown className="h-6 w-6 text-red-400" />
             ) : (
-              <Minus className="h-6 w-6" />
+              <Minus className="h-6 w-6 text-gray-400" />
             )}
           </div>
           <div>
-            <p className="text-white/80 text-sm">
+            <p className="text-gray-400 text-sm">
               {isProfit ? 'Net Profit' : isLoss ? 'Net Loss' : 'Break Even'}
             </p>
-            <p className="text-3xl font-bold">{formatCurrency(Math.abs(profit))}</p>
+            <p className={cn(
+              'text-3xl font-bold',
+              isProfit ? 'text-[#00e3ec]' : isLoss ? 'text-red-400' : 'text-white'
+            )}>
+              {formatCurrency(Math.abs(profit))}
+            </p>
           </div>
         </div>
         {isProfit && (
-          <p className="text-white/80 text-sm">
+          <p className="text-gray-400 text-sm">
             This amount will be added to your taxable income
           </p>
         )}
         {isLoss && (
-          <p className="text-white/80 text-sm">
+          <p className="text-gray-400 text-sm">
             You can carry this loss forward to offset future profits
           </p>
         )}

@@ -67,10 +67,7 @@ export function WizardNavigation({
       <Button
         onClick={handleContinue}
         disabled={!canContinue || isSubmitting || isSaving}
-        className={showCheckmark
-          ? "bg-blue-500 hover:bg-blue-600 px-6 py-2 h-auto rounded-full"
-          : "bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]"
-        }
+        className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]"
       >
         {isSubmitting ? (
           <>
