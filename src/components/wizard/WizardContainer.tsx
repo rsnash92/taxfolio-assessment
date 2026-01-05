@@ -5,6 +5,7 @@ import { WizardHeader } from './WizardHeader';
 import { WizardSidebar } from './WizardSidebar';
 import { WizardProgressBar } from './WizardProgressBar';
 import { AskButton } from '@/components/ask-taxfolio';
+import { InactivityModal } from '@/components/InactivityModal';
 import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -286,6 +287,9 @@ export function WizardContainer() {
 
       {/* Ask TaxFolio Floating Button */}
       <AskButton />
+
+      {/* Inactivity Timeout Modal */}
+      <InactivityModal />
     </div>
   );
 }
