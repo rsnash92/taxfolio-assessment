@@ -27,9 +27,12 @@ export async function POST() {
   const authUrl = getAuthUrl(state);
 
   // Log for debugging
-  console.log('TrueLayer connect:', {
+  console.log('[TrueLayer Connect] Generated auth URL:', authUrl);
+  console.log('[TrueLayer Connect] Full config:', {
     redirectUri: TRUELAYER_CONFIG.redirectUri,
     isSandbox: TRUELAYER_CONFIG.isSandbox,
+    authUrl: TRUELAYER_CONFIG.authUrl,
+    apiUrl: TRUELAYER_CONFIG.apiUrl,
   });
 
   // Return the auth URL and set state in cookie
