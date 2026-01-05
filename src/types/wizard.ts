@@ -689,6 +689,11 @@ export interface WizardData {
     nino: string;
     address: string;
     postcode: string;
+    // Address change during tax year
+    addressChanged: boolean | null;
+    newAddress?: string;
+    newPostcode?: string;
+    moveDate?: string; // ISO date string
   };
 
   // Calculations
