@@ -215,31 +215,30 @@ export async function POST(request: NextRequest) {
 
         const allResults: CategoryResult[] = [];
         let completedBatches = 0;
+        const totalBatchCount = batches.length;
 
-        // Process batches in parallel groups
+        // Send initial progress
+        sendEvent({
+          type: 'progress',
+          batch: 0,
+          totalBatches: totalBatchCount,
+          progress: 0,
+          status: 'Processing, may take a few minutes...',
+        });
+
+        // Process batches in parallel groups, but report progress as each completes
         for (let groupStart = 0; groupStart < batches.length; groupStart += PARALLEL_BATCHES) {
           const groupEnd = Math.min(groupStart + PARALLEL_BATCHES, batches.length);
           const batchGroup = batches.slice(groupStart, groupEnd);
           const batchIndices = Array.from({ length: batchGroup.length }, (_, i) => groupStart + i);
 
-          sendEvent({
-            type: 'progress',
-            batch: groupStart + 1,
-            totalBatches: batches.length,
-            progress: Math.round((groupStart / batches.length) * 100),
-            status: 'Processing, may take a few minutes...',
-          });
+          // Create promises that report progress when they complete
+          const groupPromises = batchGroup.map(async (batch, i) => {
+            const result = await processBatch(batch, batchIndices[i]);
 
-          // Process all batches in this group in parallel
-          const groupPromises = batchGroup.map((batch, i) =>
-            processBatch(batch, batchIndices[i])
-          );
-
-          const groupResults = await Promise.all(groupPromises);
-
-          // Process results from parallel batch group
-          for (const result of groupResults) {
+            // Update progress immediately when this batch completes
             completedBatches++;
+            const progress = Math.round((completedBatches / totalBatchCount) * 100);
 
             if (result.results) {
               allResults.push(...result.results);
@@ -255,16 +254,21 @@ export async function POST(request: NextRequest) {
                 error: result.error || 'Failed to process batch',
               });
             }
-          }
 
-          // Send updated progress after group completes
-          sendEvent({
-            type: 'progress',
-            batch: groupEnd,
-            totalBatches: batches.length,
-            progress: Math.round((completedBatches / batches.length) * 100),
-            status: 'Processing, may take a few minutes...',
+            // Send progress update for each completed batch
+            sendEvent({
+              type: 'progress',
+              batch: completedBatches,
+              totalBatches: totalBatchCount,
+              progress,
+              status: 'Processing, may take a few minutes...',
+            });
+
+            return result;
           });
+
+          // Wait for all batches in this group to complete before starting next group
+          await Promise.all(groupPromises);
         }
 
         sendEvent({
