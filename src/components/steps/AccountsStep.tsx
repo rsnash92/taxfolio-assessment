@@ -61,6 +61,7 @@ export function AccountsStep() {
           setBankName(apiData.bankName);
           // Select all accounts by default
           setSelectedAccounts(new Set(apiData.accounts.map((a: BankAccount) => a.account_id)));
+          setError(null); // Clear any previous error
 
           // Save accounts to wizard data for persistence
           updateData({
@@ -73,6 +74,7 @@ export function AccountsStep() {
           setAccounts(wizardData.bankAccounts);
           setBankName(wizardData.bankName || 'Connected Bank');
           setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
+          setError(null); // Clear any previous error - we have valid saved accounts
         } else {
           setError(apiData.error || 'No bank connection found');
         }
@@ -83,6 +85,7 @@ export function AccountsStep() {
           setAccounts(wizardData.bankAccounts);
           setBankName(wizardData.bankName || 'Connected Bank');
           setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
+          setError(null); // Clear any previous error - we have valid saved accounts
         } else {
           setError('Failed to fetch accounts');
         }
