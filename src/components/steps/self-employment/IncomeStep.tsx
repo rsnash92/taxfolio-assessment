@@ -132,6 +132,8 @@ export function SelfEmploymentIncomeStep() {
     setCategoriseStatus('Starting AI categorisation...');
 
     try {
+      console.log('[IncomeStep] Starting categorisation for', uncategorisedTxs.length, 'transactions');
+
       const response = await fetch('/api/transactions/categorise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,7 +144,13 @@ export function SelfEmploymentIncomeStep() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to categorise transactions');
+      console.log('[IncomeStep] Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[IncomeStep] API error:', errorText);
+        throw new Error('Failed to categorise transactions');
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');

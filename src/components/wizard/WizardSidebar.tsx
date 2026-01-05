@@ -54,6 +54,7 @@ export function WizardSidebar() {
   const hasOtherIncome = data.incomeSources.some((s) => s.type === 'other');
 
   // Check if sections are active/expanded
+  const isGettingStartedActive = currentStep === 'residency' || currentStep === 'income-sources';
   const isSelfEmploymentActive = currentStep.startsWith('self-employment');
   const isRentalActive = currentStep.startsWith('rental');
   const isEmploymentActive = currentStep.startsWith('employment');
@@ -63,14 +64,54 @@ export function WizardSidebar() {
     <aside className="w-full h-full bg-white border-r border-gray-200">
       <nav className="px-4 sm:px-6 pt-4 sm:pt-6">
         <ul className="space-y-2">
-          {/* Getting Started */}
-          <SidebarItem
-            icon={PlayCircle}
-            label="Getting Started"
-            isActive={currentStep === 'residency' || currentStep === 'income-sources'}
-            isComplete={getSectionStatus('getting-started') === 'completed'}
-            onClick={() => goToStep('residency')}
-          />
+          {/* Getting Started - Expandable */}
+          <li>
+            <button
+              onClick={() => goToStep('residency')}
+              className={cn(
+                'w-full flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-colors',
+                isGettingStartedActive
+                  ? 'border-l-2 border-[#00e3ec] bg-[#00e3ec]/10 text-gray-900'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+              )}
+            >
+              {getSectionStatus('getting-started') === 'completed' ? (
+                <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
+              ) : (
+                <PlayCircle
+                  className={cn(
+                    'h-5 w-5',
+                    isGettingStartedActive ? 'text-[#00e3ec]' : 'text-gray-400'
+                  )}
+                />
+              )}
+              <span className="flex-1 text-left">Getting Started</span>
+              {isGettingStartedActive ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+
+            {/* Expanded: Show sub-steps */}
+            {isGettingStartedActive && (
+              <ul className="mt-1 ml-4 space-y-0.5">
+                <li>
+                  <button
+                    onClick={() => goToStep('income-sources')}
+                    className={cn(
+                      'w-full text-left px-3 py-2 text-sm rounded-lg transition-colors',
+                      currentStep === 'income-sources'
+                        ? 'bg-[#ccf5f7] text-[#00a8b0] font-medium'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    )}
+                  >
+                    Income Sources
+                  </button>
+                </li>
+              </ul>
+            )}
+          </li>
 
           {/* Bank Connection */}
           <SidebarItem
