@@ -82,7 +82,15 @@ export function WizardSidebar() {
               currentStep === 'accounts'
             }
             isComplete={getSectionStatus('connect') === 'completed'}
-            onClick={() => goToStep('connect-choice')}
+            onClick={() => {
+              // If user has bank accounts or is connected, go to accounts step
+              // Otherwise show the connect choice screen
+              if (data.bankConnected || (data.bankAccounts && data.bankAccounts.length > 0)) {
+                goToStep('accounts');
+              } else {
+                goToStep('connect-choice');
+              }
+            }}
           />
 
           {/* Self Employment - Expandable */}
