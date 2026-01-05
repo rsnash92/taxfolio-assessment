@@ -22,6 +22,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +45,7 @@ export function SelfEmploymentIncomeStep() {
     updateBusinessData,
     updateTransaction,
     updateData,
+    goNext,
   } = useWizard();
 
   const [filter, setFilter] = useState<FilterStatus>('all');
@@ -304,7 +306,11 @@ export function SelfEmploymentIncomeStep() {
         total: totalIncome,
       },
     });
-  }, [currentBusinessId, businessTotal, manualEntries, totalIncome, updateBusinessData]);
+    goNext();
+  }, [currentBusinessId, businessTotal, manualEntries, totalIncome, updateBusinessData, goNext]);
+
+  // Check if all transactions are reviewed (none in needs_review status)
+  const allReviewed = stats.needsReview === 0;
 
   return (
     <div className="max-w-5xl">
@@ -372,6 +378,17 @@ export function SelfEmploymentIncomeStep() {
           <CheckCheck className="h-4 w-4 mr-2" />
           Confirm All
         </Button>
+
+        {/* Continue button - only show when all transactions are reviewed */}
+        {allReviewed && (
+          <Button
+            onClick={handleContinue}
+            className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]"
+          >
+            Continue
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        )}
 
         <div className="flex-1" />
 
