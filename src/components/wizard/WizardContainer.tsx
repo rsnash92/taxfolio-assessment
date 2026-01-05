@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ResidencyStep } from '@/components/steps/ResidencyStep';
 import { IncomeSourcesStep } from '@/components/steps/IncomeSourcesStep';
 import { ConnectStep } from '@/components/steps/ConnectStep';
+import { UploadStatementsStep } from '@/components/steps/UploadStatementsStep';
 import { AccountsStep } from '@/components/steps/AccountsStep';
 import { ImportingStep } from '@/components/steps/ImportingStep';
 import { NotSupportedStep } from '@/components/steps/NotSupportedStep';
@@ -111,7 +112,7 @@ export function WizardContainer() {
       case 'bank-connection':
         return <PlaceholderStep title="Bank Connection" />;
       case 'upload-statements':
-        return <PlaceholderStep title="Upload Statements" />;
+        return <UploadStatementsStep />;
       case 'accounts':
         return <AccountsStep />;
       case 'importing':
