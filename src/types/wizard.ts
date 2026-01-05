@@ -704,6 +704,7 @@ export interface WizardData {
   introData?: {
     intent: string | null;
     incomeSource: string | null;
+    incomeSources: string[]; // Array of selected income sources from intro wizard
     filingExperience: string | null;
     situation: string | null;
     experienceLevel: 'beginner' | 'intermediate' | 'expert';
