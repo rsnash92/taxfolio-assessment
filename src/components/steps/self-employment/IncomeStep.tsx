@@ -175,21 +175,33 @@ export function SelfEmploymentIncomeStep() {
         }
       }
 
-      if (results.length > 0) {
-        const updatedTransactions = data.transactions.map((tx) => {
-          const result = results.find((r) => r.id === tx.id);
-          if (result) {
-            return {
-              ...tx,
-              suggested_category: result.category,
-              suggested_is_business: result.is_business,
-              confidence: result.confidence,
-            };
-          }
-          return tx;
-        });
-        updateData({ transactions: updatedTransactions });
-      }
+      // Update transactions with results, and mark any that weren't categorised with a fallback
+      const uncategorisedIds = new Set(uncategorisedTxs.map((t) => t.id));
+      const categorisedIds = new Set(results.map((r) => r.id));
+
+      const updatedTransactions = data.transactions.map((tx) => {
+        const result = results.find((r) => r.id === tx.id);
+        if (result) {
+          return {
+            ...tx,
+            suggested_category: result.category,
+            suggested_is_business: result.is_business,
+            confidence: result.confidence,
+          };
+        }
+        // If this transaction was sent for categorisation but didn't get a result,
+        // mark it with a fallback so it doesn't stay stuck
+        if (uncategorisedIds.has(tx.id) && !categorisedIds.has(tx.id)) {
+          return {
+            ...tx,
+            suggested_category: tx.type === 'income' ? 'turnover' : 'otherExpenses',
+            suggested_is_business: true, // Default to business, user can mark personal if needed
+            confidence: 0.3, // Low confidence to indicate it needs review
+          };
+        }
+        return tx;
+      });
+      updateData({ transactions: updatedTransactions });
 
       await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (err) {
