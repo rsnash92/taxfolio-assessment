@@ -543,7 +543,7 @@ export interface GeneralData {
 // Payment Data
 export interface PaymentData {
   status: 'pending' | 'paid' | 'failed';
-  plan: 'self-file' | 'accountant' | null;
+  plan: 'lite' | 'pro' | 'lifetime' | null;
   amount: number;
   discountCode?: string;
   discountAmount?: number;

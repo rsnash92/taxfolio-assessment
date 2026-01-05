@@ -3,30 +3,47 @@
 export const PRICING = {
   plans: [
     {
-      id: 'self-file' as const,
-      name: 'File Online Yourself',
-      price: 7900, // £79.00 in pence
-      description: 'Self-employment, rental income, or CIS',
-      popular: true,
+      id: 'lite' as const,
+      name: 'Lite',
+      price: 2900, // £29.00 in pence
+      description: 'Perfect for simple tax returns',
+      popular: false,
+      priceLabel: 'per return',
       features: [
-        'Your tax return filed directly to HMRC',
-        'Full breakdown of your tax calculation',
-        'Instant submission confirmation',
-        'Download your tax return PDF',
+        'Self-assessment tax return',
+        'Direct HMRC submission',
+        'Tax calculation breakdown',
+        'Download PDF copy',
       ],
     },
     {
-      id: 'accountant' as const,
-      name: 'Accountant Review',
-      price: 19900, // £199.00 in pence
-      description: 'Recommended for complex returns',
-      popular: false,
+      id: 'pro' as const,
+      name: 'Pro',
+      price: 9900, // £99.00 in pence
+      description: 'Most comprehensive option',
+      popular: true,
+      priceLabel: 'per return',
       features: [
-        'A certified accountant reviews your return',
-        'Maximize allowable expenses and reliefs',
-        'Full breakdown of your tax calculation',
-        'We file your return with HMRC',
-        'Email support for 30 days',
+        'Everything in Lite',
+        'Priority email support',
+        'Accountant review available',
+        'Expense optimization tips',
+        'Tax-saving recommendations',
+      ],
+    },
+    {
+      id: 'lifetime' as const,
+      name: 'Lifetime',
+      price: 24900, // £249.00 in pence
+      description: 'Best value for ongoing filers',
+      popular: false,
+      priceLabel: 'one-time payment',
+      features: [
+        'Everything in Pro',
+        'Unlimited future returns',
+        'Priority support forever',
+        'Early access to new features',
+        'Never pay again',
       ],
     },
   ],
@@ -38,7 +55,7 @@ export const PRICING = {
   } as Record<string, { type: 'percent' | 'fixed'; value: number }>,
 } as const;
 
-export type PlanId = (typeof PRICING.plans)[number]['id'];
+export type PlanId = 'lite' | 'pro' | 'lifetime';
 
 export function calculatePrice(
   planId: string,

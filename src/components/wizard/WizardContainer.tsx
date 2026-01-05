@@ -313,8 +313,9 @@ export function WizardContainer() {
             currentStep === 'self-employment-list' ||
             currentStep === 'rental-list' ||
             currentStep === 'employment-list' ||
-            currentStep === 'capital-gains-disposals'
-              ? 'max-w-4xl mx-auto py-4 sm:py-6 px-2 sm:px-4 md:px-6'
+            currentStep === 'capital-gains-disposals' ||
+            currentStep === 'review-payment'
+              ? 'max-w-5xl mx-auto py-4 sm:py-6 px-2 sm:px-4 md:px-6'
               : 'max-w-3xl mx-auto py-4 sm:py-6 px-2 sm:px-4 md:px-6'
           }>
             <AnimatePresence mode="wait" custom={navigationDirection}>
