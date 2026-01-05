@@ -11,9 +11,12 @@ import {
   AlertCircle,
   Download,
   Circle,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
 
 interface BankAccount {
   account_id: string;
@@ -31,6 +34,20 @@ export function AccountsStep() {
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [pendingDeselect, setPendingDeselect] = useState<BankAccount | null>(null);
+
+  // Get transaction counts per account
+  const transactionsByAccount = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (wizardData.transactions) {
+      for (const tx of wizardData.transactions) {
+        if (tx.accountId) {
+          counts[tx.accountId] = (counts[tx.accountId] || 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }, [wizardData.transactions]);
 
   // Fetch accounts on mount - use saved accounts as fallback if cookie expired
   useEffect(() => {
@@ -79,9 +96,18 @@ export function AccountsStep() {
   }, []);
 
   // Toggle account selection
-  const toggleAccount = (accountId: string) => {
+  const toggleAccount = (account: BankAccount) => {
+    const accountId = account.account_id;
+    const isCurrentlySelected = selectedAccounts.has(accountId);
+
+    // If deselecting and account has transactions, show confirmation
+    if (isCurrentlySelected && transactionsByAccount[accountId] > 0) {
+      setPendingDeselect(account);
+      return;
+    }
+
     const newSelected = new Set(selectedAccounts);
-    if (newSelected.has(accountId)) {
+    if (isCurrentlySelected) {
       newSelected.delete(accountId);
     } else {
       newSelected.add(accountId);
@@ -89,9 +115,44 @@ export function AccountsStep() {
     setSelectedAccounts(newSelected);
   };
 
+  // Confirm deselection and remove transactions
+  const confirmDeselect = () => {
+    if (!pendingDeselect) return;
+
+    const accountId = pendingDeselect.account_id;
+
+    // Remove transactions from this account
+    const filteredTransactions = wizardData.transactions?.filter(
+      (tx) => tx.accountId !== accountId
+    ) || [];
+
+    updateData({ transactions: filteredTransactions });
+
+    // Deselect the account
+    const newSelected = new Set(selectedAccounts);
+    newSelected.delete(accountId);
+    setSelectedAccounts(newSelected);
+
+    setPendingDeselect(null);
+  };
+
+  // Cancel deselection
+  const cancelDeselect = () => {
+    setPendingDeselect(null);
+  };
+
   // Select/deselect all accounts
   const toggleAll = () => {
     if (selectedAccounts.size === accounts.length) {
+      // Check if any selected accounts have transactions
+      const accountsWithTransactions = accounts.filter(
+        (a) => transactionsByAccount[a.account_id] > 0
+      );
+      if (accountsWithTransactions.length > 0) {
+        // Show modal for first account with transactions
+        setPendingDeselect(accountsWithTransactions[0]);
+        return;
+      }
       setSelectedAccounts(new Set());
     } else {
       setSelectedAccounts(new Set(accounts.map((a) => a.account_id)));
@@ -199,18 +260,18 @@ export function AccountsStep() {
       </div>
 
       {/* Bank Card */}
-      <div className="bg-gradient-to-br from-[#00e3ec] to-[#00c4d4] rounded-xl p-6 mb-6 text-white">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-            <Building2 className="h-6 w-6" />
+      <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] rounded-xl p-6 mb-6 text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+            <Building2 className="h-6 w-6 text-[#00e3ec]" />
           </div>
           <div>
             <h2 className="text-xl font-semibold">{bankName}</h2>
-            <p className="text-white/80 text-sm">
+            <p className="text-gray-400 text-sm">
               Connected successfully
             </p>
           </div>
-          <CheckCircle2 className="h-6 w-6 ml-auto" />
+          <CheckCircle2 className="h-6 w-6 ml-auto text-[#00e3ec]" />
         </div>
       </div>
 
@@ -228,10 +289,11 @@ export function AccountsStep() {
         <div className="divide-y divide-gray-100">
           {accounts.map((account) => {
             const isSelected = selectedAccounts.has(account.account_id);
+            const txCount = transactionsByAccount[account.account_id] || 0;
             return (
               <button
                 key={account.account_id}
-                onClick={() => toggleAccount(account.account_id)}
+                onClick={() => toggleAccount(account)}
                 className={cn(
                   'w-full p-4 flex items-center gap-4 text-left transition-colors',
                   isSelected ? 'bg-[#e6fafb]' : 'hover:bg-gray-50'
@@ -263,6 +325,11 @@ export function AccountsStep() {
                     {account.account_type === 'TRANSACTION'
                       ? 'Current Account'
                       : account.account_type}
+                    {txCount > 0 && (
+                      <span className="ml-2 text-[#00a8b0]">
+                        • {txCount} transaction{txCount !== 1 ? 's' : ''} imported
+                      </span>
+                    )}
                   </p>
                 </div>
                 {isSelected ? (
@@ -319,6 +386,57 @@ export function AccountsStep() {
       </div>
 
       <WizardNavigation canContinue={false} />
+
+      {/* Confirmation Modal for Removing Account with Transactions */}
+      {pendingDeselect && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+              </div>
+              <button
+                onClick={cancelDeselect}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Remove account?
+            </h3>
+            <p className="text-gray-600 mb-4">
+              <strong>{pendingDeselect.display_name}</strong> has{' '}
+              <strong>{transactionsByAccount[pendingDeselect.account_id]}</strong>{' '}
+              imported transaction{transactionsByAccount[pendingDeselect.account_id] !== 1 ? 's' : ''}.
+              Removing this account will delete all associated transactions.
+            </p>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+              <p className="text-sm text-amber-800">
+                This action cannot be undone. You&apos;ll need to re-import transactions if you want them back.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={cancelDeselect}
+                className="flex-1"
+              >
+                Keep Account
+              </Button>
+              <Button
+                onClick={confirmDeselect}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Remove & Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

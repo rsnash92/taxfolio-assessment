@@ -107,6 +107,8 @@ export interface Transaction {
   confidence: number;
   // Link to specific business/property
   businessId?: string;
+  // Source bank account ID (for filtering by account)
+  accountId?: string;
 }
 
 // Self Employment Business Data

@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
           suggested_category: null,
           status: 'needs_review',
           confidence: 0,
+          accountId: account.account_id,
         } as Transaction;
       });
 
