@@ -86,6 +86,9 @@ import {
   ReviewConfirmationStep,
 } from '@/components/steps/review';
 
+// Personal Info Step
+import { PersonalInfoStep } from '@/components/steps/PersonalInfoStep';
+
 export function WizardContainer() {
   const { currentStep, isLoading, navigationDirection } = useWizard();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -209,7 +212,7 @@ export function WizardContainer() {
 
       // Personal
       case 'personal-info':
-        return <PlaceholderStep title="Personal Details" />;
+        return <PersonalInfoStep />;
 
       // Review & Submit
       case 'review-payment':
