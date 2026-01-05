@@ -56,14 +56,14 @@ export function SelfEmploymentCapitalAllowancesStep() {
       </div>
 
       {/* Total Card */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-            <PoundSterling className="h-6 w-6" />
+          <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+            <PoundSterling className="h-6 w-6 text-[#00e3ec]" />
           </div>
           <div>
-            <p className="text-blue-100 text-sm">Total Capital Allowances</p>
-            <p className="text-3xl font-bold">{formatCurrency(capitalAllowances.total)}</p>
+            <p className="text-gray-400 text-sm">Total Capital Allowances</p>
+            <p className="text-3xl font-bold text-white">{formatCurrency(capitalAllowances.total)}</p>
           </div>
         </div>
       </div>

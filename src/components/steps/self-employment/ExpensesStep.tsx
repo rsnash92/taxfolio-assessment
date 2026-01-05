@@ -350,24 +350,24 @@ export function SelfEmploymentExpensesStep() {
       </div>
 
       {/* Expenses Summary Card */}
-      <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-            <Receipt className="h-6 w-6" />
+          <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+            <Receipt className="h-6 w-6 text-[#00e3ec]" />
           </div>
           <div>
-            <p className="text-red-100 text-sm">Total Business Expenses</p>
-            <p className="text-3xl font-bold">{formatCurrency(totalExpenses)}</p>
+            <p className="text-gray-400 text-sm">Total Business Expenses</p>
+            <p className="text-3xl font-bold text-white">{formatCurrency(totalExpenses)}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-red-100">From Bank Transactions</p>
-            <p className="text-lg font-semibold">{formatCurrency(businessTotal)}</p>
+          <div className="bg-white/5 rounded-lg p-3">
+            <p className="text-gray-400">From Bank Transactions</p>
+            <p className="text-lg font-semibold text-white">{formatCurrency(businessTotal)}</p>
           </div>
-          <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-red-100">Manual Entries</p>
-            <p className="text-lg font-semibold">{formatCurrency(manualTotal)}</p>
+          <div className="bg-white/5 rounded-lg p-3">
+            <p className="text-gray-400">Manual Entries</p>
+            <p className="text-lg font-semibold text-white">{formatCurrency(manualTotal)}</p>
           </div>
         </div>
       </div>
