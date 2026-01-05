@@ -339,6 +339,18 @@ export function SelfEmploymentExpensesStep() {
     }).format(amount);
   };
 
+  // Save expense totals when continuing
+  const handleContinue = useCallback(() => {
+    updateBusinessData(currentBusinessId, {
+      expenses: {
+        byCategory: categoryTotals,
+        fromTransactions: businessTotal,
+        manual: manualEntries,
+        total: totalExpenses,
+      },
+    });
+  }, [currentBusinessId, categoryTotals, businessTotal, manualEntries, totalExpenses, updateBusinessData]);
+
   return (
     <div className="max-w-5xl">
       {/* Header */}
@@ -724,7 +736,7 @@ export function SelfEmploymentExpensesStep() {
         </div>
       )}
 
-      <WizardNavigation canContinue={true} />
+      <WizardNavigation canContinue={true} onContinue={handleContinue} />
 
       {/* Category Edit Modal */}
       {editingTransaction && (

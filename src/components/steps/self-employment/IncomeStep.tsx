@@ -283,6 +283,17 @@ export function SelfEmploymentIncomeStep() {
     }).format(amount);
   };
 
+  // Save income totals when continuing
+  const handleContinue = useCallback(() => {
+    updateBusinessData(currentBusinessId, {
+      income: {
+        fromTransactions: businessTotal,
+        manual: manualEntries,
+        total: totalIncome,
+      },
+    });
+  }, [currentBusinessId, businessTotal, manualEntries, totalIncome, updateBusinessData]);
+
   return (
     <div className="max-w-5xl">
       {/* Header */}
@@ -610,7 +621,7 @@ export function SelfEmploymentIncomeStep() {
         </div>
       )}
 
-      <WizardNavigation canContinue={true} />
+      <WizardNavigation canContinue={true} onContinue={handleContinue} />
 
       {/* Category Edit Modal */}
       {editingTransaction && (
