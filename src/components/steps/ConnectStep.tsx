@@ -441,7 +441,7 @@ export function ConnectStep() {
       {data.connectionMethod === 'bank' && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
           <p className="text-sm text-blue-800">
-            <strong>Secure connection:</strong> We use Open Banking to securely
+            <strong>Secure connection:</strong> We use TrueLayer to securely
             connect to your bank. We can only read your transactions - we can
             never move money or make changes to your accounts.
           </p>
