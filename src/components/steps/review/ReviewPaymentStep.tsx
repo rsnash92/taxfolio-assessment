@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,13 +12,51 @@ import {
   Loader2,
   ChevronRight,
   Award,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Lite plan eligibility criteria
+const LITE_LIMITS = {
+  maxTransactions: 100,
+  maxIncomeSources: 2,
+  // Complex income types that require Pro
+  complexIncomeTypes: ['capital-gains', 'rental', 'cis'],
+};
+
 export function ReviewPaymentStep() {
   const { data, updateData, goNext } = useWizard();
+
+  // Check if user exceeds Lite plan criteria
+  const liteEligibility = useMemo(() => {
+    const transactionCount = data.transactions?.length || 0;
+    const incomeSourceCount = data.incomeSources?.length || 0;
+    const hasComplexIncome = data.incomeSources?.some((source) =>
+      LITE_LIMITS.complexIncomeTypes.includes(source.type)
+    );
+
+    const reasons: string[] = [];
+
+    if (transactionCount > LITE_LIMITS.maxTransactions) {
+      reasons.push(`${transactionCount} transactions (max ${LITE_LIMITS.maxTransactions})`);
+    }
+    if (incomeSourceCount > LITE_LIMITS.maxIncomeSources) {
+      reasons.push(`${incomeSourceCount} income sources (max ${LITE_LIMITS.maxIncomeSources})`);
+    }
+    if (hasComplexIncome) {
+      reasons.push('Complex income types (capital gains, rental, or CIS)');
+    }
+
+    return {
+      isEligible: reasons.length === 0,
+      reasons,
+    };
+  }, [data.transactions, data.incomeSources]);
+
+  // Default to Pro if Lite is not eligible
+  const defaultPlan = liteEligibility.isEligible ? 'pro' : 'pro';
   const [selectedPlan, setSelectedPlan] = useState<string>(
-    data.payment?.plan || 'pro'
+    data.payment?.plan || defaultPlan
   );
   const [discountCode, setDiscountCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<string | null>(null);
@@ -141,16 +179,22 @@ export function ReviewPaymentStep() {
           );
           const planWithLabel = plan as typeof plan & { priceLabel?: string };
 
+          // Check if Lite plan is disabled
+          const isLiteDisabled = plan.id === 'lite' && !liteEligibility.isEligible;
+
           return (
             <button
               key={plan.id}
-              onClick={() => setSelectedPlan(plan.id)}
+              onClick={() => !isLiteDisabled && setSelectedPlan(plan.id)}
+              disabled={isLiteDisabled}
               className={cn(
                 'relative flex flex-col p-4 sm:p-6 rounded-2xl border-2 text-left transition-all',
-                isSelected
-                  ? 'border-[#00e3ec] bg-[#e6fafb]/50 ring-2 ring-[#00e3ec]/20'
-                  : 'border-gray-200 hover:border-gray-300 bg-white',
-                plan.popular && 'lg:scale-105 lg:shadow-lg lg:z-10'
+                isLiteDisabled
+                  ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-75'
+                  : isSelected
+                    ? 'border-[#00e3ec] bg-[#e6fafb]/50 ring-2 ring-[#00e3ec]/20'
+                    : 'border-gray-200 hover:border-gray-300 bg-white',
+                plan.popular && !isLiteDisabled && 'lg:scale-105 lg:shadow-lg lg:z-10'
               )}
             >
               {/* Popular Badge */}
@@ -160,27 +204,46 @@ export function ReviewPaymentStep() {
                 </span>
               )}
 
+              {/* Unavailable Badge for Lite */}
+              {isLiteDisabled && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-500 text-white text-[10px] sm:text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  UNAVAILABLE
+                </span>
+              )}
+
               {/* Selection Indicator */}
               <div
                 className={cn(
                   'absolute top-3 right-3 sm:top-4 sm:right-4 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center',
-                  isSelected
-                    ? 'border-[#00e3ec] bg-[#00e3ec]'
-                    : 'border-gray-300'
+                  isLiteDisabled
+                    ? 'border-gray-300 bg-gray-200'
+                    : isSelected
+                      ? 'border-[#00e3ec] bg-[#00e3ec]'
+                      : 'border-gray-300'
                 )}
               >
-                {isSelected && <Check className="h-3 w-3 sm:h-4 sm:w-4 text-white" />}
+                {isSelected && !isLiteDisabled && <Check className="h-3 w-3 sm:h-4 sm:w-4 text-white" />}
+                {isLiteDisabled && <Lock className="h-3 w-3 text-gray-400" />}
               </div>
 
               {/* Plan Name */}
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 pr-8">
+              <h3 className={cn(
+                'text-lg sm:text-xl font-bold mb-1 pr-8',
+                isLiteDisabled ? 'text-gray-400' : 'text-gray-900'
+              )}>
                 {plan.name}
               </h3>
-              <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">{plan.description}</p>
+              <p className={cn(
+                'text-xs sm:text-sm mb-3 sm:mb-4',
+                isLiteDisabled ? 'text-gray-400' : 'text-gray-500'
+              )}>
+                {plan.description}
+              </p>
 
               {/* Price */}
               <div className="mb-3 sm:mb-4">
-                {planPricing && planPricing.discountAmount > 0 ? (
+                {planPricing && planPricing.discountAmount > 0 && !isLiteDisabled ? (
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl sm:text-3xl font-bold text-gray-900">
                       {formatCurrency(planPricing.finalPrice)}
@@ -191,11 +254,17 @@ export function ReviewPaymentStep() {
                   </div>
                 ) : (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    <span className={cn(
+                      'text-2xl sm:text-3xl font-bold',
+                      isLiteDisabled ? 'text-gray-400' : 'text-gray-900'
+                    )}>
                       {formatCurrency(plan.price)}
                     </span>
                     {planWithLabel.priceLabel && (
-                      <span className="text-xs sm:text-sm text-gray-500">
+                      <span className={cn(
+                        'text-xs sm:text-sm',
+                        isLiteDisabled ? 'text-gray-400' : 'text-gray-500'
+                      )}>
                         {planWithLabel.priceLabel}
                       </span>
                     )}
@@ -207,23 +276,44 @@ export function ReviewPaymentStep() {
               <ul className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 flex-1">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start gap-2 text-xs sm:text-sm">
-                    <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[#00e3ec] shrink-0 mt-0.5" />
-                    <span className="text-gray-600">{feature}</span>
+                    <Check className={cn(
+                      'h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5',
+                      isLiteDisabled ? 'text-gray-300' : 'text-[#00e3ec]'
+                    )} />
+                    <span className={isLiteDisabled ? 'text-gray-400' : 'text-gray-600'}>
+                      {feature}
+                    </span>
                   </li>
                 ))}
               </ul>
+
+              {/* Reason why Lite is unavailable */}
+              {isLiteDisabled && liteEligibility.reasons.length > 0 && (
+                <div className="mb-4 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-[10px] sm:text-xs text-amber-700 font-medium mb-1">
+                    Your return exceeds Lite limits:
+                  </p>
+                  <ul className="text-[10px] sm:text-xs text-amber-600 space-y-0.5">
+                    {liteEligibility.reasons.map((reason, idx) => (
+                      <li key={idx}>• {reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* CTA */}
               <div className="mt-auto">
                 <div
                   className={cn(
                     'w-full py-2.5 sm:py-3 rounded-xl text-center text-sm sm:text-base font-medium transition-colors',
-                    isSelected
-                      ? 'bg-[#00e3ec] text-white'
-                      : 'bg-gray-100 text-gray-700'
+                    isLiteDisabled
+                      ? 'bg-gray-200 text-gray-400'
+                      : isSelected
+                        ? 'bg-[#00e3ec] text-white'
+                        : 'bg-gray-100 text-gray-700'
                   )}
                 >
-                  {isSelected ? 'Selected' : 'Select Plan'}
+                  {isLiteDisabled ? 'Not Available' : isSelected ? 'Selected' : 'Select Plan'}
                 </div>
               </div>
             </button>
