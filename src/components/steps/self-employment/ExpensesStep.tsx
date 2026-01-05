@@ -377,8 +377,11 @@ export function SelfEmploymentExpensesStep() {
         <Button
           onClick={handleCategorise}
           disabled={isCategorising || stats.uncategorised === 0}
-          variant="outline"
-          className="bg-white"
+          className={cn(
+            stats.uncategorised > 0
+              ? 'bg-[#00e3ec] hover:bg-[#00c4d4] text-white shadow-md'
+              : 'bg-white border border-gray-200 text-gray-400'
+          )}
         >
           {isCategorising ? (
             <>
@@ -400,7 +403,7 @@ export function SelfEmploymentExpensesStep() {
           className="bg-white"
         >
           <CheckCheck className="h-4 w-4 mr-2" />
-          Confirm All {stats.pendingConfirm > 0 ? stats.pendingConfirm : ''}
+          Confirm All
         </Button>
 
         <div className="flex-1" />
@@ -416,16 +419,33 @@ export function SelfEmploymentExpensesStep() {
         </div>
       </div>
 
+      {/* Hint for categorisation */}
+      {stats.uncategorised > 0 && !isCategorising && (
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6 flex items-center gap-3">
+          <div className="w-8 h-8 bg-[#00e3ec] rounded-full flex items-center justify-center shrink-0">
+            <Brain className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">
+              {stats.uncategorised} expense transactions need categorising
+            </p>
+            <p className="text-sm text-gray-600">
+              Click <strong>Categorise</strong> to let AI identify business vs personal expenses
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Progress bar when categorising */}
       {isCategorising && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span>{categoriseStatus}</span>
             <span>{categoriseProgress}%</span>
           </div>
-          <div className="h-2 bg-red-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-[#ccf5f7] rounded-full overflow-hidden">
             <div
-              className="h-full bg-red-500 transition-all duration-300"
+              className="h-full bg-[#00e3ec] transition-all duration-300"
               style={{ width: `${categoriseProgress}%` }}
             />
           </div>
