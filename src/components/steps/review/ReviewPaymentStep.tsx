@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Award,
   Lock,
+  X,
+  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -274,17 +276,41 @@ export function ReviewPaymentStep() {
 
               {/* Features */}
               <ul className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 flex-1">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2 text-xs sm:text-sm">
-                    <Check className={cn(
-                      'h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5',
-                      isLiteDisabled ? 'text-gray-300' : 'text-[#00e3ec]'
-                    )} />
-                    <span className={isLiteDisabled ? 'text-gray-400' : 'text-gray-600'}>
-                      {feature}
-                    </span>
-                  </li>
-                ))}
+                {plan.features.map((feature, index) => {
+                  const featureObj = feature as { text: string; included: boolean; highlight?: boolean };
+                  const isIncluded = featureObj.included;
+                  const isHighlight = featureObj.highlight;
+
+                  return (
+                    <li key={index} className="flex items-start gap-2 text-xs sm:text-sm">
+                      {isHighlight ? (
+                        <Star className={cn(
+                          'h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5',
+                          isLiteDisabled ? 'text-gray-300' : 'text-amber-400 fill-amber-400'
+                        )} />
+                      ) : isIncluded ? (
+                        <Check className={cn(
+                          'h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5',
+                          isLiteDisabled ? 'text-gray-300' : 'text-[#00e3ec]'
+                        )} />
+                      ) : (
+                        <X className={cn(
+                          'h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5',
+                          isLiteDisabled ? 'text-gray-300' : 'text-gray-300'
+                        )} />
+                      )}
+                      <span className={cn(
+                        isLiteDisabled
+                          ? 'text-gray-400'
+                          : isIncluded
+                            ? 'text-gray-600'
+                            : 'text-gray-400'
+                      )}>
+                        {featureObj.text}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
 
               {/* Reason why Lite is unavailable */}
