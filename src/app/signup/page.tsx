@@ -26,17 +26,13 @@ export default function SignUpPage() {
     setError(null);
 
     try {
-      // Get the current origin for the email redirect
-      const origin = window.location.origin;
-
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
           },
-          emailRedirectTo: `${origin}/auth/callback`,
         },
       });
 
@@ -45,6 +41,14 @@ export default function SignUpPage() {
         return;
       }
 
+      // If we got a session, user is auto-confirmed - redirect to wizard
+      if (data.session) {
+        router.push('/');
+        router.refresh();
+        return;
+      }
+
+      // Otherwise, email confirmation is required
       setSuccess(true);
     } catch {
       setError('An unexpected error occurred');
