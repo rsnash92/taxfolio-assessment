@@ -4,6 +4,12 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthUrl, TRUELAYER_CONFIG } from '@/lib/truelayer/client';
 
 export async function POST() {
+  console.log('[TrueLayer Connect] Starting connection...');
+  console.log('[TrueLayer Connect] Config:', {
+    clientId: TRUELAYER_CONFIG.clientId?.substring(0, 10) + '...',
+    redirectUri: TRUELAYER_CONFIG.redirectUri,
+    isSandbox: TRUELAYER_CONFIG.isSandbox,
+  });
   // Verify user is authenticated
   const supabase = await createClient();
   const {
