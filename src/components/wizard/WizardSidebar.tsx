@@ -186,7 +186,7 @@ export function WizardSidebar() {
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#00c4d4] hover:bg-[#e6fafb] rounded-lg"
                     >
                       <Plus className="h-4 w-4" />
-                      Add Self Employment
+                      Add Income Source
                     </button>
                   </li>
                 </ul>
@@ -244,7 +244,7 @@ export function WizardSidebar() {
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#00c4d4] hover:bg-[#e6fafb] rounded-lg"
                     >
                       <Plus className="h-4 w-4" />
-                      Add Property
+                      Add Income Source
                     </button>
                   </li>
                 </ul>
