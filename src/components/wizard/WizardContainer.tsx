@@ -110,8 +110,6 @@ export function WizardContainer() {
       // Connect
       case 'connect-choice':
         return <ConnectStep />;
-      case 'bank-connection':
-        return <PlaceholderStep title="Bank Connection" />;
       case 'upload-statements':
         return <UploadStatementsStep />;
       case 'manual-entry':

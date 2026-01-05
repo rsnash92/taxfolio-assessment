@@ -66,13 +66,6 @@ export const ALL_STEPS: StepConfig[] = [
     showInSidebar: true,
   },
   {
-    id: 'bank-connection',
-    section: 'connect',
-    title: 'Bank Connection',
-    showInSidebar: false,
-    condition: (data) => data.connectionMethod === 'bank',
-  },
-  {
     id: 'upload-statements',
     section: 'connect',
     title: 'Upload Statements',
