@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckCircle2, XCircle, Brain, Pencil } from 'lucide-react';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, formatCategory, cn } from '@/lib/utils';
 import { Transaction } from '@/types/wizard';
 
 interface TransactionRowProps {
@@ -65,7 +65,7 @@ export function TransactionRow({
           transaction.suggested_category && (
             <p className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
               <Brain className="h-3 w-3" />
-              AI suggests: {transaction.suggested_category}
+              AI suggests: {formatCategory(transaction.suggested_category)}
             </p>
           )}
       </td>
@@ -73,7 +73,7 @@ export function TransactionRow({
       {/* Category */}
       <td className="p-3">
         <span className={cn('text-sm', isPersonal ? 'text-gray-400' : 'text-gray-600')}>
-          {transaction.category || transaction.suggested_category || '-'}
+          {formatCategory(transaction.category || transaction.suggested_category)}
         </span>
       </td>
 
