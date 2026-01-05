@@ -93,6 +93,13 @@ export const ALL_STEPS: StepConfig[] = [
     showInSidebar: false,
     condition: (data) => data.connectionMethod === 'upload',
   },
+  {
+    id: 'manual-entry',
+    section: 'connect',
+    title: 'Manual Entry',
+    showInSidebar: false,
+    condition: (data) => data.connectionMethod === 'manual',
+  },
 
   // Self Employment list (manage multiple businesses)
   {

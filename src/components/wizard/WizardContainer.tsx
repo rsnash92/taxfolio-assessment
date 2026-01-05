@@ -14,6 +14,7 @@ import { ResidencyStep } from '@/components/steps/ResidencyStep';
 import { IncomeSourcesStep } from '@/components/steps/IncomeSourcesStep';
 import { ConnectStep } from '@/components/steps/ConnectStep';
 import { UploadStatementsStep } from '@/components/steps/UploadStatementsStep';
+import { ManualEntryStep } from '@/components/steps/ManualEntryStep';
 import { AccountsStep } from '@/components/steps/AccountsStep';
 import { ImportingStep } from '@/components/steps/ImportingStep';
 import { NotSupportedStep } from '@/components/steps/NotSupportedStep';
@@ -113,6 +114,8 @@ export function WizardContainer() {
         return <PlaceholderStep title="Bank Connection" />;
       case 'upload-statements':
         return <UploadStatementsStep />;
+      case 'manual-entry':
+        return <ManualEntryStep />;
       case 'accounts':
         return <AccountsStep />;
       case 'importing':
