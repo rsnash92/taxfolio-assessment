@@ -81,10 +81,13 @@ export function SelfEmploymentListStep() {
     goToBusinessStep(businessId, 'self-employment-basics');
   };
 
-  const handleCompleteBusiness = (businessId: string) => {
-    const businessData = data.selfEmploymentData[businessId];
-    if (!businessData?.isComplete) {
-      // Go to summary to complete
+  const handleStartOrContinueBusiness = (businessId: string) => {
+    const status = getBusinessStatus(businessId);
+    if (status === 'not_started') {
+      // New business - start from basics
+      goToBusinessStep(businessId, 'self-employment-basics');
+    } else {
+      // In progress - go to summary to review/complete
       goToBusinessStep(businessId, 'self-employment-summary');
     }
   };
@@ -219,7 +222,7 @@ export function SelfEmploymentListStep() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleCompleteBusiness(business.id)}
+                        onClick={() => handleStartOrContinueBusiness(business.id)}
                         className="ml-2"
                       >
                         {status === 'in_progress' ? 'Continue' : 'Start'}
