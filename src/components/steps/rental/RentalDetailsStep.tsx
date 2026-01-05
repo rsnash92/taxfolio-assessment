@@ -57,7 +57,7 @@ export function RentalDetailsStep() {
     property.address &&
     property.postcode &&
     property.propertyType &&
-    property.ownershipShare;
+    property.ownershipShare > 0;
 
   return (
     <div className="space-y-8">
@@ -71,8 +71,8 @@ export function RentalDetailsStep() {
           Back to all properties
         </button>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Home className="h-5 w-5 text-purple-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Home className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -129,7 +129,7 @@ export function RentalDetailsStep() {
               key={type.id}
               className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-colors ${
                 property.propertyType === type.id
-                  ? 'border-purple-500 bg-purple-50'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -201,12 +201,16 @@ export function RentalDetailsStep() {
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
         <h3 className="font-semibold text-gray-900">Finance Costs</h3>
 
-        <label className="flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-colors hover:border-gray-300">
+        <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-colors ${
+          property.hasMortgage
+            ? 'border-[#00e3ec] bg-[#e6fafb]'
+            : 'border-gray-200 hover:border-gray-300'
+        }`}>
           <input
             type="checkbox"
             checked={property.hasMortgage || false}
             onChange={(e) => handleUpdate({ hasMortgage: e.target.checked })}
-            className="mt-1"
+            className="mt-1 accent-[#00e3ec]"
           />
           <div>
             <p className="font-medium text-gray-900">
@@ -261,8 +265,8 @@ export function RentalDetailsStep() {
               </p>
             </div>
 
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <p className="text-sm text-purple-800">
+            <div className="bg-[#e6fafb] border border-[#99ebef] rounded-lg p-4">
+              <p className="text-sm text-[#00a8b0]">
                 <strong>Section 24:</strong> Residential landlords receive a 20%
                 tax credit on finance costs rather than a full deduction. This
                 will be calculated automatically.
