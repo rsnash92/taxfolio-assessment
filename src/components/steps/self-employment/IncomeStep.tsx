@@ -149,13 +149,18 @@ export function SelfEmploymentIncomeStep() {
 
       const decoder = new TextDecoder();
       const results: CategoryResult[] = [];
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const text = decoder.decode(value);
-        const lines = text.split('\n');
+        // Append new data to buffer and process complete lines
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep the last incomplete line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -176,6 +181,25 @@ export function SelfEmploymentIncomeStep() {
           }
         }
       }
+
+      // Process any remaining data in buffer
+      if (buffer.startsWith('data: ')) {
+        try {
+          const event = JSON.parse(buffer.slice(6));
+          if (event.type === 'batch_complete') {
+            results.push(...event.results);
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
+      // Log results for debugging
+      console.log('[IncomeStep] Categorisation complete:', {
+        sentCount: uncategorisedTxs.length,
+        resultsCount: results.length,
+        sampleResult: results[0],
+      });
 
       // Update transactions with results, and mark any that weren't categorised with a fallback
       const uncategorisedIds = new Set(uncategorisedTxs.map((t) => t.id));
