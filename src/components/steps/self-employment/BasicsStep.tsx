@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
+import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   HelpCircle,
-  Check,
+  Info,
   ArrowLeft,
   Wrench,
   Stethoscope,
@@ -21,6 +22,7 @@ import {
   Tag,
   Star,
   Circle,
+  ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,11 +40,11 @@ const INDUSTRIES = [
   { id: 'food-delivery', label: 'Food Delivery', icon: UtensilsCrossed },
   { id: 'retail', label: 'Retail', icon: Tag },
   { id: 'entertainment', label: 'Entertainment / Sports', icon: Star },
-  { id: 'skip', label: 'Skip', icon: Circle },
+  { id: 'skip', label: 'Skip this question', icon: Circle },
 ];
 
 export function SelfEmploymentBasicsStep() {
-  const { currentBusinessId, data, updateBusinessData, updateIncomeSource, goNext } = useWizard();
+  const { currentBusinessId, data, updateBusinessData, updateIncomeSource, goNext, goBack } = useWizard();
   const [step, setStep] = useState<'details' | 'changed' | 'industry'>('details');
 
   if (!currentBusinessId) {
@@ -71,90 +73,92 @@ export function SelfEmploymentBasicsStep() {
   // Step 1: Basic details
   if (step === 'details') {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <span className="inline-flex items-center px-3 py-1 rounded-md bg-red-50 text-red-600 text-sm font-medium border border-red-100">
-              Between 06/04/2024 and 05/04/2025
-            </span>
-            <span className="text-red-500 text-sm font-medium flex items-center gap-1">
-              <span className="text-red-400">*</span> Required
-            </span>
+      <div>
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <p className="text-sm text-gray-500 mb-2">Self-employment details</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+            The basics
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Let&apos;s get to know your business. This information helps us complete your tax return accurately.
+          </p>
+        </div>
+
+        {/* Form Fields */}
+        <div className="space-y-6 mb-6 sm:mb-8">
+          {/* Self-employment name */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm sm:text-base font-medium text-gray-900">
+              Self-employment name
+              <span className="text-red-500">*</span>
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-xs sm:text-sm text-gray-500">
+              Your name, or the name of your business.
+            </p>
+            <Input
+              placeholder="e.g. John Smith Consulting"
+              value={businessData.businessName || ''}
+              onChange={(e) => handleChange('businessName', e.target.value)}
+              className="h-11 sm:h-12 text-sm sm:text-base border-gray-200 rounded-xl bg-white focus:border-[#00e3ec] focus:ring-[#00e3ec]"
+            />
           </div>
 
-          {/* Title */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">The basics</h1>
-          <p className="text-gray-500 mb-8">Let&apos;s get to know each other.</p>
-
-          {/* Form Fields */}
-          <div className="space-y-6">
-            {/* Self-employment name */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1 text-gray-700 font-medium">
-                Self-employment name
-                <span className="text-red-500">*</span>
-                <HelpCircle className="h-4 w-4 text-gray-400" />
-              </label>
-              <p className="text-gray-500 text-sm">
-                Your name, or the name of your business.
-              </p>
-              <Input
-                placeholder=""
-                value={businessData.businessName || ''}
-                onChange={(e) => handleChange('businessName', e.target.value)}
-                className="h-12 text-base border-gray-200 rounded-lg"
-              />
-            </div>
-
-            {/* Business description */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1 text-gray-700 font-medium">
-                How would you describe your business?
-                <span className="text-red-500">*</span>
-                <HelpCircle className="h-4 w-4 text-gray-400" />
-              </label>
-              <p className="text-gray-500 text-sm">
-                We just need a brief description of what your business or self-employment does.
-              </p>
-              <Input
-                placeholder=""
-                value={businessData.businessDescription || ''}
-                onChange={(e) => handleChange('businessDescription', e.target.value)}
-                className="h-12 text-base border-gray-200 rounded-lg"
-              />
-            </div>
-
-            {/* Business postcode */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1 text-gray-700 font-medium">
-                What is the postcode of your business address?
-                <HelpCircle className="h-4 w-4 text-gray-400" />
-              </label>
-              <p className="text-gray-500 text-sm">
-                If you have a separate address you run your self-employment from, provide this postcode. If not, then it is likely to be your home postcode.
-              </p>
-              <Input
-                placeholder=""
-                value={businessData.businessPostcode || ''}
-                onChange={(e) => handleChange('businessPostcode', e.target.value)}
-                className="h-12 text-base border-gray-200 rounded-lg"
-              />
-            </div>
+          {/* Business description */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm sm:text-base font-medium text-gray-900">
+              How would you describe your business?
+              <span className="text-red-500">*</span>
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-xs sm:text-sm text-gray-500">
+              A brief description of what your business or self-employment does.
+            </p>
+            <Input
+              placeholder="e.g. IT consulting services"
+              value={businessData.businessDescription || ''}
+              onChange={(e) => handleChange('businessDescription', e.target.value)}
+              className="h-11 sm:h-12 text-sm sm:text-base border-gray-200 rounded-xl bg-white focus:border-[#00e3ec] focus:ring-[#00e3ec]"
+            />
           </div>
 
-          {/* Next Button */}
-          <div className="flex justify-end mt-8">
-            <Button
-              onClick={() => setStep('changed')}
-              disabled={!isDetailsValid}
-              className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 py-2 h-auto rounded-full text-white"
-            >
-              Next
-              <Check className="h-4 w-4 ml-2" />
-            </Button>
+          {/* Business postcode */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm sm:text-base font-medium text-gray-900">
+              Business postcode
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-xs sm:text-sm text-gray-500">
+              If you have a separate business address, provide that postcode. Otherwise, use your home postcode.
+            </p>
+            <Input
+              placeholder="e.g. SW1A 1AA"
+              value={businessData.businessPostcode || ''}
+              onChange={(e) => handleChange('businessPostcode', e.target.value)}
+              className="h-11 sm:h-12 text-sm sm:text-base border-gray-200 rounded-xl bg-white focus:border-[#00e3ec] focus:ring-[#00e3ec] max-w-xs"
+            />
           </div>
         </div>
+
+        {/* Info Note */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 mb-6 sm:mb-8">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs sm:text-sm">
+              <p className="text-blue-800 font-medium">Tax year 2024/25</p>
+              <p className="text-blue-600">
+                This covers income from 6 April 2024 to 5 April 2025.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <WizardNavigation
+          canContinue={isDetailsValid}
+          onContinue={() => setStep('changed')}
+          continueLabel="Next"
+        />
       </div>
     );
   }
@@ -162,71 +166,103 @@ export function SelfEmploymentBasicsStep() {
   // Step 2: Details changed question
   if (step === 'changed') {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <span className="inline-flex items-center px-3 py-1 rounded-md bg-red-50 text-red-600 text-sm font-medium border border-red-100">
-              Between 06/04/2024 and 05/04/2025
-            </span>
-            <span className="text-red-500 text-sm font-medium flex items-center gap-1">
-              <span className="text-red-400">*</span> Required
-            </span>
-          </div>
-
-          {/* Title */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Have any of the details above changed within the past year?
+      <div>
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <p className="text-sm text-gray-500 mb-2">Self-employment details</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+            Have any of these details changed?
           </h1>
-          <p className="text-gray-500 mb-8">
-            If your details have changed since your last tax return was submitted, we&apos;ll need your old details to update HMRC.
+          <p className="text-sm sm:text-base text-gray-600">
+            If your business details have changed since your last tax return, we&apos;ll need your old details to update HMRC.
           </p>
+        </div>
 
-          {/* Yes/No Buttons */}
-          <div className="flex gap-4 mb-8">
-            <button
-              onClick={() => handleChange('detailsChanged', true)}
+        {/* Yes/No Options */}
+        <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
+          <button
+            onClick={() => handleChange('detailsChanged', true)}
+            className={cn(
+              'w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left',
+              businessData.detailsChanged === true
+                ? 'border-[#00e3ec] bg-[#e6fafb]'
+                : 'border-gray-200 hover:border-gray-300 bg-white'
+            )}
+          >
+            <div
               className={cn(
-                'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
-                businessData.detailsChanged === true
-                  ? 'border-[#00e3ec] bg-[#e6fafb] text-[#00a8b0]'
-                  : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0',
+                businessData.detailsChanged === true ? 'bg-[#00e3ec]' : 'bg-gray-100'
               )}
             >
-              Yes
-            </button>
-            <button
-              onClick={() => handleChange('detailsChanged', false)}
+              <span className={cn(
+                'text-sm font-bold',
+                businessData.detailsChanged === true ? 'text-white' : 'text-gray-500'
+              )}>
+                Yes
+              </span>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900 text-sm sm:text-base">
+                Yes, details have changed
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500">
+                My business name, description, or address changed this year
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleChange('detailsChanged', false)}
+            className={cn(
+              'w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left',
+              businessData.detailsChanged === false
+                ? 'border-[#00e3ec] bg-[#e6fafb]'
+                : 'border-gray-200 hover:border-gray-300 bg-white'
+            )}
+          >
+            <div
               className={cn(
-                'flex-1 py-4 px-6 rounded-xl border-2 text-lg font-medium transition-colors',
-                businessData.detailsChanged === false
-                  ? 'border-[#00e3ec] bg-[#e6fafb] text-[#00a8b0]'
-                  : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0',
+                businessData.detailsChanged === false ? 'bg-[#00e3ec]' : 'bg-gray-100'
               )}
             >
-              No
-            </button>
-          </div>
+              <span className={cn(
+                'text-sm font-bold',
+                businessData.detailsChanged === false ? 'text-white' : 'text-gray-500'
+              )}>
+                No
+              </span>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900 text-sm sm:text-base">
+                No, everything is the same
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500">
+                My details are the same as my last tax return
+              </p>
+            </div>
+          </button>
+        </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => setStep('details')}
-              className="text-gray-600"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <Button
-              onClick={() => setStep('industry')}
-              disabled={!isChangedAnswered}
-              className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 py-2 h-auto rounded-full text-white"
-            >
-              Next
-              <Check className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
+        {/* Navigation */}
+        <div className="flex items-center justify-between pt-6 sm:pt-8 mt-6 sm:mt-8 border-t border-gray-200">
+          <Button
+            variant="ghost"
+            onClick={() => setStep('details')}
+            className="text-gray-600"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <Button
+            onClick={() => setStep('industry')}
+            disabled={!isChangedAnswered}
+            className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white"
+          >
+            Next
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
         </div>
       </div>
     );
@@ -234,81 +270,88 @@ export function SelfEmploymentBasicsStep() {
 
   // Step 3: Industry selection
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <span className="inline-flex items-center px-3 py-1 rounded-md bg-red-50 text-red-600 text-sm font-medium border border-red-100">
-            Between 06/04/2024 and 05/04/2025
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="text-red-500 text-sm font-medium flex items-center gap-1">
-              <span className="text-red-400">*</span> Required
-            </span>
-            <HelpCircle className="h-4 w-4 text-gray-400" />
-          </div>
-        </div>
-
-        {/* Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Your industry</h1>
-        <p className="text-gray-500 mb-2">
-          Please select which one of the below options best describes your self-employment service.
+    <div>
+      {/* Header */}
+      <div className="mb-6 sm:mb-8">
+        <p className="text-sm text-gray-500 mb-2">Self-employment details</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+          What industry is your business in?
+        </h1>
+        <p className="text-sm sm:text-base text-gray-600">
+          This helps us categorise your transactions and suggest relevant expense categories.
+          If your business isn&apos;t listed, you can skip this question.
         </p>
-        <p className="text-gray-500 mb-6">
-          If your business isn&apos;t listed, simply skip this question.
-        </p>
+      </div>
 
-        {/* Industry Options */}
-        <div className="space-y-3 mb-8 max-h-[400px] overflow-y-auto">
-          {INDUSTRIES.map((industry) => {
-            const Icon = industry.icon;
-            const isSelected = businessData.industry === industry.id;
+      {/* Industry Options */}
+      <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8 max-h-[50vh] overflow-y-auto">
+        {INDUSTRIES.map((industry) => {
+          const Icon = industry.icon;
+          const isSelected = businessData.industry === industry.id;
 
-            return (
-              <button
-                key={industry.id}
-                onClick={() => handleChange('industry', industry.id)}
+          return (
+            <button
+              key={industry.id}
+              onClick={() => handleChange('industry', industry.id)}
+              className={cn(
+                'w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left',
+                isSelected
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              )}
+            >
+              <div
                 className={cn(
-                  'w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-colors text-left',
-                  isSelected
-                    ? 'border-[#00e3ec] bg-[#e6fafb] text-[#00a8b0]'
-                    : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                  'w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                  isSelected ? 'bg-[#00e3ec]' : 'bg-gray-100'
                 )}
               >
-                <Icon className={cn('h-5 w-5', isSelected ? 'text-[#00c4d4]' : 'text-gray-400')} />
-                <span className="flex-1 font-medium">{industry.label}</span>
-                <div
+                <Icon
                   className={cn(
-                    'w-5 h-5 rounded-full border-2 flex items-center justify-center',
-                    isSelected ? 'border-[#00e3ec] bg-[#00e3ec]' : 'border-gray-300'
+                    'h-4 w-4 sm:h-5 sm:w-5',
+                    isSelected ? 'text-white' : 'text-gray-500'
                   )}
-                >
-                  {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                />
+              </div>
+              <span className={cn(
+                'flex-1 font-medium text-sm sm:text-base',
+                isSelected ? 'text-[#00a8b0]' : 'text-gray-900'
+              )}>
+                {industry.label}
+              </span>
+              <div
+                className={cn(
+                  'w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0',
+                  isSelected ? 'border-[#00e3ec]' : 'border-gray-300'
+                )}
+              >
+                {isSelected && (
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#00e3ec]" />
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => setStep('changed')}
-            className="text-gray-600"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <Button
-            onClick={goNext}
-            disabled={!isIndustrySelected}
-            className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 py-2 h-auto rounded-full text-white"
-          >
-            Next
-            <Check className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
+      {/* Navigation */}
+      <div className="flex items-center justify-between pt-6 sm:pt-8 mt-6 sm:mt-8 border-t border-gray-200">
+        <Button
+          variant="ghost"
+          onClick={() => setStep('changed')}
+          className="text-gray-600"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+        <Button
+          onClick={goNext}
+          disabled={!isIndustrySelected}
+          className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white"
+        >
+          Continue
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
       </div>
     </div>
   );
