@@ -71,19 +71,50 @@ export function RentalListStep() {
     return 'not_started';
   };
 
+  // HMRC SA105 compliant profit calculation
   const getPropertySummary = (propertyId: string) => {
     const propertyData = data.rentalData[propertyId];
     if (!propertyData) return null;
 
+    const rawIncome = propertyData.income?.total || 0;
+    const rawExpenses = propertyData.expenses?.total || 0;
+
+    // Apply ownership share
+    const ownershipShare = (propertyData.ownershipShare || 100) / 100;
+    const adjustedIncome = rawIncome * ownershipShare;
+    const adjustedExpenses = rawExpenses * ownershipShare;
+
+    // Property allowance comparison (HMRC rules)
+    const propertyAllowance = 1000;
+    const usePropertyAllowance =
+      adjustedIncome <= propertyAllowance ||
+      (adjustedIncome > propertyAllowance && propertyAllowance > adjustedExpenses);
+
+    // Calculate taxable profit per HMRC SA105
+    let taxableProfit: number;
+    if (adjustedIncome <= propertyAllowance) {
+      taxableProfit = 0;
+    } else if (usePropertyAllowance) {
+      taxableProfit = adjustedIncome - propertyAllowance;
+    } else {
+      taxableProfit = adjustedIncome - adjustedExpenses;
+    }
+
+    // Section 24 finance costs (not deductible, but gives 20% tax credit)
+    const totalFinanceCosts =
+      (propertyData.mortgageInterest || 0) + (propertyData.otherFinanceCosts || 0);
+    const financeCostTaxCredit = totalFinanceCosts * 0.2 * ownershipShare;
+
     return {
-      income: propertyData.income?.total || 0,
-      expenses: propertyData.expenses?.total || 0,
-      profit:
-        (propertyData.income?.total || 0) - (propertyData.expenses?.total || 0),
+      income: adjustedIncome,
+      expenses: adjustedExpenses,
+      profit: taxableProfit,
+      financeCostTaxCredit,
+      usePropertyAllowance,
     };
   };
 
-  // Calculate totals across all properties
+  // Calculate totals across all properties (HMRC compliant)
   const totals = rentalProperties.reduce(
     (acc, property) => {
       const summary = getPropertySummary(property.id);
@@ -91,10 +122,11 @@ export function RentalListStep() {
         acc.income += summary.income;
         acc.expenses += summary.expenses;
         acc.profit += summary.profit;
+        acc.financeCostTaxCredit += summary.financeCostTaxCredit;
       }
       return acc;
     },
-    { income: 0, expenses: 0, profit: 0 }
+    { income: 0, expenses: 0, profit: 0, financeCostTaxCredit: 0 }
   );
 
   return (
@@ -102,8 +134,8 @@ export function RentalListStep() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Building2 className="h-5 w-5 text-purple-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Building2 className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
             Rental Properties
@@ -117,11 +149,11 @@ export function RentalListStep() {
       </div>
 
       {/* Property Allowance Info */}
-      <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-        <h3 className="font-medium text-purple-900 mb-2">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4">
+        <h3 className="font-medium text-[#00858c] mb-2">
           Property Income Allowance
         </h3>
-        <p className="text-sm text-purple-700">
+        <p className="text-sm text-[#00a8b0]">
           If your total property income is less than £1,000, you don&apos;t need
           to report it. If your income is over £1,000, you can either claim the
           £1,000 allowance or deduct your actual expenses - whichever is more
@@ -140,7 +172,7 @@ export function RentalListStep() {
             <p className="text-gray-500 mb-6">
               Add your first rental property to get started
             </p>
-            <Button onClick={handleAddProperty} className="bg-purple-500 hover:bg-purple-600">
+            <Button onClick={handleAddProperty} className="bg-[#00c4d4] hover:bg-[#00a8b0]">
               <Plus className="h-4 w-4 mr-2" />
               Add Property
             </Button>
@@ -155,12 +187,12 @@ export function RentalListStep() {
               return (
                 <div
                   key={property.id}
-                  className="bg-white border border-gray-200 rounded-xl p-6 hover:border-purple-300 transition-colors"
+                  className="bg-white border border-gray-200 rounded-xl p-6 hover:border-[#99ebef] transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Home className="h-6 w-6 text-purple-600" />
+                      <div className="w-12 h-12 bg-[#e6fafb] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Home className="h-6 w-6 text-[#00c4d4]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
@@ -238,7 +270,7 @@ export function RentalListStep() {
                       <Button
                         variant="ghost"
                         onClick={() => handleEditProperty(property.id)}
-                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                        className="text-[#00c4d4] hover:text-[#00a8b0] hover:bg-[#e6fafb]"
                       >
                         {status === 'not_started' ? 'Start' : 'Edit'}
                         <ChevronRight className="h-4 w-4 ml-1" />
@@ -252,7 +284,7 @@ export function RentalListStep() {
             {/* Add another property */}
             <button
               onClick={handleAddProperty}
-              className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-[#99ebef] hover:text-[#00c4d4] hover:bg-[#e6fafb] transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="h-5 w-5" />
               Add Another Property
@@ -281,7 +313,7 @@ export function RentalListStep() {
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-1">Net Profit</p>
+              <p className="text-sm text-gray-500 mb-1">Taxable Profit</p>
               <p
                 className={`text-xl font-bold ${
                   totals.profit >= 0 ? 'text-[#00c4d4]' : 'text-red-600'
@@ -291,6 +323,21 @@ export function RentalListStep() {
               </p>
             </div>
           </div>
+          {totals.financeCostTaxCredit > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  Section 24 Tax Credit (20% of finance costs)
+                </p>
+                <p className="text-lg font-semibold text-[#00c4d4]">
+                  -{formatCurrency(totals.financeCostTaxCredit)}
+                </p>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                This reduces your tax bill, not your taxable profit
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -107,8 +107,8 @@ export function RentalSummaryStep() {
           Back to all properties
         </button>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Calculator className="h-5 w-5 text-purple-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Calculator className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -133,7 +133,7 @@ export function RentalSummaryStep() {
           </div>
           <button
             onClick={() => handleEditSection('details')}
-            className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+            className="text-sm text-[#00c4d4] hover:text-[#00a8b0] flex items-center gap-1"
           >
             <Edit2 className="h-3 w-3" />
             Edit
@@ -171,7 +171,7 @@ export function RentalSummaryStep() {
           </div>
           <button
             onClick={() => handleEditSection('income')}
-            className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+            className="text-sm text-[#00c4d4] hover:text-[#00a8b0] flex items-center gap-1"
           >
             <Edit2 className="h-3 w-3" />
             Edit
@@ -213,7 +213,7 @@ export function RentalSummaryStep() {
           </div>
           <button
             onClick={() => handleEditSection('expenses')}
-            className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+            className="text-sm text-[#00c4d4] hover:text-[#00a8b0] flex items-center gap-1"
           >
             <Edit2 className="h-3 w-3" />
             Edit
@@ -252,32 +252,32 @@ export function RentalSummaryStep() {
 
       {/* Finance Costs (Section 24) */}
       {totalFinanceCosts > 0 && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+        <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Info className="h-5 w-5 text-purple-500" />
-            <h3 className="font-semibold text-purple-900">
+            <Info className="h-5 w-5 text-[#00c4d4]" />
+            <h3 className="font-semibold text-[#00858c]">
               Section 24 Finance Costs
             </h3>
           </div>
 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-purple-700">Mortgage Interest</span>
+              <span className="text-[#00a8b0]">Mortgage Interest</span>
               <span className="font-medium">
                 {formatCurrency(property.mortgageInterest || 0)}
               </span>
             </div>
             {(property.otherFinanceCosts || 0) > 0 && (
               <div className="flex justify-between">
-                <span className="text-purple-700">Other Finance Costs</span>
+                <span className="text-[#00a8b0]">Other Finance Costs</span>
                 <span className="font-medium">
                   {formatCurrency(property.otherFinanceCosts || 0)}
                 </span>
               </div>
             )}
-            <div className="border-t border-purple-200 pt-2 flex justify-between">
-              <span className="font-medium text-purple-900">Tax Credit (20%)</span>
-              <span className="font-bold text-purple-700">
+            <div className="border-t border-[#99ebef] pt-2 flex justify-between">
+              <span className="font-medium text-[#00858c]">Tax Credit (20%)</span>
+              <span className="font-bold text-[#00a8b0]">
                 -{formatCurrency(financeCostTaxCredit)}
               </span>
             </div>
