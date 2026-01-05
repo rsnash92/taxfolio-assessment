@@ -13,6 +13,8 @@ import {
   Circle,
   AlertTriangle,
   X,
+  RefreshCw,
+  WifiOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -26,7 +28,7 @@ interface BankAccount {
 }
 
 export function AccountsStep() {
-  const { data: wizardData, updateData, goNext } = useWizard();
+  const { data: wizardData, updateData, goNext, saveProgress } = useWizard();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [bankName, setBankName] = useState<string>('');
@@ -35,6 +37,8 @@ export function AccountsStep() {
   const [importProgress, setImportProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [pendingDeselect, setPendingDeselect] = useState<BankAccount | null>(null);
+  const [isConnected, setIsConnected] = useState(false); // True if live TrueLayer connection
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // Get transaction counts per account
   const transactionsByAccount = useMemo(() => {
@@ -59,6 +63,7 @@ export function AccountsStep() {
         if (apiData.connected) {
           setAccounts(apiData.accounts);
           setBankName(apiData.bankName);
+          setIsConnected(true); // Live connection
           // Select all accounts by default
           setSelectedAccounts(new Set(apiData.accounts.map((a: BankAccount) => a.account_id)));
           setError(null); // Clear any previous error
@@ -73,6 +78,7 @@ export function AccountsStep() {
           console.log('[AccountsStep] Using saved accounts from localStorage');
           setAccounts(wizardData.bankAccounts);
           setBankName(wizardData.bankName || 'Connected Bank');
+          setIsConnected(false); // Using cached data, connection expired
           setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
           setError(null); // Clear any previous error - we have valid saved accounts
         } else {
@@ -84,6 +90,7 @@ export function AccountsStep() {
           console.log('[AccountsStep] API error, using saved accounts');
           setAccounts(wizardData.bankAccounts);
           setBankName(wizardData.bankName || 'Connected Bank');
+          setIsConnected(false); // Using cached data
           setSelectedAccounts(new Set(wizardData.bankAccounts.map((a) => a.account_id)));
           setError(null); // Clear any previous error - we have valid saved accounts
         } else {
@@ -159,6 +166,30 @@ export function AccountsStep() {
       setSelectedAccounts(new Set());
     } else {
       setSelectedAccounts(new Set(accounts.map((a) => a.account_id)));
+    }
+  };
+
+  // Reconnect to bank
+  const handleReconnect = async () => {
+    setIsReconnecting(true);
+    setError(null);
+
+    try {
+      await saveProgress();
+      const response = await fetch('/api/truelayer/connect', { method: 'POST' });
+      const result = await response.json();
+
+      if (result.error) {
+        setError('Failed to reconnect. Please try again.');
+        setIsReconnecting(false);
+        return;
+      }
+
+      window.location.href = result.authUrl;
+    } catch (err) {
+      console.error('Reconnect error:', err);
+      setError('Failed to reconnect. Please try again.');
+      setIsReconnecting(false);
     }
   };
 
@@ -268,15 +299,58 @@ export function AccountsStep() {
           <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
             <Building2 className="h-6 w-6 text-[#00e3ec]" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-semibold">{bankName}</h2>
-            <p className="text-gray-400 text-sm">
-              Connected successfully
-            </p>
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-green-400" />
+                  <p className="text-green-400 text-sm">Connected</p>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <p className="text-amber-400 text-sm">Session expired</p>
+                </>
+              )}
+            </div>
           </div>
-          <CheckCircle2 className="h-6 w-6 ml-auto text-[#00e3ec]" />
+          {isConnected ? (
+            <CheckCircle2 className="h-6 w-6 text-[#00e3ec]" />
+          ) : (
+            <Button
+              onClick={handleReconnect}
+              disabled={isReconnecting}
+              size="sm"
+              className="bg-white/10 hover:bg-white/20 text-white border-0"
+            >
+              {isReconnecting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reconnect
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Connection Warning */}
+      {!isConnected && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <WifiOff className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">Bank session expired</p>
+              <p className="text-sm text-amber-700 mt-1">
+                Your bank connection has expired. Reconnect to import new transactions, or continue with your existing data.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Account List */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
