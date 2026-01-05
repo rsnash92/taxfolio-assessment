@@ -181,6 +181,8 @@ export function SelfEmploymentExpensesStep() {
     setCategoriseStatus('Starting AI categorisation...');
 
     try {
+      console.log('[ExpensesStep] Starting categorisation for', uncategorisedTxs.length, 'transactions');
+
       const response = await fetch('/api/transactions/categorise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,7 +193,13 @@ export function SelfEmploymentExpensesStep() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to categorise transactions');
+      console.log('[ExpensesStep] Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ExpensesStep] API error:', errorText);
+        throw new Error('Failed to categorise transactions');
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
@@ -248,15 +256,25 @@ export function SelfEmploymentExpensesStep() {
         sentCount: uncategorisedTxs.length,
         resultsCount: results.length,
         sampleResult: results[0],
+        allResultIds: results.map(r => r.id).slice(0, 5), // First 5 IDs
       });
+
+      // If no results came back, force the fallback for all
+      if (results.length === 0) {
+        console.warn('[ExpensesStep] No results from API, applying fallback to all', uncategorisedTxs.length, 'transactions');
+      }
 
       // Update transactions with results, and mark any that weren't categorised with a fallback
       const uncategorisedIds = new Set(uncategorisedTxs.map((t) => t.id));
       const categorisedIds = new Set(results.map((r) => r.id));
 
+      let updatedCount = 0;
+      let fallbackCount = 0;
+
       const updatedTransactions = data.transactions.map((tx) => {
         const result = results.find((r) => r.id === tx.id);
         if (result) {
+          updatedCount++;
           return {
             ...tx,
             suggested_category: result.category,
@@ -267,6 +285,7 @@ export function SelfEmploymentExpensesStep() {
         // If this transaction was sent for categorisation but didn't get a result,
         // mark it with a fallback so it doesn't stay stuck
         if (uncategorisedIds.has(tx.id) && !categorisedIds.has(tx.id)) {
+          fallbackCount++;
           return {
             ...tx,
             suggested_category: 'otherExpenses',
@@ -276,6 +295,8 @@ export function SelfEmploymentExpensesStep() {
         }
         return tx;
       });
+
+      console.log('[ExpensesStep] Updating transactions:', { updatedCount, fallbackCount, totalTransactions: updatedTransactions.length });
       updateData({ transactions: updatedTransactions });
 
       await new Promise((resolve) => setTimeout(resolve, 500));
