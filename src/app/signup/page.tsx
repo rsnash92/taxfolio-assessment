@@ -26,6 +26,9 @@ export default function SignUpPage() {
     setError(null);
 
     try {
+      // Get the current origin for the email redirect
+      const origin = window.location.origin;
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -33,6 +36,7 @@ export default function SignUpPage() {
           data: {
             full_name: fullName,
           },
+          emailRedirectTo: `${origin}/auth/callback`,
         },
       });
 
