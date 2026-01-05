@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
             batch: groupStart + 1,
             totalBatches: batches.length,
             progress: Math.round((groupStart / batches.length) * 100),
-            status: `Processing batches ${groupStart + 1}-${groupEnd} of ${batches.length} (${PARALLEL_BATCHES} in parallel)...`,
+            status: 'Processing, may take a few minutes...',
           });
 
           // Process all batches in this group in parallel
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
             batch: groupEnd,
             totalBatches: batches.length,
             progress: Math.round((completedBatches / batches.length) * 100),
-            status: `Completed ${completedBatches} of ${batches.length} batches...`,
+            status: 'Processing, may take a few minutes...',
           });
         }
 
