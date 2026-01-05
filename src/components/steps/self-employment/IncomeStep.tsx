@@ -294,23 +294,23 @@ export function SelfEmploymentIncomeStep() {
       </div>
 
       {/* Income Summary Card */}
-      <div className="bg-gradient-to-br from-#00e3ec to-#00c4d4 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-[#00e3ec] to-[#00c4d4] rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
             <PoundSterling className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-[#ccf5f7] text-sm">Total Business Income</p>
+            <p className="text-white/80 text-sm">Total Business Income</p>
             <p className="text-3xl font-bold">{formatCurrency(totalIncome)}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-[#ccf5f7]">From Bank Transactions</p>
+            <p className="text-white/80">From Bank Transactions</p>
             <p className="text-lg font-semibold">{formatCurrency(businessTotal)}</p>
           </div>
           <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-[#ccf5f7]">Manual Entries</p>
+            <p className="text-white/80">Manual Entries</p>
             <p className="text-lg font-semibold">{formatCurrency(manualTotal)}</p>
           </div>
         </div>
@@ -381,8 +381,8 @@ export function SelfEmploymentIncomeStep() {
         <button
           onClick={() => setFilter(filter === 'business' ? 'all' : 'business')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-#66eff4',
-            filter === 'business' ? 'border-[#00e3ec] ring-1 ring-#00e3ec/30' : 'border-gray-200'
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-[#66eff4]',
+            filter === 'business' ? 'border-[#00e3ec] ring-1 ring-[#00e3ec]/30' : 'border-gray-200'
           )}
         >
           <div className="flex items-center gap-3">

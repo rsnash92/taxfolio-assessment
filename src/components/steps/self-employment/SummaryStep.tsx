@@ -75,7 +75,7 @@ export function SelfEmploymentSummaryStep() {
         className={cn(
           'rounded-xl p-6 mb-6 text-white',
           isProfit
-            ? 'bg-gradient-to-br from-#00e3ec to-#00c4d4'
+            ? 'bg-gradient-to-br from-[#00e3ec] to-[#00c4d4]'
             : isLoss
             ? 'bg-gradient-to-br from-red-500 to-red-600'
             : 'bg-gradient-to-br from-gray-500 to-gray-600'

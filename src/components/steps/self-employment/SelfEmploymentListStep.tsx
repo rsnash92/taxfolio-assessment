@@ -240,7 +240,7 @@ export function SelfEmploymentListStep() {
       {/* Add Business Button */}
       <button
         onClick={handleAddBusiness}
-        className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-#33e9f0 hover:text-[#00c4d4] hover:bg-[#e6fafb] transition-colors flex items-center justify-center gap-2"
+        className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-[#33e9f0] hover:text-[#00c4d4] hover:bg-[#e6fafb] transition-colors flex items-center justify-center gap-2"
       >
         <Plus className="h-5 w-5" />
         <span className="font-medium">Add Self-Employed Business</span>

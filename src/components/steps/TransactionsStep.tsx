@@ -351,9 +351,9 @@ export function TransactionsStep() {
         <button
           onClick={() => setFilter(filter === 'business' ? 'all' : 'business')}
           className={cn(
-            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-#66eff4',
+            'bg-white border-2 rounded-xl p-4 text-left transition-all hover:border-[#66eff4]',
             filter === 'business'
-              ? 'border-[#00e3ec] ring-1 ring-#00e3ec/30'
+              ? 'border-[#00e3ec] ring-1 ring-[#00e3ec]/30'
               : 'border-gray-200'
           )}
         >

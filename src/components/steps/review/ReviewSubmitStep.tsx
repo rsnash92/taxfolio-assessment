@@ -154,7 +154,7 @@ export function ReviewSubmitStep() {
             type="checkbox"
             checked={declarationAccepted}
             onChange={(e) => setDeclarationAccepted(e.target.checked)}
-            className="w-5 h-5 rounded border-gray-300 text-[#00e3ec] focus:ring-#00e3ec mt-0.5"
+            className="w-5 h-5 rounded border-gray-300 text-[#00e3ec] focus:ring-[#00e3ec] mt-0.5"
           />
           <span className="text-sm text-gray-900">
             I confirm that I have read and agree to the above declaration, and

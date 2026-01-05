@@ -137,7 +137,7 @@ export function PensionContributionsStep() {
             onChange={(e) =>
               setForm({ ...form, carryForwardUsed: e.target.checked })
             }
-            className="w-5 h-5 rounded border-gray-300 text-[#00e3ec] focus:ring-#00e3ec"
+            className="w-5 h-5 rounded border-gray-300 text-[#00e3ec] focus:ring-[#00e3ec]"
           />
           <div>
             <p className="font-medium text-gray-900">Use carry forward</p>

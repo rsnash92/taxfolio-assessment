@@ -199,14 +199,14 @@ export function AccountsStep() {
       </div>
 
       {/* Bank Card */}
-      <div className="bg-gradient-to-br from-#00e3ec to-#00c4d4 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-[#00e3ec] to-[#00c4d4] rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
             <Building2 className="h-6 w-6" />
           </div>
           <div>
             <h2 className="text-xl font-semibold">{bankName}</h2>
-            <p className="text-[#ccf5f7] text-sm">
+            <p className="text-white/80 text-sm">
               Connected successfully
             </p>
           </div>
