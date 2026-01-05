@@ -1,12 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardHeader } from './WizardHeader';
 import { WizardSidebar } from './WizardSidebar';
 import { WizardProgressBar } from './WizardProgressBar';
 import { AskButton } from '@/components/ask-taxfolio';
 import { InactivityModal } from '@/components/InactivityModal';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Import all step components
@@ -87,6 +88,7 @@ import {
 
 export function WizardContainer() {
   const { currentStep, isLoading, navigationDirection } = useWizard();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -244,12 +246,57 @@ export function WizardContainer() {
     }),
   };
 
+  // Close mobile menu when step changes
+  const handleMobileNavigation = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <WizardHeader />
+      <WizardHeader onMenuClick={() => setIsMobileMenuOpen(true)} />
       <WizardProgressBar />
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Mobile sidebar drawer */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+                onClick={() => setIsMobileMenuOpen(false)}
+              />
+              {/* Drawer */}
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="fixed left-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white z-50 shadow-xl lg:hidden overflow-y-auto"
+              >
+                {/* Close button */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                  <span className="font-semibold text-gray-900">Navigation</span>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                {/* Sidebar content */}
+                <div onClick={handleMobileNavigation}>
+                  <WizardSidebar />
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         {/* Fixed sidebar - hidden on mobile/tablet, visible on lg+ */}
         <div className="hidden lg:block w-72 flex-shrink-0 h-[calc(100vh-64px-4px)] sticky top-[68px] overflow-y-auto bg-white">
           <WizardSidebar />

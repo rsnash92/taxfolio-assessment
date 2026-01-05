@@ -60,8 +60,8 @@ export function WizardSidebar() {
   const isCapitalGainsActive = currentStep.startsWith('capital-gains');
 
   return (
-    <aside className="w-full h-full bg-white border-r border-gray-200 hidden lg:block">
-      <nav className="px-6 pt-6">
+    <aside className="w-full h-full bg-white border-r border-gray-200">
+      <nav className="px-4 sm:px-6 pt-4 sm:pt-6">
         <ul className="space-y-2">
           {/* Getting Started */}
           <SidebarItem

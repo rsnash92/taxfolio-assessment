@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useWizard } from '@/providers/WizardProvider';
 import { createClient } from '@/lib/supabase/client';
-import { HelpCircle, Save, Loader2, LogOut } from 'lucide-react';
+import { HelpCircle, Save, Loader2, LogOut, Menu } from 'lucide-react';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-GB', {
@@ -14,7 +14,11 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function WizardHeader() {
+interface WizardHeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function WizardHeader({ onMenuClick }: WizardHeaderProps) {
   const { data, isSaving } = useWizard();
   const { taxCalculation, taxYear } = data;
   const router = useRouter();
@@ -30,7 +34,16 @@ export function WizardHeader() {
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
       <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4">
         {/* Logo and Stats Bar - grouped on left */}
-        <div className="flex items-center gap-4 sm:gap-8">
+        <div className="flex items-center gap-3 sm:gap-8">
+          {/* Mobile menu button */}
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
           <Link
             href="https://app.taxfolio.io/dashboard"
             className="flex items-center"
