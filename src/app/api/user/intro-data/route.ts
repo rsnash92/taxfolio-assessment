@@ -15,25 +15,43 @@ export async function GET() {
       )
     }
 
+    console.log('[Intro Data API] Fetching intro data for user:', user.id)
+
     // Fetch intro data linked to this user
-    const { data, error } = await supabase
+    // First try with converted_to_user flag
+    let { data, error } = await supabase
       .from('intro_leads')
       .select('intent, income_source, income_sources, filing_experience, situation')
       .eq('user_id', user.id)
       .eq('converted_to_user', true)
       .single()
 
+    // If no data found with flag, try without it (in case link didn't set flag)
+    if (error?.code === 'PGRST116') {
+      console.log('[Intro Data API] No data with converted_to_user=true, trying without flag')
+      const result = await supabase
+        .from('intro_leads')
+        .select('intent, income_source, income_sources, filing_experience, situation')
+        .eq('user_id', user.id)
+        .single()
+      data = result.data
+      error = result.error
+    }
+
     if (error) {
       // No intro data found is not an error
       if (error.code === 'PGRST116') {
+        console.log('[Intro Data API] No intro data found for user')
         return NextResponse.json({ success: true, data: null })
       }
-      console.error('Failed to fetch intro data:', error)
+      console.error('[Intro Data API] Failed to fetch intro data:', error)
       return NextResponse.json(
         { success: false, error: 'Database error' },
         { status: 500 }
       )
     }
+
+    console.log('[Intro Data API] Found intro data:', data)
 
     // Parse income_sources JSON if it exists
     let incomeSources: string[] = []
