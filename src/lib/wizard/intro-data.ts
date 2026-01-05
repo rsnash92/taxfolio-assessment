@@ -6,6 +6,8 @@ import { WizardData } from '@/types/wizard'
 export interface IntroLeadData {
   intent: string | null
   income_source: string | null
+  income_sources?: string | null // JSON string of array
+  incomeSources?: string[] // Parsed array from API
   filing_experience: string | null
   situation: string | null
 }
@@ -59,11 +61,21 @@ export async function fetchIntroData(userId: string): Promise<IntroDataResult> {
 }
 
 /**
- * Get suggested income sources based on intro selection
+ * Get suggested income sources based on intro selection(s)
+ * Now handles both single incomeSource and array incomeSources
  */
-export function getSuggestedIncomeSources(incomeSource: string | null): string[] {
-  if (!incomeSource) return []
-  return INCOME_SOURCE_MAPPING[incomeSource] || []
+export function getSuggestedIncomeSources(introData: IntroLeadData): string[] {
+  // Use parsed array if available
+  const sources = introData.incomeSources || (introData.income_source ? [introData.income_source] : [])
+
+  // Map each intro source to assessment categories
+  const suggested = new Set<string>()
+  for (const source of sources) {
+    const mapped = INCOME_SOURCE_MAPPING[source] || []
+    mapped.forEach(s => suggested.add(s))
+  }
+
+  return Array.from(suggested)
 }
 
 /**
@@ -84,7 +96,7 @@ export function applyIntroDataToWizard(
   introData: IntroLeadData,
   existingData: Partial<WizardData> = {}
 ): Partial<WizardData> {
-  const suggestedSources = getSuggestedIncomeSources(introData.income_source)
+  const suggestedSources = getSuggestedIncomeSources(introData)
 
   return {
     ...existingData,
@@ -92,6 +104,7 @@ export function applyIntroDataToWizard(
     introData: {
       intent: introData.intent,
       incomeSource: introData.income_source,
+      incomeSources: introData.incomeSources || [],
       filingExperience: introData.filing_experience,
       situation: introData.situation,
       experienceLevel: getExperienceLevel(introData.filing_experience),

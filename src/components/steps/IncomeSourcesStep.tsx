@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import {
@@ -85,6 +85,40 @@ const INCOME_TYPES = [
 export function IncomeSourcesStep() {
   const { data, addIncomeSource, deleteIncomeSource, goNext } = useWizard();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const hasPrePopulated = useRef(false);
+
+  // Pre-populate income sources from intro wizard data
+  useEffect(() => {
+    // Only run once, and only if we have intro data with suggested sources
+    if (
+      hasPrePopulated.current ||
+      !data.introData?.suggestedSources ||
+      data.introData.suggestedSources.length === 0
+    ) {
+      return;
+    }
+
+    // Don't pre-populate if user already has income sources
+    if (data.incomeSources.length > 0) {
+      hasPrePopulated.current = true;
+      return;
+    }
+
+    // Add suggested income sources
+    const suggestedSources = data.introData.suggestedSources;
+    for (const sourceType of suggestedSources) {
+      const incomeType = INCOME_TYPES.find((t) => t.id === sourceType);
+      if (incomeType) {
+        addIncomeSource({
+          type: incomeType.id,
+          label: incomeType.label,
+          data: {},
+        });
+      }
+    }
+
+    hasPrePopulated.current = true;
+  }, [data.introData?.suggestedSources, data.incomeSources.length, addIncomeSource]);
 
   const handleAddSource = (type: string) => {
     const incomeType = INCOME_TYPES.find((t) => t.id === type);
