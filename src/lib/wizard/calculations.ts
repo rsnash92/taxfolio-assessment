@@ -156,7 +156,8 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     (data.stateBenefitsData?.otherTaxableBenefits || 0)));
 
   // Capital Gains (not included in income tax but tracked separately for display)
-  const capitalGainsIncome = toPounds(data.capitalGainsData?.taxableGains || 0);
+  // Use totalGains, not taxableGains - the AEA is applied in the CGT calculation section below
+  const capitalGainsIncome = toPounds(data.capitalGainsData?.totalGains || 0);
 
   // Use new data stores if they have data, otherwise fall back to legacy otherIncome
   const finalInterest = interestIncome > 0 ? interestIncome : toPounds(data.otherIncome?.interest || 0);
