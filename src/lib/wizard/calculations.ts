@@ -16,6 +16,14 @@ const DIVIDEND_RATES = {
   additionalRate: 0.3935, // 39.35%
 };
 
+// Personal Savings Allowance (PSA) for 2024/25
+// The allowance depends on the taxpayer's marginal rate
+const SAVINGS_ALLOWANCE = {
+  basicRate: 1000, // £1,000 for basic rate taxpayers
+  higherRate: 500, // £500 for higher rate taxpayers
+  additionalRate: 0, // £0 for additional rate taxpayers
+};
+
 // National Insurance Class 4 rates for 2024/25
 const NI_RATES = {
   lowerProfitsLimit: 12570,
@@ -147,12 +155,15 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const finalStateBenefits = stateBenefitsIncome > 0 ? stateBenefitsIncome : toPounds(data.otherIncome?.stateBenefits || 0);
   const finalOther = toPounds(data.otherIncome?.other || 0);
 
-  // Total other income (excluding dividends - they're taxed separately)
-  const otherIncomeExcludingDividends = finalInterest + finalPension + finalStateBenefits + finalOther + cisIncome;
+  // Total other income (excluding dividends and interest - they have special treatment)
+  const otherIncomeExcludingDividendsAndInterest = finalPension + finalStateBenefits + finalOther + cisIncome;
+  const otherIncomeExcludingDividends = finalInterest + otherIncomeExcludingDividendsAndInterest;
   const otherIncome = otherIncomeExcludingDividends + finalDividends;
 
-  // Non-dividend income (taxed at standard rates)
-  const nonDividendIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncomeExcludingDividends;
+  // Non-savings, non-dividend income (taxed first at standard rates)
+  const nonSavingsIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncomeExcludingDividendsAndInterest;
+  // Non-dividend income includes savings interest
+  const nonDividendIncome = nonSavingsIncome + finalInterest;
   const totalIncome = nonDividendIncome + finalDividends;
 
   // Calculate reliefs
@@ -169,6 +180,10 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const taxableIncome = Math.max(0, totalIncome - totalExpenses - capitalAllowances);
   // Non-dividend taxable income (expenses apply to non-dividend income)
   const nonDividendTaxable = Math.max(0, nonDividendIncome - totalExpenses - capitalAllowances);
+  // Non-savings taxable income (expenses typically apply to earned income)
+  const nonSavingsTaxable = Math.max(0, nonSavingsIncome - totalExpenses - capitalAllowances);
+  // Savings interest is added on top (no expenses to deduct from interest)
+  const savingsInterestTaxable = finalInterest;
 
   // Personal allowance (reduced if income over 100k)
   // Personal allowance is applied against non-dividend income first
@@ -180,49 +195,111 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     );
   }
 
-  // Apply personal allowance to non-dividend income first
-  const nonDividendAfterAllowance = Math.max(0, nonDividendTaxable - personalAllowance);
+  // Apply personal allowance to non-savings income first, then savings, then dividends
+  const nonSavingsAfterAllowance = Math.max(0, nonSavingsTaxable - personalAllowance);
+  const allowanceUsedByNonSavings = Math.min(personalAllowance, nonSavingsTaxable);
+  const allowanceRemainingForSavings = personalAllowance - allowanceUsedByNonSavings;
+  const savingsAfterAllowance = Math.max(0, savingsInterestTaxable - allowanceRemainingForSavings);
+  const allowanceUsedBySavings = Math.min(allowanceRemainingForSavings, savingsInterestTaxable);
+  const allowanceRemainingForDividends = allowanceRemainingForSavings - allowanceUsedBySavings;
+
+  // Non-dividend income after allowance
+  const nonDividendAfterAllowance = nonSavingsAfterAllowance + savingsAfterAllowance;
   // Any unused allowance can reduce dividends
-  const unusedAllowance = Math.max(0, personalAllowance - nonDividendTaxable);
+  const unusedAllowance = allowanceRemainingForDividends;
   const dividendsAfterAllowance = Math.max(0, finalDividends - unusedAllowance);
 
   const taxableAfterAllowance = nonDividendAfterAllowance + dividendsAfterAllowance;
 
+  // Determine taxpayer's marginal rate for PSA calculation
+  // Based on total taxable income (including dividends) to determine which band they're in
+  const totalTaxableForPSA = taxableAfterAllowance;
+  const basicRateBandForPSA = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
+
+  let personalSavingsAllowance = 0;
+  if (totalTaxableForPSA <= 0) {
+    // No taxable income - full PSA
+    personalSavingsAllowance = SAVINGS_ALLOWANCE.basicRate;
+  } else if (totalTaxableForPSA <= basicRateBandForPSA) {
+    // Basic rate taxpayer
+    personalSavingsAllowance = SAVINGS_ALLOWANCE.basicRate;
+  } else if (totalTaxableForPSA <= TAX_BANDS.higherRate.threshold - TAX_BANDS.personalAllowance) {
+    // Higher rate taxpayer
+    personalSavingsAllowance = SAVINGS_ALLOWANCE.higherRate;
+  } else {
+    // Additional rate taxpayer
+    personalSavingsAllowance = SAVINGS_ALLOWANCE.additionalRate;
+  }
+
+  // Apply PSA to savings interest (after personal allowance)
+  const savingsInterestTaxableAfterPSA = Math.max(0, savingsAfterAllowance - personalSavingsAllowance);
+
   // Calculate income tax by band
-  // Non-dividend income is taxed first at standard rates
-  // Dividends are taxed on top at dividend rates
+  // Order of taxation: non-savings income first, then savings interest (with PSA), then dividends
   let basicRateTax = 0;
   let higherRateTax = 0;
   let additionalRateTax = 0;
   let dividendTax = 0;
+  let savingsInterestTax = 0;
 
   // Tax band boundaries
   const basicRateBand = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
   const higherRateBand = TAX_BANDS.higherRate.threshold - TAX_BANDS.basicRate.threshold; // £74,870
 
-  // First, tax non-dividend income at standard rates
-  let remainingNonDividend = nonDividendAfterAllowance;
-  let bandUsedByNonDividend = 0;
+  // First, tax non-savings income at standard rates
+  let remainingNonSavings = nonSavingsAfterAllowance;
+  let bandUsedByNonSavings = 0;
 
-  // Basic rate (20%) on non-dividend income
-  if (remainingNonDividend > 0) {
-    const taxableAtBasicRate = Math.min(remainingNonDividend, basicRateBand);
+  // Basic rate (20%) on non-savings income
+  if (remainingNonSavings > 0) {
+    const taxableAtBasicRate = Math.min(remainingNonSavings, basicRateBand);
     basicRateTax = taxableAtBasicRate * TAX_BANDS.basicRate.rate;
-    bandUsedByNonDividend = taxableAtBasicRate;
-    remainingNonDividend -= taxableAtBasicRate;
+    bandUsedByNonSavings = taxableAtBasicRate;
+    remainingNonSavings -= taxableAtBasicRate;
   }
 
-  // Higher rate (40%) on non-dividend income
-  if (remainingNonDividend > 0) {
-    const taxableAtHigherRate = Math.min(remainingNonDividend, higherRateBand);
+  // Higher rate (40%) on non-savings income
+  if (remainingNonSavings > 0) {
+    const taxableAtHigherRate = Math.min(remainingNonSavings, higherRateBand);
     higherRateTax = taxableAtHigherRate * TAX_BANDS.higherRate.rate;
-    bandUsedByNonDividend += taxableAtHigherRate;
-    remainingNonDividend -= taxableAtHigherRate;
+    bandUsedByNonSavings += taxableAtHigherRate;
+    remainingNonSavings -= taxableAtHigherRate;
   }
 
-  // Additional rate (45%) on non-dividend income
-  if (remainingNonDividend > 0) {
-    additionalRateTax = remainingNonDividend * TAX_BANDS.additionalRate.rate;
+  // Additional rate (45%) on non-savings income
+  if (remainingNonSavings > 0) {
+    additionalRateTax = remainingNonSavings * TAX_BANDS.additionalRate.rate;
+    bandUsedByNonSavings += remainingNonSavings;
+  }
+
+  // Now tax savings interest (after PSA) at standard rates
+  // Savings interest fills up remaining band space after non-savings income
+  let remainingSavings = savingsInterestTaxableAfterPSA;
+  let bandUsedByNonDividend = bandUsedByNonSavings;
+
+  // Basic rate band remaining for savings
+  const basicBandRemainingForSavings = Math.max(0, basicRateBand - bandUsedByNonSavings);
+  if (remainingSavings > 0 && basicBandRemainingForSavings > 0) {
+    const savingsInBasicBand = Math.min(remainingSavings, basicBandRemainingForSavings);
+    savingsInterestTax += savingsInBasicBand * TAX_BANDS.basicRate.rate;
+    bandUsedByNonDividend += savingsInBasicBand;
+    remainingSavings -= savingsInBasicBand;
+  }
+
+  // Higher rate band for savings
+  const nonSavingsInHigherBand = Math.max(0, nonSavingsAfterAllowance - basicRateBand);
+  const higherBandRemainingForSavings = Math.max(0, higherRateBand - nonSavingsInHigherBand);
+  if (remainingSavings > 0 && higherBandRemainingForSavings > 0) {
+    const savingsInHigherBand = Math.min(remainingSavings, higherBandRemainingForSavings);
+    savingsInterestTax += savingsInHigherBand * TAX_BANDS.higherRate.rate;
+    bandUsedByNonDividend += savingsInHigherBand;
+    remainingSavings -= savingsInHigherBand;
+  }
+
+  // Additional rate for any remaining savings
+  if (remainingSavings > 0) {
+    savingsInterestTax += remainingSavings * TAX_BANDS.additionalRate.rate;
+    bandUsedByNonDividend += remainingSavings;
   }
 
   // Now tax dividends at dividend rates
@@ -258,7 +335,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     }
   }
 
-  const totalTaxBeforeCredits = basicRateTax + higherRateTax + additionalRateTax + dividendTax;
+  const totalTaxBeforeCredits = basicRateTax + higherRateTax + additionalRateTax + savingsInterestTax + dividendTax;
 
   // Section 24 Finance Costs Tax Credit (20% of mortgage interest and finance costs)
   // This is a tax reducer, not a deduction from income
@@ -325,6 +402,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     ventureCapitalRelief: toPence(ventureCapitalRelief),
     marriageAllowance: 0,
     blindAllowance: 0,
+    personalSavingsAllowance: toPence(personalSavingsAllowance),
     section24Relief: toPence(section24Applied),
     taxableIncome: toPence(taxableIncome),
     personalAllowance: toPence(personalAllowance),
@@ -332,6 +410,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     basicRateTax: toPence(basicRateTax),
     higherRateTax: toPence(higherRateTax),
     additionalRateTax: toPence(additionalRateTax),
+    savingsInterestTax: toPence(savingsInterestTax),
     dividendTax: toPence(dividendTax),
     class2NIC: toPence(class2NIC),
     class4NIC: toPence(class4NIC),

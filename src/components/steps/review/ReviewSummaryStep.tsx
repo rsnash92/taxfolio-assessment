@@ -136,9 +136,11 @@ export function ReviewSummaryStep() {
     // Tax Calculation
     addSection('Tax Calculation', [
       { label: 'Personal allowance', value: calculation.personalAllowance || 0 },
+      { label: 'Personal savings allowance', value: calculation.personalSavingsAllowance || 0 },
       { label: 'Basic rate tax (20%)', value: calculation.basicRateTax || 0 },
       { label: 'Higher rate tax (40%)', value: calculation.higherRateTax || 0 },
       { label: 'Additional rate tax (45%)', value: calculation.additionalRateTax || 0 },
+      { label: 'Savings interest tax', value: calculation.savingsInterestTax || 0 },
       { label: 'Dividend tax', value: calculation.dividendTax || 0 },
     ]);
 
@@ -451,6 +453,11 @@ export function ReviewSummaryStep() {
               isDeduction: true,
             },
             {
+              label: 'Personal savings allowance',
+              value: calculation?.personalSavingsAllowance || 0,
+              isDeduction: true,
+            },
+            {
               label: 'Basic rate tax (20%)',
               value: calculation?.basicRateTax || 0,
             },
@@ -461,6 +468,10 @@ export function ReviewSummaryStep() {
             {
               label: 'Additional rate tax (45%)',
               value: calculation?.additionalRateTax || 0,
+            },
+            {
+              label: 'Savings interest tax',
+              value: calculation?.savingsInterestTax || 0,
             },
             {
               label: 'Dividend tax',

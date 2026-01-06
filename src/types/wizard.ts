@@ -579,12 +579,13 @@ export interface TaxCalculation {
   allowableExpenses: number;
   capitalAllowances: number;
 
-  // Reliefs
+  // Reliefs & Allowances
   pensionRelief: number;
   giftAidRelief: number;
   ventureCapitalRelief: number;
   marriageAllowance: number;
   blindAllowance: number;
+  personalSavingsAllowance: number; // PSA: £1,000 basic rate, £500 higher rate, £0 additional
   section24Relief: number; // Finance costs tax credit for landlords
 
   // Tax Calculation
@@ -596,6 +597,7 @@ export interface TaxCalculation {
   basicRateTax: number;
   higherRateTax: number;
   additionalRateTax: number;
+  savingsInterestTax: number; // Tax on savings interest (after PSA)
   dividendTax: number; // Tax on dividends at dividend rates
 
   // National Insurance
