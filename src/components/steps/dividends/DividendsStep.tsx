@@ -47,8 +47,8 @@ export function DividendsStep() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-            <TrendingUp className="h-5 w-5 text-indigo-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <TrendingUp className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Dividend Income</h1>
         </div>
@@ -58,9 +58,9 @@ export function DividendsStep() {
       </div>
 
       {/* Allowance Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-blue-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-[#00c4d4] mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-[#00858c]">
           <p className="font-medium mb-1">Dividend Allowance 2024/25</p>
           <p>
             The first £{DIVIDEND_ALLOWANCE.toLocaleString()} of dividend income
@@ -109,7 +109,7 @@ export function DividendsStep() {
       {/* Foreign Dividends Toggle */}
       <button
         onClick={() => setShowForeign(!showForeign)}
-        className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
+        className="flex items-center gap-2 text-sm text-[#00c4d4] hover:text-[#00a8b0]"
       >
         {showForeign ? (
           <ChevronUp className="h-4 w-4" />

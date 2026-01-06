@@ -43,8 +43,8 @@ export function InterestStep() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
-            <Landmark className="h-5 w-5 text-cyan-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Landmark className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Interest Income</h1>
         </div>
@@ -54,9 +54,9 @@ export function InterestStep() {
       </div>
 
       {/* PSA Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-blue-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-[#00c4d4] mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-[#00858c]">
           <p className="font-medium mb-1">Personal Savings Allowance 2024/25</p>
           <ul className="list-disc list-inside space-y-1">
             <li>Basic rate taxpayers: first £{PSA_BASIC.toLocaleString()} tax-free</li>
