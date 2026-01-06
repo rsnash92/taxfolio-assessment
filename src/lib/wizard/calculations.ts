@@ -70,12 +70,15 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const selfEmploymentBusinesses = data.incomeSources.filter(
     (s) => s.type === 'self-employment'
   );
+  let selfEmploymentExpenses = 0; // Track separately for NI calculation
 
   for (const business of selfEmploymentBusinesses) {
     const businessData = data.selfEmploymentData[business.id];
     if (businessData) {
       selfEmploymentIncome += toPounds(businessData.income?.total || 0);
-      totalExpenses += toPounds(businessData.expenses?.total || 0);
+      const businessExpenses = toPounds(businessData.expenses?.total || 0);
+      selfEmploymentExpenses += businessExpenses;
+      totalExpenses += businessExpenses;
       capitalAllowances += toPounds(businessData.capitalAllowances?.total || 0);
     }
   }
@@ -406,7 +409,8 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // CIS subcontractors are self-employed and must pay Class 2 and Class 4 NI
   let class2NIC = 0;
   let class4NIC = 0;
-  const selfEmploymentProfit = selfEmploymentIncome - totalExpenses;
+  // Use selfEmploymentExpenses (not totalExpenses) to avoid including CIS/rental expenses
+  const selfEmploymentProfit = selfEmploymentIncome - selfEmploymentExpenses;
   const cisProfit = cisIncome - cisExpenses;
   // Combined profit for NI purposes (both self-employment and CIS are self-employed income)
   const totalSelfEmployedProfit = selfEmploymentProfit + cisProfit;
