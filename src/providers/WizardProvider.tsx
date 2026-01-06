@@ -518,26 +518,154 @@ export function WizardProvider({
           if (allComplete) return 'completed';
           return 'in_progress';
         }
-        case 'other-income':
+        case 'employment': {
+          const employers = data.incomeSources.filter(s => s.type === 'employment');
+          if (employers.length === 0) return 'not_started';
+          const allComplete = employers.every(e => {
+            const employerData = data.employmentData[e.id];
+            return employerData?.payReceived !== undefined && employerData.payReceived > 0;
+          });
+          if (allComplete) return 'completed';
+          return 'in_progress';
+        }
+        case 'cis': {
+          const hasCIS = data.incomeSources.some(s => s.type === 'cis');
+          if (!hasCIS) return 'not_started';
+          if (data.cisData?.totalGross !== undefined && data.cisData.totalGross > 0) return 'completed';
+          if (data.cisData?.contractors && data.cisData.contractors.length > 0) return 'in_progress';
+          return 'in_progress';
+        }
+        case 'dividends': {
+          const hasDividends = data.incomeSources.some(s => s.type === 'dividends');
+          if (!hasDividends) return 'not_started';
+          if (data.dividendsData?.totalDividends !== undefined && data.dividendsData.totalDividends > 0) return 'completed';
+          if (data.dividendsData?.ukDividends !== undefined && data.dividendsData.ukDividends > 0) return 'completed';
+          return 'in_progress';
+        }
+        case 'interest': {
+          const hasInterest = data.incomeSources.some(s => s.type === 'interest');
+          if (!hasInterest) return 'not_started';
+          if (data.interestData?.totalInterest !== undefined && data.interestData.totalInterest > 0) return 'completed';
+          if (data.interestData?.untaxedUKInterest !== undefined && data.interestData.untaxedUKInterest > 0) return 'completed';
+          return 'in_progress';
+        }
+        case 'capital-gains': {
+          const hasCapitalGains = data.incomeSources.some(s => s.type === 'capital-gains');
+          if (!hasCapitalGains) return 'not_started';
+          if (data.capitalGainsData?.disposals && data.capitalGainsData.disposals.length > 0) return 'completed';
+          return 'in_progress';
+        }
+        case 'pension-income': {
+          const hasPension = data.incomeSources.some(s => s.type === 'pension');
+          if (!hasPension) return 'not_started';
+          if (data.pensionIncomeData?.totalPensionIncome !== undefined && data.pensionIncomeData.totalPensionIncome > 0) return 'completed';
+          if (data.pensionIncomeData?.statePension !== undefined && data.pensionIncomeData.statePension > 0) return 'completed';
+          if (data.pensionIncomeData?.privatePensions && data.pensionIncomeData.privatePensions.length > 0) return 'completed';
+          return 'in_progress';
+        }
+        case 'state-benefits': {
+          const hasStateBenefits = data.incomeSources.some(s => s.type === 'state-benefits');
+          if (!hasStateBenefits) return 'not_started';
+          if (data.stateBenefitsData?.totalTaxableBenefits !== undefined && data.stateBenefitsData.totalTaxableBenefits > 0) return 'completed';
+          // Check individual benefits
+          if (
+            (data.stateBenefitsData?.jobseekersAllowance ?? 0) > 0 ||
+            (data.stateBenefitsData?.employmentSupportAllowance ?? 0) > 0 ||
+            (data.stateBenefitsData?.carersAllowance ?? 0) > 0 ||
+            (data.stateBenefitsData?.statePension ?? 0) > 0
+          ) return 'completed';
+          return 'in_progress';
+        }
+        case 'other-income': {
+          const hasOther = data.incomeSources.some(s => s.type === 'other');
+          if (!hasOther) return 'not_started';
           if (
             data.otherIncome.interest > 0 ||
             data.otherIncome.dividends > 0 ||
-            data.otherIncome.pension > 0
+            data.otherIncome.pension > 0 ||
+            data.otherIncome.other > 0
           )
-            return 'in_progress';
+            return 'completed';
+          return 'in_progress';
+        }
+        case 'general': {
+          // General section is complete if user has gone through it (even with no selections)
+          // Check if they've visited the overview and either made selections or continued
+          if (data.general?.selectedReliefs !== undefined) return 'completed';
           return 'not_started';
+        }
         case 'personal':
-          if (data.personalInfo.fullName && data.personalInfo.utr)
+          if (data.personalInfo.fullName && data.personalInfo.nino)
             return 'completed';
           if (data.personalInfo.fullName) return 'in_progress';
           return 'not_started';
         case 'review':
+          if (data.submission?.status === 'submitted') return 'completed';
+          if (data.payment?.status === 'paid') return 'in_progress';
           return 'not_started';
         default:
           return 'not_started';
       }
     },
     [data]
+  );
+
+  // Check if a section is unlocked (user can access it)
+  // Progressive unlocking: sections unlock as the user progresses
+  const isSectionUnlocked = useCallback(
+    (section: SectionId): boolean => {
+      // Getting Started is always unlocked
+      if (section === 'getting-started') return true;
+
+      // Connect requires Getting Started to be completed
+      if (section === 'connect') {
+        return getSectionStatus('getting-started') === 'completed';
+      }
+
+      // All income sections require Connect to be completed
+      const incomeSections: SectionId[] = [
+        'self-employment', 'rental', 'employment', 'cis',
+        'dividends', 'interest', 'capital-gains', 'pension-income',
+        'state-benefits', 'other-income'
+      ];
+
+      if (incomeSections.includes(section)) {
+        return getSectionStatus('connect') === 'completed';
+      }
+
+      // General section requires at least one income section to be completed or in progress
+      if (section === 'general') {
+        const connectComplete = getSectionStatus('connect') === 'completed';
+        if (!connectComplete) return false;
+
+        // Check if any income section has data
+        const hasAnyIncomeData =
+          Object.keys(data.selfEmploymentData).length > 0 ||
+          Object.keys(data.rentalData).length > 0 ||
+          Object.keys(data.employmentData).length > 0 ||
+          (data.cisData?.contractors && data.cisData.contractors.length > 0) ||
+          (data.dividendsData?.ukDividends ?? 0) > 0 ||
+          (data.interestData?.untaxedUKInterest ?? 0) > 0 ||
+          (data.capitalGainsData?.disposals && data.capitalGainsData.disposals.length > 0) ||
+          (data.pensionIncomeData?.totalPensionIncome ?? 0) > 0 ||
+          (data.stateBenefitsData?.totalTaxableBenefits ?? 0) > 0;
+
+        return hasAnyIncomeData;
+      }
+
+      // Personal Info requires General section to be at least visited
+      if (section === 'personal') {
+        return data.general?.selectedReliefs !== undefined;
+      }
+
+      // Review requires Personal Info to be completed
+      if (section === 'review') {
+        return getSectionStatus('personal') === 'completed';
+      }
+
+      return false;
+    },
+    [data, getSectionStatus]
   );
 
   const value: WizardContextType = {
@@ -569,6 +697,7 @@ export function WizardProvider({
     bulkUpdateTransactions,
     getVisibleSteps: getVisibleStepsForSidebar,
     getSectionStatus,
+    isSectionUnlocked,
     calculateTax,
     saveProgress,
   };

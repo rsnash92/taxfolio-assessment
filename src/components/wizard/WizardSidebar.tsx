@@ -20,6 +20,7 @@ import {
   Banknote,
   HardHat,
   PiggyBank,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StepId } from '@/types/wizard';
@@ -35,6 +36,7 @@ export function WizardSidebar() {
     goToBusinessStep,
     goToPropertyStep,
     getSectionStatus,
+    isSectionUnlocked,
   } = useWizard();
 
   // Get businesses and properties from income sources
@@ -123,6 +125,7 @@ export function WizardSidebar() {
               currentStep === 'accounts'
             }
             isComplete={getSectionStatus('connect') === 'completed'}
+            isLocked={!isSectionUnlocked('connect')}
             onClick={() => {
               // If user has bank accounts or is connected, go to accounts step
               // Otherwise show the connect choice screen
@@ -139,16 +142,22 @@ export function WizardSidebar() {
             <li>
               <button
                 onClick={() =>
+                  isSectionUnlocked('self-employment') &&
                   goToBusinessStep(selfEmploymentBusinesses[0].id, 'self-employment-basics')
                 }
+                disabled={!isSectionUnlocked('self-employment')}
                 className={cn(
                   'w-full flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-colors',
-                  isSelfEmploymentActive
+                  !isSectionUnlocked('self-employment')
+                    ? 'text-gray-300 cursor-not-allowed'
+                    : isSelfEmploymentActive
                     ? 'border-l-2 border-[#00e3ec] bg-[#00e3ec]/10 text-gray-900'
                     : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
-                {getSectionStatus('self-employment') === 'completed' ? (
+                {!isSectionUnlocked('self-employment') ? (
+                  <Lock className="h-5 w-5 text-gray-300" />
+                ) : getSectionStatus('self-employment') === 'completed' ? (
                   <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
                 ) : (
                   <Briefcase
@@ -199,16 +208,22 @@ export function WizardSidebar() {
             <li>
               <button
                 onClick={() =>
+                  isSectionUnlocked('rental') &&
                   goToPropertyStep(rentalProperties[0].id, 'rental-details')
                 }
+                disabled={!isSectionUnlocked('rental')}
                 className={cn(
                   'w-full flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-colors',
-                  isRentalActive
+                  !isSectionUnlocked('rental')
+                    ? 'text-gray-300 cursor-not-allowed'
+                    : isRentalActive
                     ? 'border-l-2 border-[#00e3ec] bg-[#00e3ec]/10 text-gray-900'
                     : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
-                {getSectionStatus('rental') === 'completed' ? (
+                {!isSectionUnlocked('rental') ? (
+                  <Lock className="h-5 w-5 text-gray-300" />
+                ) : getSectionStatus('rental') === 'completed' ? (
                   <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
                 ) : (
                   <Home
@@ -259,6 +274,7 @@ export function WizardSidebar() {
               label="Employment"
               isActive={isEmploymentActive}
               isComplete={getSectionStatus('employment') === 'completed'}
+              isLocked={!isSectionUnlocked('employment')}
               onClick={() => goToStep('employment-list')}
             />
           )}
@@ -270,6 +286,7 @@ export function WizardSidebar() {
               label="CIS Income"
               isActive={currentStep === 'cis-income'}
               isComplete={getSectionStatus('cis') === 'completed'}
+              isLocked={!isSectionUnlocked('cis')}
               onClick={() => goToStep('cis-income')}
             />
           )}
@@ -281,6 +298,7 @@ export function WizardSidebar() {
               label="Dividends"
               isActive={currentStep === 'dividends'}
               isComplete={getSectionStatus('dividends') === 'completed'}
+              isLocked={!isSectionUnlocked('dividends')}
               onClick={() => goToStep('dividends')}
             />
           )}
@@ -292,6 +310,7 @@ export function WizardSidebar() {
               label="Interest"
               isActive={currentStep === 'interest'}
               isComplete={getSectionStatus('interest') === 'completed'}
+              isLocked={!isSectionUnlocked('interest')}
               onClick={() => goToStep('interest')}
             />
           )}
@@ -303,6 +322,7 @@ export function WizardSidebar() {
               label="Capital Gains"
               isActive={isCapitalGainsActive}
               isComplete={getSectionStatus('capital-gains') === 'completed'}
+              isLocked={!isSectionUnlocked('capital-gains')}
               onClick={() => goToStep('capital-gains-disposals')}
             />
           )}
@@ -314,6 +334,7 @@ export function WizardSidebar() {
               label="Pension Income"
               isActive={currentStep === 'pension-income'}
               isComplete={getSectionStatus('pension-income') === 'completed'}
+              isLocked={!isSectionUnlocked('pension-income')}
               onClick={() => goToStep('pension-income')}
             />
           )}
@@ -325,6 +346,7 @@ export function WizardSidebar() {
               label="State Benefits"
               isActive={currentStep === 'state-benefits'}
               isComplete={getSectionStatus('state-benefits') === 'completed'}
+              isLocked={!isSectionUnlocked('state-benefits')}
               onClick={() => goToStep('state-benefits')}
             />
           )}
@@ -336,6 +358,7 @@ export function WizardSidebar() {
               label="Other Income"
               isActive={currentStep === 'other-income'}
               isComplete={getSectionStatus('other-income') === 'completed'}
+              isLocked={!isSectionUnlocked('other-income')}
               onClick={() => goToStep('other-income')}
             />
           )}
@@ -346,6 +369,7 @@ export function WizardSidebar() {
             label="General"
             isActive={currentStep.startsWith('general-')}
             isComplete={getSectionStatus('general') === 'completed'}
+            isLocked={!isSectionUnlocked('general')}
             onClick={() => goToStep('general-overview')}
           />
 
@@ -355,6 +379,7 @@ export function WizardSidebar() {
             label="Personal Info"
             isActive={currentStep === 'personal-info'}
             isComplete={getSectionStatus('personal') === 'completed'}
+            isLocked={!isSectionUnlocked('personal')}
             onClick={() => goToStep('personal-info')}
           />
 
@@ -364,6 +389,7 @@ export function WizardSidebar() {
             label="Review & Submit"
             isActive={currentStep.startsWith('review-')}
             isComplete={getSectionStatus('review') === 'completed'}
+            isLocked={!isSectionUnlocked('review')}
             onClick={() => goToStep('review-payment')}
           />
         </ul>
@@ -480,26 +506,33 @@ function SidebarItem({
   label,
   isActive,
   isComplete,
+  isLocked,
   onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   isActive: boolean;
   isComplete: boolean;
+  isLocked?: boolean;
   onClick: () => void;
 }) {
   return (
     <li>
       <button
-        onClick={onClick}
+        onClick={isLocked ? undefined : onClick}
+        disabled={isLocked}
         className={cn(
           'w-full flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-colors',
-          isActive
+          isLocked
+            ? 'text-gray-300 cursor-not-allowed'
+            : isActive
             ? 'border-l-2 border-[#00e3ec] bg-[#00e3ec]/10 text-gray-900'
             : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
         )}
       >
-        {isComplete ? (
+        {isLocked ? (
+          <Lock className="h-5 w-5 text-gray-300" />
+        ) : isComplete ? (
           <CheckCircle2 className="h-5 w-5 text-[#00e3ec]" />
         ) : (
           <Icon

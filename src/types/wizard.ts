@@ -759,6 +759,7 @@ export interface WizardContextType {
   // Helpers
   getVisibleSteps: () => StepConfig[];
   getSectionStatus: (section: SectionId) => 'not_started' | 'in_progress' | 'completed';
+  isSectionUnlocked: (section: SectionId) => boolean;
   calculateTax: () => void;
   saveProgress: () => Promise<void>;
 }
