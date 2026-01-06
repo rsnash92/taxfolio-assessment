@@ -296,6 +296,7 @@ export function WizardProvider({
     });
   }, [
     isLoading, // Recalculate after loading completes
+    data.taxYear, // Recalculate when tax year changes (different rates apply)
     data.selfEmploymentData,
     data.employmentData,
     data.rentalData,
