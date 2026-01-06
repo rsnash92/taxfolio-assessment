@@ -5,14 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useWizard } from '@/providers/WizardProvider';
 import { createClient } from '@/lib/supabase/client';
+import { formatCurrency } from '@/lib/config/pricing';
 import { HelpCircle, Save, Loader2, LogOut, Menu } from 'lucide-react';
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-  }).format(amount);
-}
 
 interface WizardHeaderProps {
   onMenuClick?: () => void;
@@ -59,17 +53,25 @@ export function WizardHeader({ onMenuClick }: WizardHeaderProps) {
 
           {/* Stats Bar */}
           <div className="hidden md:flex items-center gap-8">
-            {/* Tax Liability */}
+            {/* Tax Liability / Refund */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Tax liability:</span>
+              <span className="text-sm text-gray-500">
+                {(taxCalculation?.refundDue || 0) > 0 ? 'Refund due:' : 'Tax liability:'}
+              </span>
               <span
                 className={`text-lg font-bold ${
-                  (taxCalculation?.totalDue || 0) > 0
+                  (taxCalculation?.refundDue || 0) > 0
+                    ? 'text-[#00c4d4]'
+                    : (taxCalculation?.totalDue || 0) > 0
                     ? 'text-amber-600'
                     : 'text-[#00c4d4]'
                 }`}
               >
-                {formatCurrency(taxCalculation?.totalDue || 0)}
+                {formatCurrency(
+                  (taxCalculation?.refundDue || 0) > 0
+                    ? taxCalculation?.refundDue || 0
+                    : taxCalculation?.totalDue || 0
+                )}
               </span>
               <button className="text-gray-400 hover:text-gray-600">
                 <HelpCircle className="h-4 w-4" />
