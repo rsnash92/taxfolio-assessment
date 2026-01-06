@@ -106,7 +106,7 @@ export function ReviewSummaryStep() {
     // Capital Gains (if any)
     if ((calculation.capitalGainsIncome || 0) > 0) {
       addSection('Capital Gains', [
-        { label: 'Taxable gains', value: calculation.capitalGainsIncome || 0 },
+        { label: 'Total gains', value: calculation.capitalGainsIncome || 0 },
       ]);
     }
 
@@ -392,7 +392,7 @@ export function ReviewSummaryStep() {
             onToggle={() => toggleSection('capital-gains')}
             items={[
               {
-                label: 'Taxable gains (after annual exempt amount)',
+                label: 'Total gains',
                 value: calculation?.capitalGainsIncome || 0,
               },
             ]}
