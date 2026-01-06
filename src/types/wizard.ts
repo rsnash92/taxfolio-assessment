@@ -269,6 +269,8 @@ export interface CISData {
   totalCISDeductions?: number; // Alias for HMRC mapper
   totalMaterials?: number;
   totalNet: number;
+  // Allowable business expenses (travel, tools, equipment, etc.)
+  expenses?: number;
 }
 
 // Dividends

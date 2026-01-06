@@ -5,7 +5,7 @@ import { useWizard } from '@/providers/WizardProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { HardHat, Plus, Trash2, AlertCircle, HelpCircle } from 'lucide-react';
+import { HardHat, Plus, Trash2, AlertCircle, HelpCircle, Receipt } from 'lucide-react';
 import { CISContractor } from '@/types/wizard';
 
 function formatCurrency(amount: number): string {
@@ -28,6 +28,7 @@ export function CISIncomeStep() {
       ? existingContractors
       : [{ id: generateId(), contractorName: '', grossPayments: 0, cisDeductions: 0, netPayments: 0 }]
   );
+  const [expenses, setExpenses] = useState<number>(data.cisData?.expenses || 0);
 
   const addContractor = () => {
     setContractors([
@@ -71,6 +72,7 @@ export function CISIncomeStep() {
         totalGross,
         totalDeductions,
         totalNet,
+        expenses,
         hasAllCISStatements: true,
       },
     });
@@ -273,6 +275,44 @@ export function CISIncomeStep() {
         Add Another Contractor
       </Button>
 
+      {/* Business Expenses Section */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-xl flex items-center justify-center">
+            <Receipt className="h-5 w-5 text-[#00c4d4]" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">Business Expenses</h3>
+            <p className="text-sm text-gray-500">Allowable costs you incurred doing CIS work</p>
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="cis-expenses" className="flex items-center gap-2">
+            Total Allowable Expenses
+            <HelpCircle className="h-4 w-4 text-gray-400" />
+          </Label>
+          <p className="text-xs text-gray-500">
+            Include travel, tools, equipment, protective clothing, phone/internet, vehicle costs, and other business expenses
+          </p>
+          <div className="relative w-64">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              £
+            </span>
+            <Input
+              id="cis-expenses"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              className="pl-8"
+              value={expenses || ''}
+              onChange={(e) => setExpenses(parseFloat(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Totals Summary */}
       {totalGross > 0 && (
         <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-6">
@@ -290,12 +330,28 @@ export function CISIncomeStep() {
                 {formatCurrency(totalDeductions)}
               </span>
             </div>
+            {expenses > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Business Expenses</span>
+                <span className="font-semibold text-[#00c4d4]">
+                  -{formatCurrency(expenses)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between pt-2 border-t border-[#99ebef]">
               <span className="font-medium text-gray-900">Net Received</span>
               <span className="font-bold text-gray-900">
                 {formatCurrency(totalNet)}
               </span>
             </div>
+            {expenses > 0 && (
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-900">Taxable Profit</span>
+                <span className="font-bold text-gray-900">
+                  {formatCurrency(Math.max(0, totalGross - expenses))}
+                </span>
+              </div>
+            )}
           </div>
 
           <p className="text-xs text-[#00a8b0] mt-4">

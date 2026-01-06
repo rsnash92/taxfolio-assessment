@@ -131,7 +131,9 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // CIS Income (Construction Industry Scheme)
   const cisIncome = toPounds(data.cisData?.totalGross || data.cisData?.totalGrossPayments || 0);
   const cisDeductions = toPounds(data.cisData?.totalDeductions || data.cisData?.totalCISDeductions || 0);
+  const cisExpenses = toPounds(data.cisData?.expenses || 0);
   taxAlreadyPaid += cisDeductions;
+  totalExpenses += cisExpenses;
 
   // Dividends (from dedicated data store)
   const dividendsIncome = toPounds(data.dividendsData?.totalDividends ||
