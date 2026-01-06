@@ -177,17 +177,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const nonDividendIncome = nonSavingsIncome + finalInterest;
   const totalIncome = nonDividendIncome + finalDividends;
 
-  // Calculate reliefs
-  const pensionRelief =
-    toPounds(data.general?.pension?.personalContributions || 0) * 0.2;
-  const giftAidRelief =
-    toPounds(data.general?.charitable?.giftAidDonations || 0) * 0.25;
-  const ventureCapitalRelief =
-    toPounds(data.general?.ventureCapital?.eisInvestments || 0) * 0.3 +
-    toPounds(data.general?.ventureCapital?.seisInvestments || 0) * 0.5 +
-    toPounds(data.general?.ventureCapital?.vctInvestments || 0) * 0.3;
-
-  // Calculate taxable income
+  // Calculate taxable income (before reliefs, needed for pension relief calculation)
   const taxableIncome = Math.max(0, totalIncome - totalExpenses - capitalAllowances);
   // Non-dividend taxable income (expenses apply to non-dividend income)
   const nonDividendTaxable = Math.max(0, nonDividendIncome - totalExpenses - capitalAllowances);
@@ -222,6 +212,31 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   const taxableAfterAllowance = nonDividendAfterAllowance + dividendsAfterAllowance;
 
+  // Calculate pension relief
+  // Pension contributions get 20% relief at source (basic rate relief)
+  // Higher/additional rate taxpayers can claim additional relief through self-assessment
+  // The relief is the ADDITIONAL 20% (or 25% for additional rate) on contributions
+  // that pushed income out of those higher bands
+  const grossPensionContribution = toPounds(data.general?.pension?.personalContributions || 0);
+
+  // Calculate how much income is in higher rate band (above basic rate threshold)
+  // Basic rate band ends at £50,270 for 2024/25, but we need taxable income (after allowance)
+  const basicRateBand = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
+  const higherRateIncome = Math.max(0, taxableAfterAllowance - basicRateBand);
+
+  // Pension relief is 20% additional on contributions that reduce higher rate income
+  // Cap the relief at the actual higher rate income (can't get relief on more than you have)
+  const effectivePensionContribution = Math.min(grossPensionContribution, higherRateIncome);
+  const pensionRelief = effectivePensionContribution * 0.2;
+
+  // Other reliefs
+  const giftAidRelief =
+    toPounds(data.general?.charitable?.giftAidDonations || 0) * 0.25;
+  const ventureCapitalRelief =
+    toPounds(data.general?.ventureCapital?.eisInvestments || 0) * 0.3 +
+    toPounds(data.general?.ventureCapital?.seisInvestments || 0) * 0.5 +
+    toPounds(data.general?.ventureCapital?.vctInvestments || 0) * 0.3;
+
   // Determine taxpayer's marginal rate for PSA calculation
   // Based on total taxable income (including dividends) to determine which band they're in
   const totalTaxableForPSA = taxableAfterAllowance;
@@ -254,8 +269,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   let savingsInterestTax = 0;
 
   // Tax band boundaries
-  // The basic rate band is always £37,700 (£50,270 - £12,570)
-  const basicRateBand = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
+  // basicRateBand is £37,700 (£50,270 - £12,570), already calculated above
   // The higher rate band extends from basic rate threshold to additional rate threshold
   // When PA is reduced, the higher rate band EXPANDS because more income is taxable
   // Additional rate only applies to income above £125,140 GROSS (not taxable)
