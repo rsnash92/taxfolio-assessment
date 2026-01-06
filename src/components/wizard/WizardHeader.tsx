@@ -7,14 +7,19 @@ import { useWizard } from '@/providers/WizardProvider';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/config/pricing';
 import { HelpCircle, Save, Loader2, LogOut, Menu } from 'lucide-react';
+import { TaxYearSelector } from './TaxYearSelector';
 
 interface WizardHeaderProps {
   onMenuClick?: () => void;
 }
 
 export function WizardHeader({ onMenuClick }: WizardHeaderProps) {
-  const { data, isSaving } = useWizard();
+  const { data, updateData, isSaving } = useWizard();
   const { taxCalculation, taxYear } = data;
+
+  const handleTaxYearChange = (newTaxYear: string) => {
+    updateData({ taxYear: newTaxYear });
+  };
   const router = useRouter();
   const supabase = createClient();
 
@@ -88,13 +93,11 @@ export function WizardHeader({ onMenuClick }: WizardHeaderProps) {
             {/* Divider */}
             <div className="h-6 w-px bg-gray-200" />
 
-            {/* Tax Year */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Tax year:</span>
-              <span className="text-sm font-semibold text-[#00c4d4]">
-                {taxYear}
-              </span>
-            </div>
+            {/* Tax Year Selector */}
+            <TaxYearSelector
+              currentTaxYear={taxYear}
+              onTaxYearChange={handleTaxYearChange}
+            />
 
             {/* Save Status */}
             <div className="flex items-center gap-2 text-sm text-gray-500">

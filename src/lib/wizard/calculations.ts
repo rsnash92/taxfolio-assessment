@@ -1,66 +1,14 @@
 import { WizardData, TaxCalculation } from '@/types/wizard';
-
-// UK Tax rates for 2024/25
-const TAX_BANDS = {
-  personalAllowance: 12570,
-  basicRate: { threshold: 50270, rate: 0.2 },
-  higherRate: { threshold: 125140, rate: 0.4 },
-  additionalRate: { rate: 0.45 },
-};
-
-// Dividend tax rates for 2024/25
-const DIVIDEND_RATES = {
-  allowance: 500, // £500 dividend allowance
-  basicRate: 0.0875, // 8.75%
-  higherRate: 0.3375, // 33.75%
-  additionalRate: 0.3935, // 39.35%
-};
-
-// Personal Savings Allowance (PSA) for 2024/25
-// The allowance depends on the taxpayer's marginal rate
-const SAVINGS_ALLOWANCE = {
-  basicRate: 1000, // £1,000 for basic rate taxpayers
-  higherRate: 500, // £500 for higher rate taxpayers
-  additionalRate: 0, // £0 for additional rate taxpayers
-};
-
-// National Insurance Class 4 rates for 2024/25
-const NI_RATES = {
-  lowerProfitsLimit: 12570,
-  upperProfitsLimit: 50270,
-  mainRate: 0.06, // 6% between LPL and UPL
-  upperRate: 0.02, // 2% above UPL
-};
-
-// Trading Allowance for 2024/25
-// Individuals with trading/self-employment income can use the £1,000 trading allowance
-// instead of deducting actual expenses (if it's more beneficial)
-const TRADING_ALLOWANCE = 1000;
-
-// Capital Gains Tax rates for 2024/25
-const CGT_RATES = {
-  annualExemptAmount: 3000, // £3,000 for 2024/25
-  basicRate: 0.10, // 10% for gains within basic rate band
-  higherRate: 0.20, // 20% for gains above basic rate band
-  // Residential property rates (higher)
-  residentialBasicRate: 0.18, // 18% for residential property in basic band
-  residentialHigherRate: 0.24, // 24% for residential property above basic band
-};
-
-// Student Loan thresholds for 2024/25
-// Repayment is 9% of income over the threshold (except postgrad which is 6%)
-const STUDENT_LOAN_THRESHOLDS: Record<string, { threshold: number; rate: number }> = {
-  '1': { threshold: 24990, rate: 0.09 }, // Plan 1 (pre-2012 England/Wales, Scotland, NI)
-  '2': { threshold: 27295, rate: 0.09 }, // Plan 2 (post-2012 England/Wales)
-  '4': { threshold: 31395, rate: 0.09 }, // Plan 4 (Scotland post-2012)
-  'postgrad': { threshold: 21000, rate: 0.06 }, // Postgraduate loan
-};
+import { getTaxYearConfig, TaxYearConfig } from './tax-years';
 
 // Note: All monetary values from form inputs are stored in pounds (not pence)
 // The toPounds helper is a no-op since values are already in pounds
 const toPounds = (pounds: number): number => pounds;
 
 export function calculateTaxLiability(data: WizardData): TaxCalculation {
+  // Get tax year config - defaults to 2024-25 if not set
+  const taxYear = getTaxYearConfig(data.taxYear || '2024-25');
+
   // Calculate total income by source
   // All values from forms are already in pounds
   let selfEmploymentIncome = 0;
@@ -98,11 +46,11 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     // 2. Income > £1,000: Use £1,000 flat deduction if actual expenses < £1,000
     if (selfEmploymentExpenses === 0) {
       // No expenses claimed - use trading allowance
-      tradingAllowanceUsed = Math.min(selfEmploymentIncome, TRADING_ALLOWANCE);
+      tradingAllowanceUsed = Math.min(selfEmploymentIncome, taxYear.tradingAllowance);
       // Remove the income that's covered by trading allowance from taxable income
       // by treating it as an expense deduction
       totalExpenses += tradingAllowanceUsed;
-    } else if (selfEmploymentExpenses < TRADING_ALLOWANCE && selfEmploymentIncome > selfEmploymentExpenses) {
+    } else if (selfEmploymentExpenses < taxYear.tradingAllowance && selfEmploymentIncome > selfEmploymentExpenses) {
       // Expenses claimed but trading allowance is better - this is a choice scenario
       // For now, only auto-apply trading allowance when NO expenses are claimed
       // (The user would need to explicitly choose to use trading allowance vs expenses)
@@ -231,11 +179,11 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   // Personal allowance (reduced if income over 100k)
   // Personal allowance is applied against non-dividend income first
-  let personalAllowance = TAX_BANDS.personalAllowance;
+  let personalAllowance = taxYear.personalAllowance;
   if (taxableIncome > 100000) {
     personalAllowance = Math.max(
       0,
-      TAX_BANDS.personalAllowance - (taxableIncome - 100000) / 2
+      taxYear.personalAllowance - (taxableIncome - 100000) / 2
     );
   }
 
@@ -264,7 +212,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   // Calculate how much income is in higher rate band (above basic rate threshold)
   // Basic rate band ends at £50,270 for 2024/25, but we need taxable income (after allowance)
-  const basicRateBand = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
+  const basicRateBand = taxYear.basicRateThreshold - taxYear.personalAllowance; // £37,700
   const higherRateIncome = Math.max(0, taxableAfterAllowance - basicRateBand);
 
   // Pension relief is 20% additional on contributions that reduce higher rate income
@@ -276,7 +224,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // If receiving from spouse: £1,260 transfer = £252 tax reduction (at 20%)
   // Marriage Allowance is a tax reducer, not an increase to personal allowance
   const marriageAllowanceType = data.general?.marriageAllowance?.type || data.general?.marriageAllowance?.transferType;
-  const marriageAllowanceAmount = marriageAllowanceType === 'receive' ? 1260 : 0;
+  const marriageAllowanceAmount = marriageAllowanceType === 'receive' ? taxYear.marriageAllowanceAmount : 0;
   const marriageAllowanceRelief = marriageAllowanceAmount * 0.2; // £252 when receiving
 
   // Other reliefs
@@ -290,21 +238,21 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Determine taxpayer's marginal rate for PSA calculation
   // Based on total taxable income (including dividends) to determine which band they're in
   const totalTaxableForPSA = taxableAfterAllowance;
-  const basicRateBandForPSA = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
+  const basicRateBandForPSA = taxYear.basicRateThreshold - taxYear.personalAllowance; // £37,700
 
   let personalSavingsAllowance = 0;
   if (totalTaxableForPSA <= 0) {
     // No taxable income - full PSA
-    personalSavingsAllowance = SAVINGS_ALLOWANCE.basicRate;
+    personalSavingsAllowance = taxYear.personalSavingsAllowanceBasic;
   } else if (totalTaxableForPSA <= basicRateBandForPSA) {
     // Basic rate taxpayer
-    personalSavingsAllowance = SAVINGS_ALLOWANCE.basicRate;
-  } else if (totalTaxableForPSA <= TAX_BANDS.higherRate.threshold - TAX_BANDS.personalAllowance) {
+    personalSavingsAllowance = taxYear.personalSavingsAllowanceBasic;
+  } else if (totalTaxableForPSA <= taxYear.higherRateThreshold - taxYear.personalAllowance) {
     // Higher rate taxpayer
-    personalSavingsAllowance = SAVINGS_ALLOWANCE.higherRate;
+    personalSavingsAllowance = taxYear.personalSavingsAllowanceHigher;
   } else {
     // Additional rate taxpayer
-    personalSavingsAllowance = SAVINGS_ALLOWANCE.additionalRate;
+    personalSavingsAllowance = taxYear.personalSavingsAllowanceAdditional;
   }
 
   // Apply PSA to savings interest (after personal allowance)
@@ -326,7 +274,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // So the higher rate band = £125,140 - £50,270 = £74,870 for standard PA
   // But when PA is reduced, taxable income at higher rate = gross income - PA - basic rate band
   // The key insight: additional rate threshold is GROSS £125,140, not relative to PA
-  const higherRateBandEnd = TAX_BANDS.higherRate.threshold - personalAllowance; // Taxable amount where additional rate starts
+  const higherRateBandEnd = taxYear.higherRateThreshold - personalAllowance; // Taxable amount where additional rate starts
   const higherRateBandSize = Math.max(0, higherRateBandEnd - basicRateBand); // Size of higher rate band
 
   // First, tax non-savings income at standard rates
@@ -336,7 +284,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Basic rate (20%) on non-savings income
   if (remainingNonSavings > 0) {
     const taxableAtBasicRate = Math.min(remainingNonSavings, basicRateBand);
-    basicRateTax = taxableAtBasicRate * TAX_BANDS.basicRate.rate;
+    basicRateTax = taxableAtBasicRate * taxYear.basicRate;
     bandUsedByNonSavings = taxableAtBasicRate;
     remainingNonSavings -= taxableAtBasicRate;
   }
@@ -345,7 +293,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Higher rate applies from end of basic rate band up to additional rate threshold
   if (remainingNonSavings > 0) {
     const taxableAtHigherRate = Math.min(remainingNonSavings, higherRateBandSize);
-    higherRateTax = taxableAtHigherRate * TAX_BANDS.higherRate.rate;
+    higherRateTax = taxableAtHigherRate * taxYear.higherRate;
     bandUsedByNonSavings += taxableAtHigherRate;
     remainingNonSavings -= taxableAtHigherRate;
   }
@@ -353,7 +301,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Additional rate (45%) on non-savings income
   // Only applies to gross income above £125,140
   if (remainingNonSavings > 0) {
-    additionalRateTax = remainingNonSavings * TAX_BANDS.additionalRate.rate;
+    additionalRateTax = remainingNonSavings * taxYear.additionalRate;
     bandUsedByNonSavings += remainingNonSavings;
   }
 
@@ -366,7 +314,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const basicBandRemainingForSavings = Math.max(0, basicRateBand - bandUsedByNonSavings);
   if (remainingSavings > 0 && basicBandRemainingForSavings > 0) {
     const savingsInBasicBand = Math.min(remainingSavings, basicBandRemainingForSavings);
-    savingsInterestTax += savingsInBasicBand * TAX_BANDS.basicRate.rate;
+    savingsInterestTax += savingsInBasicBand * taxYear.basicRate;
     bandUsedByNonDividend += savingsInBasicBand;
     remainingSavings -= savingsInBasicBand;
   }
@@ -376,22 +324,22 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const higherBandRemainingForSavings = Math.max(0, higherRateBandSize - nonSavingsInHigherBand);
   if (remainingSavings > 0 && higherBandRemainingForSavings > 0) {
     const savingsInHigherBand = Math.min(remainingSavings, higherBandRemainingForSavings);
-    savingsInterestTax += savingsInHigherBand * TAX_BANDS.higherRate.rate;
+    savingsInterestTax += savingsInHigherBand * taxYear.higherRate;
     bandUsedByNonDividend += savingsInHigherBand;
     remainingSavings -= savingsInHigherBand;
   }
 
   // Additional rate for any remaining savings
   if (remainingSavings > 0) {
-    savingsInterestTax += remainingSavings * TAX_BANDS.additionalRate.rate;
+    savingsInterestTax += remainingSavings * taxYear.additionalRate;
     bandUsedByNonDividend += remainingSavings;
   }
 
   // Now tax dividends at dividend rates
   // Dividends are taxed after non-dividend income, so they fill up remaining band space
   if (dividendsAfterAllowance > 0) {
-    // Apply dividend allowance (£500)
-    const taxableDividends = Math.max(0, dividendsAfterAllowance - DIVIDEND_RATES.allowance);
+    // Apply dividend allowance
+    const taxableDividends = Math.max(0, dividendsAfterAllowance - taxYear.dividendAllowance);
 
     // Determine which bands dividends fall into based on how much non-dividend income used
     let remainingDividends = taxableDividends;
@@ -400,7 +348,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     const basicBandRemaining = Math.max(0, basicRateBand - bandUsedByNonDividend);
     if (remainingDividends > 0 && basicBandRemaining > 0) {
       const dividendsInBasicBand = Math.min(remainingDividends, basicBandRemaining);
-      dividendTax += dividendsInBasicBand * DIVIDEND_RATES.basicRate;
+      dividendTax += dividendsInBasicBand * taxYear.dividendBasicRate;
       remainingDividends -= dividendsInBasicBand;
     }
 
@@ -411,13 +359,13 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     const higherBandRemaining = Math.max(0, higherRateBandSize - nonDividendInHigherBand);
     if (remainingDividends > 0 && higherBandRemaining > 0) {
       const dividendsInHigherBand = Math.min(remainingDividends, higherBandRemaining);
-      dividendTax += dividendsInHigherBand * DIVIDEND_RATES.higherRate;
+      dividendTax += dividendsInHigherBand * taxYear.dividendHigherRate;
       remainingDividends -= dividendsInHigherBand;
     }
 
     // Additional rate for any remaining dividends
     if (remainingDividends > 0) {
-      dividendTax += remainingDividends * DIVIDEND_RATES.additionalRate;
+      dividendTax += remainingDividends * taxYear.dividendAdditionalRate;
     }
   }
 
@@ -441,22 +389,22 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Combined profit for NI purposes (both self-employment and CIS are self-employed income)
   const totalSelfEmployedProfit = selfEmploymentProfit + cisProfit;
 
-  // Class 2 NIC (if profit > small profits threshold of £6,725)
-  if (totalSelfEmployedProfit > 6725) {
-    class2NIC = 52 * 3.45; // £3.45/week for 52 weeks = £179.40
+  // Class 2 NIC (if profit > small profits threshold)
+  if (totalSelfEmployedProfit > taxYear.class2SmallProfitsThreshold) {
+    class2NIC = 52 * taxYear.class2NicWeekly; // Weekly rate × 52 weeks
   }
 
   // Class 4 NIC
-  if (totalSelfEmployedProfit > NI_RATES.lowerProfitsLimit) {
+  if (totalSelfEmployedProfit > taxYear.class4LowerProfitsLimit) {
     const profitInMainBand = Math.min(
-      totalSelfEmployedProfit - NI_RATES.lowerProfitsLimit,
-      NI_RATES.upperProfitsLimit - NI_RATES.lowerProfitsLimit
+      totalSelfEmployedProfit - taxYear.class4LowerProfitsLimit,
+      taxYear.class4UpperProfitsLimit - taxYear.class4LowerProfitsLimit
     );
-    class4NIC += profitInMainBand * NI_RATES.mainRate;
+    class4NIC += profitInMainBand * taxYear.class4MainRate;
 
-    if (totalSelfEmployedProfit > NI_RATES.upperProfitsLimit) {
-      const profitAboveUpper = totalSelfEmployedProfit - NI_RATES.upperProfitsLimit;
-      class4NIC += profitAboveUpper * NI_RATES.upperRate;
+    if (totalSelfEmployedProfit > taxYear.class4UpperProfitsLimit) {
+      const profitAboveUpper = totalSelfEmployedProfit - taxYear.class4UpperProfitsLimit;
+      class4NIC += profitAboveUpper * taxYear.class4UpperRate;
     }
   }
 
@@ -469,8 +417,8 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   let cgtHigherRateTax = 0;
 
   if (capitalGainsIncome > 0) {
-    // Apply annual exempt amount (£3,000 for 2024/25)
-    const taxableGains = Math.max(0, capitalGainsIncome - CGT_RATES.annualExemptAmount);
+    // Apply annual exempt amount
+    const taxableGains = Math.max(0, capitalGainsIncome - taxYear.cgtAnnualExemptAmount);
 
     if (taxableGains > 0) {
       // Determine remaining basic rate band after income
@@ -486,14 +434,14 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
       if (otherGains > 0) {
         // Gains within remaining basic rate band at 10%
         const otherGainsInBasicBand = Math.min(otherGains, basicRateBandRemainingForCGT);
-        cgtBasicRateTax += otherGainsInBasicBand * CGT_RATES.basicRate;
+        cgtBasicRateTax += otherGainsInBasicBand * taxYear.cgtBasicRate;
 
         // Gains above basic rate band at 20%
         const otherGainsAboveBasicBand = Math.max(0, otherGains - basicRateBandRemainingForCGT);
-        cgtHigherRateTax += otherGainsAboveBasicBand * CGT_RATES.higherRate;
+        cgtHigherRateTax += otherGainsAboveBasicBand * taxYear.cgtHigherRate;
       }
 
-      // Calculate CGT on residential property gains at 18%/24%
+      // Calculate CGT on residential property gains at 18%/24% (or 28% for 2023-24)
       if (residentialGains > 0) {
         const taxableResidentialGains = Math.min(residentialGains, taxableGains);
         // Remaining basic band after other gains
@@ -501,11 +449,11 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
         // Residential gains within remaining basic rate band at 18%
         const residentialInBasicBand = Math.min(taxableResidentialGains, basicBandAfterOtherGains);
-        cgtBasicRateTax += residentialInBasicBand * CGT_RATES.residentialBasicRate;
+        cgtBasicRateTax += residentialInBasicBand * taxYear.cgtResidentialBasicRate;
 
-        // Residential gains above basic rate band at 24%
+        // Residential gains above basic rate band at higher rate
         const residentialAboveBasicBand = Math.max(0, taxableResidentialGains - basicBandAfterOtherGains);
-        cgtHigherRateTax += residentialAboveBasicBand * CGT_RATES.residentialHigherRate;
+        cgtHigherRateTax += residentialAboveBasicBand * taxYear.cgtResidentialHigherRate;
       }
 
       capitalGainsTax = cgtBasicRateTax + cgtHigherRateTax;
@@ -532,7 +480,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   // Calculate repayment if there's a student loan
   if (studentLoanPlanType) {
-    const loanConfig = STUDENT_LOAN_THRESHOLDS[studentLoanPlanType];
+    const loanConfig = getStudentLoanConfig(taxYear, studentLoanPlanType);
     if (loanConfig) {
       // Student loan is based on gross earned income (employment + self-employment profit)
       const grossEarnedIncome = employmentIncome + Math.max(0, selfEmploymentIncome - totalExpenses);
@@ -606,4 +554,23 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     totalDue: toPence(totalDue),
     refundDue: refundDue ? toPence(refundDue) : undefined,
   };
+}
+
+// Helper to get student loan config from tax year
+function getStudentLoanConfig(
+  taxYear: TaxYearConfig,
+  planType: '1' | '2' | '4' | 'postgrad'
+): { threshold: number; rate: number } | null {
+  switch (planType) {
+    case '1':
+      return { threshold: taxYear.studentLoanPlan1Threshold, rate: taxYear.studentLoanRate };
+    case '2':
+      return { threshold: taxYear.studentLoanPlan2Threshold, rate: taxYear.studentLoanRate };
+    case '4':
+      return { threshold: taxYear.studentLoanPlan4Threshold, rate: taxYear.studentLoanRate };
+    case 'postgrad':
+      return { threshold: taxYear.studentLoanPostgradThreshold, rate: taxYear.studentLoanPostgradRate };
+    default:
+      return null;
+  }
 }
