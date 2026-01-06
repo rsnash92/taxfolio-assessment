@@ -45,7 +45,7 @@ const INDUSTRIES = [
 
 export function SelfEmploymentBasicsStep() {
   const { currentBusinessId, data, updateBusinessData, updateIncomeSource, goNext, goBack } = useWizard();
-  const [step, setStep] = useState<'details' | 'changed' | 'industry'>('details');
+  const [step, setStep] = useState<'details' | 'changed' | 'previous-details' | 'industry'>('details');
 
   if (!currentBusinessId) {
     return <div>No business selected</div>;
@@ -256,7 +256,7 @@ export function SelfEmploymentBasicsStep() {
             Back
           </Button>
           <Button
-            onClick={() => setStep('industry')}
+            onClick={() => setStep(businessData.detailsChanged ? 'previous-details' : 'industry')}
             disabled={!isChangedAnswered}
             className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white"
           >
@@ -268,7 +268,111 @@ export function SelfEmploymentBasicsStep() {
     );
   }
 
-  // Step 3: Industry selection
+  // Step 3: Previous details (only shown if details have changed)
+  if (step === 'previous-details') {
+    return (
+      <div>
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <p className="text-sm text-gray-500 mb-2">Self-employment details</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+            What were your previous details?
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Please enter your business details as they appeared on your last tax return. This helps HMRC update their records.
+          </p>
+        </div>
+
+        {/* Form Fields */}
+        <div className="space-y-6 mb-6 sm:mb-8">
+          {/* Previous business name */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm sm:text-base font-medium text-gray-900">
+              Previous business name
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-xs sm:text-sm text-gray-500">
+              The name of your business as it was on your last tax return.
+            </p>
+            <Input
+              placeholder="e.g. John Smith Consulting"
+              value={businessData.previousBusinessName || ''}
+              onChange={(e) => handleChange('previousBusinessName', e.target.value)}
+              className="h-11 sm:h-12 text-sm sm:text-base border-gray-200 rounded-xl bg-white focus:border-[#00e3ec] focus:ring-[#00e3ec]"
+            />
+          </div>
+
+          {/* Previous business description */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm sm:text-base font-medium text-gray-900">
+              Previous business description
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-xs sm:text-sm text-gray-500">
+              How your business was described on your last tax return.
+            </p>
+            <Input
+              placeholder="e.g. IT consulting services"
+              value={businessData.previousBusinessDescription || ''}
+              onChange={(e) => handleChange('previousBusinessDescription', e.target.value)}
+              className="h-11 sm:h-12 text-sm sm:text-base border-gray-200 rounded-xl bg-white focus:border-[#00e3ec] focus:ring-[#00e3ec]"
+            />
+          </div>
+
+          {/* Previous business postcode */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm sm:text-base font-medium text-gray-900">
+              Previous business postcode
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            <p className="text-xs sm:text-sm text-gray-500">
+              The postcode associated with your business on your last tax return.
+            </p>
+            <Input
+              placeholder="e.g. SW1A 1AA"
+              value={businessData.previousBusinessPostcode || ''}
+              onChange={(e) => handleChange('previousBusinessPostcode', e.target.value)}
+              className="h-11 sm:h-12 text-sm sm:text-base border-gray-200 rounded-xl bg-white focus:border-[#00e3ec] focus:ring-[#00e3ec] max-w-xs"
+            />
+          </div>
+        </div>
+
+        {/* Info Note */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 mb-6 sm:mb-8">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <Info className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs sm:text-sm">
+              <p className="text-amber-800 font-medium">Why do we need this?</p>
+              <p className="text-amber-600">
+                HMRC needs to match your old records with your new details to ensure continuity of your self-employment history.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between pt-6 sm:pt-8 mt-6 sm:mt-8 border-t border-gray-200">
+          <Button
+            variant="ghost"
+            onClick={() => setStep('changed')}
+            className="text-gray-600"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <Button
+            onClick={() => setStep('industry')}
+            className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] text-white"
+          >
+            Next
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 4: Industry selection
   return (
     <div>
       {/* Header */}

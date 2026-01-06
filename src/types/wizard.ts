@@ -117,6 +117,10 @@ export interface SelfEmploymentBusiness {
   businessDescription: string;
   businessPostcode: string;
   detailsChanged: boolean;
+  // Previous details (if detailsChanged is true)
+  previousBusinessName?: string;
+  previousBusinessDescription?: string;
+  previousBusinessPostcode?: string;
   industry: string;
   accountingMethod: 'cash' | 'accruals';
   startDate: string;
