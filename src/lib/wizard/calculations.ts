@@ -243,8 +243,16 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   let savingsInterestTax = 0;
 
   // Tax band boundaries
+  // The basic rate band is always £37,700 (£50,270 - £12,570)
   const basicRateBand = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
-  const higherRateBand = TAX_BANDS.higherRate.threshold - TAX_BANDS.basicRate.threshold; // £74,870
+  // The higher rate band extends from basic rate threshold to additional rate threshold
+  // When PA is reduced, the higher rate band EXPANDS because more income is taxable
+  // Additional rate only applies to income above £125,140 GROSS (not taxable)
+  // So the higher rate band = £125,140 - £50,270 = £74,870 for standard PA
+  // But when PA is reduced, taxable income at higher rate = gross income - PA - basic rate band
+  // The key insight: additional rate threshold is GROSS £125,140, not relative to PA
+  const higherRateBandEnd = TAX_BANDS.higherRate.threshold - personalAllowance; // Taxable amount where additional rate starts
+  const higherRateBandSize = Math.max(0, higherRateBandEnd - basicRateBand); // Size of higher rate band
 
   // First, tax non-savings income at standard rates
   let remainingNonSavings = nonSavingsAfterAllowance;
@@ -259,14 +267,16 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   }
 
   // Higher rate (40%) on non-savings income
+  // Higher rate applies from end of basic rate band up to additional rate threshold
   if (remainingNonSavings > 0) {
-    const taxableAtHigherRate = Math.min(remainingNonSavings, higherRateBand);
+    const taxableAtHigherRate = Math.min(remainingNonSavings, higherRateBandSize);
     higherRateTax = taxableAtHigherRate * TAX_BANDS.higherRate.rate;
     bandUsedByNonSavings += taxableAtHigherRate;
     remainingNonSavings -= taxableAtHigherRate;
   }
 
   // Additional rate (45%) on non-savings income
+  // Only applies to gross income above £125,140
   if (remainingNonSavings > 0) {
     additionalRateTax = remainingNonSavings * TAX_BANDS.additionalRate.rate;
     bandUsedByNonSavings += remainingNonSavings;
@@ -288,7 +298,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   // Higher rate band for savings
   const nonSavingsInHigherBand = Math.max(0, nonSavingsAfterAllowance - basicRateBand);
-  const higherBandRemainingForSavings = Math.max(0, higherRateBand - nonSavingsInHigherBand);
+  const higherBandRemainingForSavings = Math.max(0, higherRateBandSize - nonSavingsInHigherBand);
   if (remainingSavings > 0 && higherBandRemainingForSavings > 0) {
     const savingsInHigherBand = Math.min(remainingSavings, higherBandRemainingForSavings);
     savingsInterestTax += savingsInHigherBand * TAX_BANDS.higherRate.rate;
@@ -321,8 +331,9 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
     // Higher rate band for dividends
     // If non-dividend income exceeded basic rate, dividends start in higher band
+    // Use the corrected higher rate band size based on actual PA
     const nonDividendInHigherBand = Math.max(0, nonDividendAfterAllowance - basicRateBand);
-    const higherBandRemaining = Math.max(0, higherRateBand - nonDividendInHigherBand);
+    const higherBandRemaining = Math.max(0, higherRateBandSize - nonDividendInHigherBand);
     if (remainingDividends > 0 && higherBandRemaining > 0) {
       const dividendsInHigherBand = Math.min(remainingDividends, higherBandRemaining);
       dividendTax += dividendsInHigherBand * DIVIDEND_RATES.higherRate;
