@@ -19,9 +19,11 @@ const NI_RATES = {
 export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Calculate total income by source
   let selfEmploymentIncome = 0;
+  let employmentIncome = 0;
   let rentalIncome = 0;
   let totalExpenses = 0;
   let capitalAllowances = 0;
+  let taxAlreadyPaid = 0; // Track tax already deducted at source
 
   // Self-employment income and expenses (from all businesses)
   const selfEmploymentBusinesses = data.incomeSources.filter(
@@ -34,6 +36,33 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
       selfEmploymentIncome += businessData.income?.total || 0;
       totalExpenses += businessData.expenses?.total || 0;
       capitalAllowances += businessData.capitalAllowances?.total || 0;
+    }
+  }
+
+  // Employment income (PAYE)
+  const employmentSources = data.incomeSources.filter(
+    (s) => s.type === 'employment'
+  );
+
+  for (const employer of employmentSources) {
+    const employerData = data.employmentData[employer.id];
+    if (employerData) {
+      employmentIncome += employerData.payReceived || 0;
+      // Add benefits in kind
+      employmentIncome += employerData.companyCarBenefit || 0;
+      employmentIncome += employerData.fuelBenefit || 0;
+      employmentIncome += employerData.medicalInsuranceBenefit || 0;
+      employmentIncome += employerData.otherBenefits || 0;
+      employmentIncome += employerData.tipsReceived || 0;
+      // Track tax already paid via PAYE
+      taxAlreadyPaid += employerData.taxDeducted || 0;
+      // Employment expenses
+      if (employerData.claimingExpenses) {
+        totalExpenses += employerData.travelExpenses || 0;
+        totalExpenses += employerData.professionalFees || 0;
+        totalExpenses += employerData.workingFromHome || 0;
+        totalExpenses += employerData.otherExpenses || 0;
+      }
     }
   }
 
@@ -50,15 +79,56 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     }
   }
 
-  // Other income
-  const otherIncome =
-    (data.otherIncome.interest || 0) +
-    (data.otherIncome.dividends || 0) +
-    (data.otherIncome.pension || 0) +
-    (data.otherIncome.stateBenefits || 0) +
-    (data.otherIncome.other || 0);
+  // CIS Income (Construction Industry Scheme)
+  const cisIncome = data.cisData?.totalGross || data.cisData?.totalGrossPayments || 0;
+  const cisDeductions = data.cisData?.totalDeductions || data.cisData?.totalCISDeductions || 0;
+  taxAlreadyPaid += cisDeductions;
 
-  const totalIncome = selfEmploymentIncome + rentalIncome + otherIncome;
+  // Dividends (from dedicated data store)
+  const dividendsIncome = data.dividendsData?.totalDividends ||
+    ((data.dividendsData?.ukDividends || 0) +
+    (data.dividendsData?.foreignDividends || 0) +
+    (data.dividendsData?.stockDividends || 0));
+
+  // Interest (from dedicated data store)
+  const interestIncome = data.interestData?.totalInterest ||
+    ((data.interestData?.untaxedUKInterest || 0) +
+    (data.interestData?.untaxedForeignInterest || 0) +
+    (data.interestData?.taxedUKInterest || 0) +
+    (data.interestData?.giltsInterest || 0));
+  taxAlreadyPaid += data.interestData?.taxDeducted || data.interestData?.taxDeductedFromInterest || 0;
+
+  // Pension Income (from dedicated data store)
+  const pensionIncome = data.pensionIncomeData?.totalPensionIncome ||
+    ((data.pensionIncomeData?.statePension || 0) +
+    (data.pensionIncomeData?.statePensionLumpSum || 0) +
+    (data.pensionIncomeData?.privatePensions?.reduce((sum, p) => sum + (p.pensionAmount || 0), 0) || 0));
+  taxAlreadyPaid += data.pensionIncomeData?.totalTaxDeducted || 0;
+
+  // State Benefits (from dedicated data store)
+  const stateBenefitsIncome = data.stateBenefitsData?.totalTaxableBenefits ||
+    ((data.stateBenefitsData?.jobseekersAllowance || 0) +
+    (data.stateBenefitsData?.employmentSupportAllowance || 0) +
+    (data.stateBenefitsData?.carersAllowance || 0) +
+    (data.stateBenefitsData?.bereavementAllowance || 0) +
+    (data.stateBenefitsData?.incapacityBenefit || 0) +
+    (data.stateBenefitsData?.statePension || 0) +
+    (data.stateBenefitsData?.otherTaxableBenefits || 0));
+
+  // Capital Gains (not included in income tax but tracked separately)
+  // const capitalGains = data.capitalGainsData?.taxableGains || 0;
+
+  // Use new data stores if they have data, otherwise fall back to legacy otherIncome
+  const finalInterest = interestIncome > 0 ? interestIncome : (data.otherIncome?.interest || 0);
+  const finalDividends = dividendsIncome > 0 ? dividendsIncome : (data.otherIncome?.dividends || 0);
+  const finalPension = pensionIncome > 0 ? pensionIncome : (data.otherIncome?.pension || 0);
+  const finalStateBenefits = stateBenefitsIncome > 0 ? stateBenefitsIncome : (data.otherIncome?.stateBenefits || 0);
+  const finalOther = (data.otherIncome?.other || 0);
+
+  // Total other income
+  const otherIncome = finalInterest + finalDividends + finalPension + finalStateBenefits + finalOther + cisIncome;
+
+  const totalIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncome;
 
   // Calculate reliefs
   const pensionRelief =
@@ -141,16 +211,16 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   const totalNICDue = class2NIC + class4NIC;
 
-  // Total due after reliefs
-  const totalDue = Math.max(
-    0,
-    totalTaxDue + totalNICDue - pensionRelief - giftAidRelief - ventureCapitalRelief
-  );
+  // Total due after reliefs and tax already paid
+  const grossTaxDue = totalTaxDue + totalNICDue - pensionRelief - giftAidRelief - ventureCapitalRelief;
+  const netTaxDue = grossTaxDue - taxAlreadyPaid;
+  const totalDue = Math.max(0, netTaxDue);
+  const refundDue = netTaxDue < 0 ? Math.abs(netTaxDue) : undefined;
 
   return {
     totalIncome: Math.round(totalIncome * 100) / 100,
     selfEmploymentIncome: Math.round(selfEmploymentIncome * 100) / 100,
-    employmentIncome: 0,
+    employmentIncome: Math.round(employmentIncome * 100) / 100,
     rentalIncome: Math.round(rentalIncome * 100) / 100,
     otherIncome: Math.round(otherIncome * 100) / 100,
     totalExpenses: Math.round(totalExpenses * 100) / 100,
@@ -172,5 +242,6 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     totalTaxDue: Math.round(totalTaxDue * 100) / 100,
     totalNICDue: Math.round(totalNICDue * 100) / 100,
     totalDue: Math.round(totalDue * 100) / 100,
+    refundDue: refundDue ? Math.round(refundDue * 100) / 100 : undefined,
   };
 }

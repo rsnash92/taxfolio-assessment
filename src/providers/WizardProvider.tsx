@@ -276,7 +276,14 @@ export function WizardProvider({
     }
   }, [
     data.selfEmploymentData,
+    data.employmentData,
     data.rentalData,
+    data.cisData,
+    data.dividendsData,
+    data.interestData,
+    data.capitalGainsData,
+    data.pensionIncomeData,
+    data.stateBenefitsData,
     data.deductions,
     data.transactions,
     data.otherIncome,
