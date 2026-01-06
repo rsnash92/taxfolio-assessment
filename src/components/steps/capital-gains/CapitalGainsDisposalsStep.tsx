@@ -19,6 +19,8 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 11);
 }
 
+const ALL_ASSET_TYPES = ['shares', 'property', 'crypto', 'other'] as const;
+
 const ASSET_TYPE_LABELS: Record<string, string> = {
   shares: 'Shares & Investments',
   property: 'Property',
@@ -29,7 +31,6 @@ const ASSET_TYPE_LABELS: Record<string, string> = {
 export function CapitalGainsDisposalsStep() {
   const { data, updateData, goNext, goBack, canGoBack } = useWizard();
 
-  const assetTypes = data.capitalGainsData?.assetTypes || ['shares'];
   const existingDisposals = data.capitalGainsData?.disposals || [];
 
   const [disposals, setDisposals] = useState<Partial<CapitalGainsDisposal>[]>(
@@ -38,7 +39,7 @@ export function CapitalGainsDisposalsStep() {
       : [
           {
             id: generateId(),
-            assetType: assetTypes[0] as CapitalGainsDisposal['assetType'],
+            assetType: 'shares' as CapitalGainsDisposal['assetType'],
             assetDescription: '',
             dateSold: '',
             proceedsAmount: 0,
@@ -55,7 +56,7 @@ export function CapitalGainsDisposalsStep() {
       ...disposals,
       {
         id: generateId(),
-        assetType: assetTypes[0] as CapitalGainsDisposal['assetType'],
+        assetType: 'shares' as CapitalGainsDisposal['assetType'],
         assetDescription: '',
         dateSold: '',
         proceedsAmount: 0,
@@ -127,21 +128,11 @@ export function CapitalGainsDisposalsStep() {
           <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
             <TrendingUp className="h-5 w-5 text-[#00c4d4]" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Your Disposals</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Capital Gains</h1>
         </div>
         <p className="text-gray-600">
           Enter details of each asset you sold during 2024/25.
         </p>
-        <div className="flex flex-wrap gap-2 mt-3">
-          {assetTypes.map((type) => (
-            <span
-              key={type}
-              className="text-xs px-2 py-1 bg-[#e6fafb] text-[#00858c] rounded-full"
-            >
-              {ASSET_TYPE_LABELS[type] || type}
-            </span>
-          ))}
-        </div>
       </div>
 
       {/* Disposals List */}
@@ -196,15 +187,15 @@ export function CapitalGainsDisposalsStep() {
                   <Label htmlFor={`type-${disposal.id}`}>Asset type</Label>
                   <select
                     id={`type-${disposal.id}`}
-                    value={disposal.assetType || assetTypes[0]}
+                    value={disposal.assetType || 'shares'}
                     onChange={(e) =>
                       updateDisposal(disposal.id!, 'assetType', e.target.value)
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   >
-                    {assetTypes.map((type) => (
+                    {ALL_ASSET_TYPES.map((type) => (
                       <option key={type} value={type}>
-                        {ASSET_TYPE_LABELS[type] || type}
+                        {ASSET_TYPE_LABELS[type]}
                       </option>
                     ))}
                   </select>

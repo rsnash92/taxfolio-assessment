@@ -303,7 +303,7 @@ export function WizardSidebar() {
               label="Capital Gains"
               isActive={isCapitalGainsActive}
               isComplete={getSectionStatus('capital-gains') === 'completed'}
-              onClick={() => goToStep('capital-gains-overview')}
+              onClick={() => goToStep('capital-gains-disposals')}
             />
           )}
 

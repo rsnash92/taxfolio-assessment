@@ -57,7 +57,6 @@ import { InterestStep } from '@/components/steps/interest';
 
 // Capital Gains Steps
 import {
-  CapitalGainsOverviewStep,
   CapitalGainsDisposalsStep,
   CapitalGainsSummaryStep,
 } from '@/components/steps/capital-gains';
@@ -177,8 +176,6 @@ export function WizardContainer() {
         return <InterestStep />;
 
       // Capital Gains
-      case 'capital-gains-overview':
-        return <CapitalGainsOverviewStep />;
       case 'capital-gains-disposals':
         return <CapitalGainsDisposalsStep />;
       case 'capital-gains-summary':

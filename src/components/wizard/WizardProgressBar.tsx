@@ -14,7 +14,7 @@ const SECTIONS = [
     'rental-list', 'rental-details', 'rental-income', 'rental-expenses', 'rental-summary',
     'employment-list', 'employment-details', 'employment-income', 'employment-benefits', 'employment-expenses',
     'cis-income', 'dividends', 'interest',
-    'capital-gains-overview', 'capital-gains-disposals', 'capital-gains-summary',
+    'capital-gains-disposals', 'capital-gains-summary',
     'pension-income', 'state-benefits', 'other-income'
   ]},
   { id: 'general', label: 'Tax Relief', steps: [

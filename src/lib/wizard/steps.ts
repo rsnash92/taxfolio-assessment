@@ -38,7 +38,6 @@ export const EMPLOYMENT_STEPS: { id: StepId; label: string }[] = [
 
 // Capital Gains sub-steps
 export const CAPITAL_GAINS_STEPS: { id: StepId; label: string }[] = [
-  { id: 'capital-gains-overview', label: 'Overview' },
   { id: 'capital-gains-disposals', label: 'Disposals' },
   { id: 'capital-gains-summary', label: 'Summary' },
 ];
@@ -257,17 +256,10 @@ export const ALL_STEPS: StepConfig[] = [
 
   // Capital Gains - SA108
   {
-    id: 'capital-gains-overview',
+    id: 'capital-gains-disposals',
     section: 'capital-gains',
     title: 'Capital Gains',
     showInSidebar: true,
-    condition: (data) => data.incomeSources.some((s) => s.type === 'capital-gains'),
-  },
-  {
-    id: 'capital-gains-disposals',
-    section: 'capital-gains',
-    title: 'Disposals',
-    showInSidebar: false,
     condition: (data) => data.incomeSources.some((s) => s.type === 'capital-gains'),
   },
   {
@@ -419,7 +411,7 @@ export function getNextStep(
     if (hasInterest) return 'interest';
 
     const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
-    if (hasCapitalGains) return 'capital-gains-overview';
+    if (hasCapitalGains) return 'capital-gains-disposals';
 
     const hasPension = data.incomeSources.some((s) => s.type === 'pension');
     if (hasPension) return 'pension-income';
@@ -449,7 +441,7 @@ export function getNextStep(
     if (hasInterest) return 'interest';
 
     const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
-    if (hasCapitalGains) return 'capital-gains-overview';
+    if (hasCapitalGains) return 'capital-gains-disposals';
 
     const hasPension = data.incomeSources.some((s) => s.type === 'pension');
     if (hasPension) return 'pension-income';
@@ -505,7 +497,7 @@ export function getNextStep(
     if (hasInterest) return 'interest';
 
     const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
-    if (hasCapitalGains) return 'capital-gains-overview';
+    if (hasCapitalGains) return 'capital-gains-disposals';
 
     const hasPension = data.incomeSources.some((s) => s.type === 'pension');
     if (hasPension) return 'pension-income';
@@ -531,7 +523,7 @@ export function getNextStep(
     if (hasInterest) return 'interest';
 
     const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
-    if (hasCapitalGains) return 'capital-gains-overview';
+    if (hasCapitalGains) return 'capital-gains-disposals';
 
     const hasPension = data.incomeSources.some((s) => s.type === 'pension');
     if (hasPension) return 'pension-income';
@@ -560,7 +552,7 @@ export function getNextStep(
     if (hasInterest) return 'interest';
 
     const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
-    if (hasCapitalGains) return 'capital-gains-overview';
+    if (hasCapitalGains) return 'capital-gains-disposals';
 
     const hasPension = data.incomeSources.some((s) => s.type === 'pension');
     if (hasPension) return 'pension-income';
@@ -580,7 +572,7 @@ export function getNextStep(
     if (hasInterest) return 'interest';
 
     const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
-    if (hasCapitalGains) return 'capital-gains-overview';
+    if (hasCapitalGains) return 'capital-gains-disposals';
 
     const hasPension = data.incomeSources.some((s) => s.type === 'pension');
     if (hasPension) return 'pension-income';
@@ -597,7 +589,7 @@ export function getNextStep(
   // Handle interest to next section
   if (currentStep === 'interest') {
     const hasCapitalGains = data.incomeSources.some((s) => s.type === 'capital-gains');
-    if (hasCapitalGains) return 'capital-gains-overview';
+    if (hasCapitalGains) return 'capital-gains-disposals';
 
     const hasPension = data.incomeSources.some((s) => s.type === 'pension');
     if (hasPension) return 'pension-income';
@@ -612,10 +604,6 @@ export function getNextStep(
   }
 
   // Handle capital gains section navigation
-  if (currentStep === 'capital-gains-overview') {
-    return 'capital-gains-disposals';
-  }
-
   if (currentStep === 'capital-gains-disposals') {
     return 'capital-gains-summary';
   }

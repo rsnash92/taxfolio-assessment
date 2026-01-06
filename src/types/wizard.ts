@@ -36,7 +36,6 @@ export type StepId =
   // Interest
   | 'interest'
   // Capital Gains
-  | 'capital-gains-overview'
   | 'capital-gains-disposals'
   | 'capital-gains-summary'
   // Pension Income
