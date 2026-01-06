@@ -272,6 +272,7 @@ export function WizardProvider({
             currentStep,
             currentBusinessId,
             currentPropertyId,
+            taxYear: data.taxYear, // Explicitly pass tax year
           }),
         });
 
@@ -341,15 +342,16 @@ export function WizardProvider({
   }, [data, currentStep, currentBusinessId, currentPropertyId, userId, loadTaxYearData]);
 
   // Auto-save on data changes (debounced)
+  // Skip auto-save while switching years to prevent race conditions
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isSwitchingYear) return;
 
     const timeout = setTimeout(() => {
       saveProgress();
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [data, currentStep, isLoading, saveProgress]);
+  }, [data, currentStep, isLoading, isSwitchingYear, saveProgress]);
 
   // Calculate tax when relevant data changes or after initial load
   useEffect(() => {
