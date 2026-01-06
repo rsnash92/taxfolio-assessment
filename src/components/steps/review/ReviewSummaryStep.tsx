@@ -139,6 +139,7 @@ export function ReviewSummaryStep() {
       { label: 'Basic rate tax (20%)', value: calculation.basicRateTax || 0 },
       { label: 'Higher rate tax (40%)', value: calculation.higherRateTax || 0 },
       { label: 'Additional rate tax (45%)', value: calculation.additionalRateTax || 0 },
+      { label: 'Dividend tax', value: calculation.dividendTax || 0 },
     ]);
 
     // National Insurance
@@ -460,6 +461,10 @@ export function ReviewSummaryStep() {
             {
               label: 'Additional rate tax (45%)',
               value: calculation?.additionalRateTax || 0,
+            },
+            {
+              label: 'Dividend tax',
+              value: calculation?.dividendTax || 0,
             },
           ].filter((i) => i.value > 0 || i.isInfo)}
         />

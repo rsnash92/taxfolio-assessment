@@ -596,6 +596,7 @@ export interface TaxCalculation {
   basicRateTax: number;
   higherRateTax: number;
   additionalRateTax: number;
+  dividendTax: number; // Tax on dividends at dividend rates
 
   // National Insurance
   class2NIC: number;

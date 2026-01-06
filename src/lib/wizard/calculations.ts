@@ -8,6 +8,14 @@ const TAX_BANDS = {
   additionalRate: { rate: 0.45 },
 };
 
+// Dividend tax rates for 2024/25
+const DIVIDEND_RATES = {
+  allowance: 500, // £500 dividend allowance
+  basicRate: 0.0875, // 8.75%
+  higherRate: 0.3375, // 33.75%
+  additionalRate: 0.3935, // 39.35%
+};
+
 // National Insurance Class 4 rates for 2024/25
 const NI_RATES = {
   lowerProfitsLimit: 12570,
@@ -139,10 +147,13 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const finalStateBenefits = stateBenefitsIncome > 0 ? stateBenefitsIncome : toPounds(data.otherIncome?.stateBenefits || 0);
   const finalOther = toPounds(data.otherIncome?.other || 0);
 
-  // Total other income
-  const otherIncome = finalInterest + finalDividends + finalPension + finalStateBenefits + finalOther + cisIncome;
+  // Total other income (excluding dividends - they're taxed separately)
+  const otherIncomeExcludingDividends = finalInterest + finalPension + finalStateBenefits + finalOther + cisIncome;
+  const otherIncome = otherIncomeExcludingDividends + finalDividends;
 
-  const totalIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncome;
+  // Non-dividend income (taxed at standard rates)
+  const nonDividendIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncomeExcludingDividends;
+  const totalIncome = nonDividendIncome + finalDividends;
 
   // Calculate reliefs
   const pensionRelief =
@@ -156,8 +167,11 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   // Calculate taxable income
   const taxableIncome = Math.max(0, totalIncome - totalExpenses - capitalAllowances);
+  // Non-dividend taxable income (expenses apply to non-dividend income)
+  const nonDividendTaxable = Math.max(0, nonDividendIncome - totalExpenses - capitalAllowances);
 
   // Personal allowance (reduced if income over 100k)
+  // Personal allowance is applied against non-dividend income first
   let personalAllowance = TAX_BANDS.personalAllowance;
   if (taxableIncome > 100000) {
     personalAllowance = Math.max(
@@ -166,38 +180,85 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     );
   }
 
-  const taxableAfterAllowance = Math.max(0, taxableIncome - personalAllowance);
+  // Apply personal allowance to non-dividend income first
+  const nonDividendAfterAllowance = Math.max(0, nonDividendTaxable - personalAllowance);
+  // Any unused allowance can reduce dividends
+  const unusedAllowance = Math.max(0, personalAllowance - nonDividendTaxable);
+  const dividendsAfterAllowance = Math.max(0, finalDividends - unusedAllowance);
+
+  const taxableAfterAllowance = nonDividendAfterAllowance + dividendsAfterAllowance;
 
   // Calculate income tax by band
+  // Non-dividend income is taxed first at standard rates
+  // Dividends are taxed on top at dividend rates
   let basicRateTax = 0;
   let higherRateTax = 0;
   let additionalRateTax = 0;
-  let remainingTaxable = taxableAfterAllowance;
+  let dividendTax = 0;
 
-  // Basic rate (20%)
-  if (remainingTaxable > 0) {
-    const basicRateBand =
-      TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance;
-    const taxableAtBasicRate = Math.min(remainingTaxable, basicRateBand);
+  // Tax band boundaries
+  const basicRateBand = TAX_BANDS.basicRate.threshold - TAX_BANDS.personalAllowance; // £37,700
+  const higherRateBand = TAX_BANDS.higherRate.threshold - TAX_BANDS.basicRate.threshold; // £74,870
+
+  // First, tax non-dividend income at standard rates
+  let remainingNonDividend = nonDividendAfterAllowance;
+  let bandUsedByNonDividend = 0;
+
+  // Basic rate (20%) on non-dividend income
+  if (remainingNonDividend > 0) {
+    const taxableAtBasicRate = Math.min(remainingNonDividend, basicRateBand);
     basicRateTax = taxableAtBasicRate * TAX_BANDS.basicRate.rate;
-    remainingTaxable -= taxableAtBasicRate;
+    bandUsedByNonDividend = taxableAtBasicRate;
+    remainingNonDividend -= taxableAtBasicRate;
   }
 
-  // Higher rate (40%)
-  if (remainingTaxable > 0) {
-    const higherRateBand =
-      TAX_BANDS.higherRate.threshold - TAX_BANDS.basicRate.threshold;
-    const taxableAtHigherRate = Math.min(remainingTaxable, higherRateBand);
+  // Higher rate (40%) on non-dividend income
+  if (remainingNonDividend > 0) {
+    const taxableAtHigherRate = Math.min(remainingNonDividend, higherRateBand);
     higherRateTax = taxableAtHigherRate * TAX_BANDS.higherRate.rate;
-    remainingTaxable -= taxableAtHigherRate;
+    bandUsedByNonDividend += taxableAtHigherRate;
+    remainingNonDividend -= taxableAtHigherRate;
   }
 
-  // Additional rate (45%)
-  if (remainingTaxable > 0) {
-    additionalRateTax = remainingTaxable * TAX_BANDS.additionalRate.rate;
+  // Additional rate (45%) on non-dividend income
+  if (remainingNonDividend > 0) {
+    additionalRateTax = remainingNonDividend * TAX_BANDS.additionalRate.rate;
   }
 
-  const totalTaxBeforeCredits = basicRateTax + higherRateTax + additionalRateTax;
+  // Now tax dividends at dividend rates
+  // Dividends are taxed after non-dividend income, so they fill up remaining band space
+  if (dividendsAfterAllowance > 0) {
+    // Apply dividend allowance (£500)
+    const taxableDividends = Math.max(0, dividendsAfterAllowance - DIVIDEND_RATES.allowance);
+
+    // Determine which bands dividends fall into based on how much non-dividend income used
+    let remainingDividends = taxableDividends;
+
+    // Basic rate band remaining for dividends
+    const basicBandRemaining = Math.max(0, basicRateBand - bandUsedByNonDividend);
+    if (remainingDividends > 0 && basicBandRemaining > 0) {
+      const dividendsInBasicBand = Math.min(remainingDividends, basicBandRemaining);
+      dividendTax += dividendsInBasicBand * DIVIDEND_RATES.basicRate;
+      remainingDividends -= dividendsInBasicBand;
+    }
+
+    // Higher rate band for dividends
+    // If non-dividend income exceeded basic rate, dividends start in higher band
+    const nonDividendInHigherBand = Math.max(0, nonDividendAfterAllowance - basicRateBand);
+    const higherBandRemaining = Math.max(0, higherRateBand - nonDividendInHigherBand);
+    if (remainingDividends > 0 && higherBandRemaining > 0) {
+      const dividendsInHigherBand = Math.min(remainingDividends, higherBandRemaining);
+      dividendTax += dividendsInHigherBand * DIVIDEND_RATES.higherRate;
+      remainingDividends -= dividendsInHigherBand;
+    }
+
+    // Additional rate for any remaining dividends
+    if (remainingDividends > 0) {
+      dividendTax += remainingDividends * DIVIDEND_RATES.additionalRate;
+    }
+  }
+
+  const totalTaxBeforeCredits = basicRateTax + higherRateTax + additionalRateTax + dividendTax;
 
   // Section 24 Finance Costs Tax Credit (20% of mortgage interest and finance costs)
   // This is a tax reducer, not a deduction from income
@@ -271,6 +332,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     basicRateTax: toPence(basicRateTax),
     higherRateTax: toPence(higherRateTax),
     additionalRateTax: toPence(additionalRateTax),
+    dividendTax: toPence(dividendTax),
     class2NIC: toPence(class2NIC),
     class4NIC: toPence(class4NIC),
     totalTaxDue: toPence(totalTaxDue),
