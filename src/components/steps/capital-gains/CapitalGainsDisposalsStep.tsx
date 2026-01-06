@@ -133,6 +133,16 @@ export function CapitalGainsDisposalsStep() {
         <p className="text-gray-600">
           Enter details of each asset you sold during 2024/25.
         </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          {ALL_ASSET_TYPES.map((type) => (
+            <span
+              key={type}
+              className="text-xs px-2 py-1 bg-[#e6fafb] text-[#00858c] rounded-full"
+            >
+              {ASSET_TYPE_LABELS[type]}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Disposals List */}
