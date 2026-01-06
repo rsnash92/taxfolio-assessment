@@ -28,6 +28,13 @@ export function InactivityModal() {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
 
+    // Clear wizard data from localStorage to prevent data leaking to other users
+    localStorage.removeItem('wizard-data');
+    localStorage.removeItem('wizard-step');
+    localStorage.removeItem('wizard-business-id');
+    localStorage.removeItem('wizard-property-id');
+    localStorage.removeItem('taxfolio-chat-messages');
+
     await supabase.auth.signOut();
     router.push('/login');
     router.refresh();
