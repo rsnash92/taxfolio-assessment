@@ -14,11 +14,11 @@ interface WizardHeaderProps {
 }
 
 export function WizardHeader({ onMenuClick }: WizardHeaderProps) {
-  const { data, updateData, isSaving } = useWizard();
+  const { data, isSaving, isSwitchingYear, switchTaxYear } = useWizard();
   const { taxCalculation, taxYear } = data;
 
-  const handleTaxYearChange = (newTaxYear: string) => {
-    updateData({ taxYear: newTaxYear });
+  const handleTaxYearChange = async (newTaxYear: string) => {
+    await switchTaxYear(newTaxYear);
   };
   const router = useRouter();
   const supabase = createClient();
@@ -101,7 +101,12 @@ export function WizardHeader({ onMenuClick }: WizardHeaderProps) {
 
             {/* Save Status */}
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              {isSaving ? (
+              {isSwitchingYear ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Switching year...</span>
+                </>
+              ) : isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Saving...</span>

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// GET - Load wizard progress for current user
-export async function GET() {
+// GET - Load wizard progress for current user and tax year
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
 
@@ -19,19 +19,24 @@ export async function GET() {
       );
     }
 
-    console.log('[Wizard Progress API] Loading progress for user:', user.id);
+    // Get tax year from query params (default to 2024-25)
+    const { searchParams } = new URL(request.url);
+    const taxYear = searchParams.get('taxYear') || '2024-25';
 
-    // Fetch wizard progress
+    console.log('[Wizard Progress API] Loading progress for user:', user.id, 'tax year:', taxYear);
+
+    // Fetch wizard progress for specific tax year
     const { data, error } = await supabase
       .from('wizard_progress')
-      .select('wizard_data, current_step, current_business_id, current_property_id, updated_at')
+      .select('wizard_data, current_step, current_business_id, current_property_id, tax_year, updated_at')
       .eq('user_id', user.id)
+      .eq('tax_year', taxYear)
       .single();
 
     if (error) {
       // No progress found is not an error - return null
       if (error.code === 'PGRST116') {
-        console.log('[Wizard Progress API] No saved progress found for user');
+        console.log('[Wizard Progress API] No saved progress found for user/tax year');
         return NextResponse.json({ success: true, data: null });
       }
       console.error('[Wizard Progress API] Failed to load progress:', error);
@@ -50,6 +55,7 @@ export async function GET() {
         currentStep: data.current_step,
         currentBusinessId: data.current_business_id,
         currentPropertyId: data.current_property_id,
+        taxYear: data.tax_year,
         updatedAt: data.updated_at,
       },
     });
@@ -62,7 +68,7 @@ export async function GET() {
   }
 }
 
-// POST - Save wizard progress for current user
+// POST - Save wizard progress for current user and tax year
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -81,7 +87,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { wizardData, currentStep, currentBusinessId, currentPropertyId } = body;
+    const { wizardData, currentStep, currentBusinessId, currentPropertyId, taxYear } = body;
 
     if (!wizardData) {
       return NextResponse.json(
@@ -90,14 +96,18 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('[Wizard Progress API] Saving progress for user:', user.id, 'step:', currentStep);
+    // Default to the tax year in the wizard data, or 2024-25
+    const effectiveTaxYear = taxYear || wizardData.taxYear || '2024-25';
 
-    // Upsert wizard progress (insert or update)
+    console.log('[Wizard Progress API] Saving progress for user:', user.id, 'tax year:', effectiveTaxYear, 'step:', currentStep);
+
+    // Upsert wizard progress (insert or update) - now keyed by user_id AND tax_year
     const { error } = await supabase
       .from('wizard_progress')
       .upsert(
         {
           user_id: user.id,
+          tax_year: effectiveTaxYear,
           wizard_data: wizardData,
           current_step: currentStep,
           current_business_id: currentBusinessId,
@@ -105,7 +115,7 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         },
         {
-          onConflict: 'user_id',
+          onConflict: 'user_id,tax_year',
         }
       );
 

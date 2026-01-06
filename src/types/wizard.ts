@@ -796,4 +796,8 @@ export interface WizardContextType {
   isSectionUnlocked: (section: SectionId) => boolean;
   calculateTax: () => void;
   saveProgress: () => Promise<void>;
+
+  // Tax year switching
+  switchTaxYear: (newTaxYear: string) => Promise<void>;
+  isSwitchingYear: boolean;
 }

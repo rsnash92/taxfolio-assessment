@@ -98,7 +98,41 @@ export function WizardProvider({
   const [data, setData] = useState<WizardData>(initialData);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSwitchingYear, setIsSwitchingYear] = useState(false);
   const [navigationDirection, setNavigationDirection] = useState<'forward' | 'backward'>('forward');
+
+  // Helper to load data for a specific tax year
+  const loadTaxYearData = useCallback(async (taxYear: string): Promise<{
+    data: WizardData;
+    step: StepId | null;
+    businessId: string | null;
+    propertyId: string | null;
+  }> => {
+    let loadedData = { ...initialData, taxYear };
+    let savedStep: StepId | null = null;
+    let savedBusinessId: string | null = null;
+    let savedPropertyId: string | null = null;
+
+    if (userId) {
+      try {
+        const response = await fetch(`/api/wizard-progress?taxYear=${taxYear}`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // Exclude taxCalculation from loaded data - always compute fresh
+          const { taxCalculation: _ignored, ...wizardDataWithoutCalc } = result.data.wizardData || {};
+          loadedData = { ...initialData, ...wizardDataWithoutCalc, taxYear, taxCalculation: null };
+          savedStep = result.data.currentStep;
+          savedBusinessId = result.data.currentBusinessId;
+          savedPropertyId = result.data.currentPropertyId;
+        }
+      } catch (error) {
+        console.warn('[WizardProvider] Failed to load from database:', error);
+      }
+    }
+
+    return { data: loadedData, step: savedStep, businessId: savedBusinessId, propertyId: savedPropertyId };
+  }, [userId]);
 
   // Load existing session on mount
   useEffect(() => {
@@ -110,10 +144,10 @@ export function WizardProvider({
       let savedBusinessId: string | null = null;
       let savedPropertyId: string | null = null;
 
-      // Try to load from database if user is authenticated
+      // Try to load from database if user is authenticated (default to 2024-25)
       if (userId) {
         try {
-          const response = await fetch('/api/wizard-progress');
+          const response = await fetch('/api/wizard-progress?taxYear=2024-25');
           const result = await response.json();
 
           if (result.success && result.data) {
@@ -266,6 +300,45 @@ export function WizardProvider({
 
     setIsSaving(false);
   }, [data, currentStep, currentBusinessId, currentPropertyId, userId]);
+
+  // Switch to a different tax year - saves current, loads new
+  const switchTaxYear = useCallback(async (newTaxYear: string) => {
+    if (newTaxYear === data.taxYear) return;
+
+    setIsSwitchingYear(true);
+
+    try {
+      // First, save current year's progress
+      if (userId) {
+        await fetch('/api/wizard-progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wizardData: data,
+            currentStep,
+            currentBusinessId,
+            currentPropertyId,
+            taxYear: data.taxYear,
+          }),
+        });
+      }
+
+      // Then load the new year's data
+      const result = await loadTaxYearData(newTaxYear);
+
+      // Update all state with new year's data
+      setData(result.data);
+      setCurrentStep(result.step || 'residency');
+      setCurrentBusinessId(result.businessId);
+      setCurrentPropertyId(result.propertyId);
+
+      console.log(`[WizardProvider] Switched to tax year ${newTaxYear}`);
+    } catch (error) {
+      console.error('[WizardProvider] Failed to switch tax year:', error);
+    } finally {
+      setIsSwitchingYear(false);
+    }
+  }, [data, currentStep, currentBusinessId, currentPropertyId, userId, loadTaxYearData]);
 
   // Auto-save on data changes (debounced)
   useEffect(() => {
@@ -690,6 +763,7 @@ export function WizardProvider({
     data,
     isLoading,
     isSaving,
+    isSwitchingYear,
     navigationDirection,
     goToStep,
     goToBusinessStep,
@@ -714,6 +788,7 @@ export function WizardProvider({
     isSectionUnlocked,
     calculateTax,
     saveProgress,
+    switchTaxYear,
   };
 
   return (
