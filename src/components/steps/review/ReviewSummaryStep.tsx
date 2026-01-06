@@ -152,6 +152,14 @@ export function ReviewSummaryStep() {
       ]);
     }
 
+    // Capital Gains Tax
+    if ((calculation.totalCGTDue || 0) > 0) {
+      addSection('Capital Gains Tax', [
+        { label: 'CGT at basic rate (10%/18%)', value: calculation.cgtBasicRateTax || 0 },
+        { label: 'CGT at higher rate (20%/24%)', value: calculation.cgtHigherRateTax || 0 },
+      ]);
+    }
+
     // Totals
     y += 5;
     doc.setDrawColor(200, 200, 200);
@@ -166,6 +174,11 @@ export function ReviewSummaryStep() {
     doc.text('Total National Insurance', 20, y);
     doc.text(formatCurrency(calculation.totalNICDue || 0), pageWidth - 25, y, { align: 'right' });
     y += 8;
+    if ((calculation.totalCGTDue || 0) > 0) {
+      doc.text('Total Capital Gains Tax', 20, y);
+      doc.text(formatCurrency(calculation.totalCGTDue || 0), pageWidth - 25, y, { align: 'right' });
+      y += 8;
+    }
     doc.text('Total Tax Reliefs', 20, y);
     doc.setTextColor(0, 168, 176);
     doc.text('-' + formatCurrency(totalReliefs), pageWidth - 25, y, { align: 'right' });
@@ -287,7 +300,8 @@ export function ReviewSummaryStep() {
 
         {/* Breakdown Mini */}
         <div className={cn(
-          'grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-dashed',
+          'grid gap-4 mt-6 pt-6 border-t border-dashed',
+          (calculation?.totalCGTDue || 0) > 0 ? 'grid-cols-4' : 'grid-cols-3',
           isRefund ? 'border-current/20' : 'border-white/20'
         )}>
           <div>
@@ -302,6 +316,14 @@ export function ReviewSummaryStep() {
               {formatCurrency(calculation?.totalNICDue || 0)}
             </p>
           </div>
+          {(calculation?.totalCGTDue || 0) > 0 && (
+            <div>
+              <p className={cn('text-xs', isRefund ? 'text-gray-500' : 'text-gray-400')}>Capital Gains Tax</p>
+              <p className={cn('text-lg font-semibold', isRefund ? 'text-gray-900' : 'text-white')}>
+                {formatCurrency(calculation?.totalCGTDue || 0)}
+              </p>
+            </div>
+          )}
           <div>
             <p className={cn('text-xs', isRefund ? 'text-gray-500' : 'text-gray-400')}>Tax Reliefs</p>
             <p className={cn('text-lg font-semibold', isRefund ? 'text-[#00c4d4]' : 'text-[#00e3ec]')}>
@@ -490,6 +512,20 @@ export function ReviewSummaryStep() {
             items={[
               { label: 'Class 2 NIC', value: calculation?.class2NIC || 0 },
               { label: 'Class 4 NIC', value: calculation?.class4NIC || 0 },
+            ].filter((i) => i.value > 0)}
+          />
+        )}
+
+        {/* CGT Section */}
+        {(calculation?.totalCGTDue || 0) > 0 && (
+          <SummarySection
+            title="Capital Gains Tax"
+            total={calculation?.totalCGTDue || 0}
+            isExpanded={expandedSections.includes('cgt')}
+            onToggle={() => toggleSection('cgt')}
+            items={[
+              { label: 'CGT at basic rate (10%/18%)', value: calculation?.cgtBasicRateTax || 0 },
+              { label: 'CGT at higher rate (20%/24%)', value: calculation?.cgtHigherRateTax || 0 },
             ].filter((i) => i.value > 0)}
           />
         )}

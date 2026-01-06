@@ -32,6 +32,16 @@ const NI_RATES = {
   upperRate: 0.02, // 2% above UPL
 };
 
+// Capital Gains Tax rates for 2024/25
+const CGT_RATES = {
+  annualExemptAmount: 3000, // £3,000 for 2024/25
+  basicRate: 0.10, // 10% for gains within basic rate band
+  higherRate: 0.20, // 20% for gains above basic rate band
+  // Residential property rates (higher)
+  residentialBasicRate: 0.18, // 18% for residential property in basic band
+  residentialHigherRate: 0.24, // 24% for residential property above basic band
+};
+
 // Note: All monetary values from form inputs are stored in pounds (not pence)
 // The toPounds helper is a no-op since values are already in pounds
 const toPounds = (pounds: number): number => pounds;
@@ -382,8 +392,60 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   const totalNICDue = class2NIC + class4NIC;
 
+  // Calculate Capital Gains Tax
+  // CGT is separate from income tax but uses remaining basic rate band
+  let capitalGainsTax = 0;
+  let cgtBasicRateTax = 0;
+  let cgtHigherRateTax = 0;
+
+  if (capitalGainsIncome > 0) {
+    // Apply annual exempt amount (£3,000 for 2024/25)
+    const taxableGains = Math.max(0, capitalGainsIncome - CGT_RATES.annualExemptAmount);
+
+    if (taxableGains > 0) {
+      // Determine remaining basic rate band after income
+      // Income uses up the basic rate band first, then CGT fills remaining space
+      const incomeUsingBasicBand = Math.min(taxableAfterAllowance, basicRateBand);
+      const basicRateBandRemainingForCGT = Math.max(0, basicRateBand - incomeUsingBasicBand);
+
+      // Check if this includes residential property gains (higher rates)
+      const residentialGains = toPounds(data.capitalGainsData?.residentialPropertyGains || 0);
+      const otherGains = taxableGains - Math.min(residentialGains, taxableGains);
+
+      // Calculate CGT on other gains (shares, crypto, etc.) at 10%/20%
+      if (otherGains > 0) {
+        // Gains within remaining basic rate band at 10%
+        const otherGainsInBasicBand = Math.min(otherGains, basicRateBandRemainingForCGT);
+        cgtBasicRateTax += otherGainsInBasicBand * CGT_RATES.basicRate;
+
+        // Gains above basic rate band at 20%
+        const otherGainsAboveBasicBand = Math.max(0, otherGains - basicRateBandRemainingForCGT);
+        cgtHigherRateTax += otherGainsAboveBasicBand * CGT_RATES.higherRate;
+      }
+
+      // Calculate CGT on residential property gains at 18%/24%
+      if (residentialGains > 0) {
+        const taxableResidentialGains = Math.min(residentialGains, taxableGains);
+        // Remaining basic band after other gains
+        const basicBandAfterOtherGains = Math.max(0, basicRateBandRemainingForCGT - otherGains);
+
+        // Residential gains within remaining basic rate band at 18%
+        const residentialInBasicBand = Math.min(taxableResidentialGains, basicBandAfterOtherGains);
+        cgtBasicRateTax += residentialInBasicBand * CGT_RATES.residentialBasicRate;
+
+        // Residential gains above basic rate band at 24%
+        const residentialAboveBasicBand = Math.max(0, taxableResidentialGains - basicBandAfterOtherGains);
+        cgtHigherRateTax += residentialAboveBasicBand * CGT_RATES.residentialHigherRate;
+      }
+
+      capitalGainsTax = cgtBasicRateTax + cgtHigherRateTax;
+    }
+  }
+
+  const totalCGTDue = capitalGainsTax;
+
   // Total due after reliefs and tax already paid
-  const grossTaxDue = totalTaxDue + totalNICDue - pensionRelief - giftAidRelief - ventureCapitalRelief;
+  const grossTaxDue = totalTaxDue + totalNICDue + totalCGTDue - pensionRelief - giftAidRelief - ventureCapitalRelief;
   const netTaxDue = grossTaxDue - taxAlreadyPaid;
   const totalDue = Math.max(0, netTaxDue);
   const refundDue = netTaxDue < 0 ? Math.abs(netTaxDue) : undefined;
@@ -425,6 +487,10 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     dividendTax: toPence(dividendTax),
     class2NIC: toPence(class2NIC),
     class4NIC: toPence(class4NIC),
+    // Capital Gains Tax
+    cgtBasicRateTax: toPence(cgtBasicRateTax),
+    cgtHigherRateTax: toPence(cgtHigherRateTax),
+    totalCGTDue: toPence(totalCGTDue),
     totalTaxDue: toPence(totalTaxDue),
     totalNICDue: toPence(totalNICDue),
     totalDue: toPence(totalDue),

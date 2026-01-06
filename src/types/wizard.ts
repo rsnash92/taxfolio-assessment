@@ -604,6 +604,11 @@ export interface TaxCalculation {
   class2NIC: number;
   class4NIC: number;
 
+  // Capital Gains Tax
+  cgtBasicRateTax: number; // CGT at 10% (or 18% for residential)
+  cgtHigherRateTax: number; // CGT at 20% (or 24% for residential)
+  totalCGTDue: number;
+
   // Final
   totalTaxDue: number;
   totalNICDue: number;
