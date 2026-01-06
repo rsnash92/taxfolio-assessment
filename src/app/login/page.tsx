@@ -55,7 +55,6 @@ export default function LoginPage() {
             height={40}
             className="h-10 w-auto mx-auto"
           />
-          <p className="text-gray-600 mt-2">Self Assessment</p>
         </div>
 
         {/* Login Card */}
