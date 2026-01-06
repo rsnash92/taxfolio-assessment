@@ -123,13 +123,15 @@ export function ReviewSummaryStep() {
       (calculation.pensionRelief || 0) +
       (calculation.giftAidRelief || 0) +
       (calculation.ventureCapitalRelief || 0) +
-      (calculation.section24Relief || 0);
+      (calculation.section24Relief || 0) +
+      (calculation.marriageAllowance || 0);
     if (totalReliefs > 0) {
       addSection('Tax Reliefs', [
         { label: 'Pension contributions', value: calculation.pensionRelief || 0 },
         { label: 'Gift Aid donations', value: calculation.giftAidRelief || 0 },
         { label: 'Venture capital relief', value: calculation.ventureCapitalRelief || 0 },
         { label: 'Section 24 finance costs', value: calculation.section24Relief || 0 },
+        { label: 'Marriage Allowance', value: calculation.marriageAllowance || 0 },
       ]);
     }
 
@@ -359,7 +361,8 @@ export function ReviewSummaryStep() {
                 (calculation?.pensionRelief || 0) +
                   (calculation?.giftAidRelief || 0) +
                   (calculation?.ventureCapitalRelief || 0) +
-                  (calculation?.section24Relief || 0)
+                  (calculation?.section24Relief || 0) +
+                  (calculation?.marriageAllowance || 0)
               )}
             </p>
           </div>
@@ -451,14 +454,16 @@ export function ReviewSummaryStep() {
         {((calculation?.pensionRelief || 0) > 0 ||
           (calculation?.giftAidRelief || 0) > 0 ||
           (calculation?.ventureCapitalRelief || 0) > 0 ||
-          (calculation?.section24Relief || 0) > 0) && (
+          (calculation?.section24Relief || 0) > 0 ||
+          (calculation?.marriageAllowance || 0) > 0) && (
           <SummarySection
             title="Tax Reliefs"
             total={
               (calculation?.pensionRelief || 0) +
               (calculation?.giftAidRelief || 0) +
               (calculation?.ventureCapitalRelief || 0) +
-              (calculation?.section24Relief || 0)
+              (calculation?.section24Relief || 0) +
+              (calculation?.marriageAllowance || 0)
             }
             isExpanded={expandedSections.includes('reliefs')}
             onToggle={() => toggleSection('reliefs')}
@@ -479,6 +484,10 @@ export function ReviewSummaryStep() {
               {
                 label: 'Section 24 finance costs',
                 value: calculation?.section24Relief || 0,
+              },
+              {
+                label: 'Marriage Allowance',
+                value: calculation?.marriageAllowance || 0,
               },
             ].filter((i) => i.value > 0)}
           />

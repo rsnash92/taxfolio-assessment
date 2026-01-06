@@ -238,6 +238,13 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const effectivePensionContribution = Math.min(grossPensionContribution, higherRateIncome);
   const pensionRelief = effectivePensionContribution * 0.2;
 
+  // Marriage Allowance
+  // If receiving from spouse: £1,260 transfer = £252 tax reduction (at 20%)
+  // Marriage Allowance is a tax reducer, not an increase to personal allowance
+  const marriageAllowanceType = data.general?.marriageAllowance?.type || data.general?.marriageAllowance?.transferType;
+  const marriageAllowanceAmount = marriageAllowanceType === 'receive' ? 1260 : 0;
+  const marriageAllowanceRelief = marriageAllowanceAmount * 0.2; // £252 when receiving
+
   // Other reliefs
   const giftAidRelief =
     toPounds(data.general?.charitable?.giftAidDonations || 0) * 0.25;
@@ -498,7 +505,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const studentLoanToPay = Math.max(0, studentLoanDue - studentLoanDeducted);
 
   // Total due after reliefs and tax already paid
-  const grossTaxDue = totalTaxDue + totalNICDue + totalCGTDue + studentLoanToPay - pensionRelief - giftAidRelief - ventureCapitalRelief;
+  const grossTaxDue = totalTaxDue + totalNICDue + totalCGTDue + studentLoanToPay - pensionRelief - giftAidRelief - ventureCapitalRelief - marriageAllowanceRelief;
   const netTaxDue = grossTaxDue - taxAlreadyPaid;
   const totalDue = Math.max(0, netTaxDue);
   const refundDue = netTaxDue < 0 ? Math.abs(netTaxDue) : undefined;
@@ -526,7 +533,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     pensionRelief: toPence(pensionRelief),
     giftAidRelief: toPence(giftAidRelief),
     ventureCapitalRelief: toPence(ventureCapitalRelief),
-    marriageAllowance: 0,
+    marriageAllowance: toPence(marriageAllowanceRelief),
     blindAllowance: 0,
     personalSavingsAllowance: toPence(personalSavingsAllowance),
     section24Relief: toPence(section24Applied),
