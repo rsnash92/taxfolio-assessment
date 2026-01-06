@@ -86,8 +86,8 @@ export function CISIncomeStep() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-            <HardHat className="h-5 w-5 text-orange-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <HardHat className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">CIS Income</h1>
         </div>
@@ -98,9 +98,9 @@ export function CISIncomeStep() {
       </div>
 
       {/* Important Info */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-        <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-amber-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-[#00c4d4] mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-[#00858c]">
           <p className="font-medium mb-1">Important</p>
           <p>
             CIS deductions are tax you&apos;ve already paid. We&apos;ll reclaim any
@@ -119,8 +119,8 @@ export function CISIncomeStep() {
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <HardHat className="h-5 w-5 text-orange-600" />
+                <div className="w-10 h-10 bg-[#e6fafb] rounded-xl flex items-center justify-center">
+                  <HardHat className="h-5 w-5 text-[#00c4d4]" />
                 </div>
                 <span className="font-medium text-gray-900">
                   Contractor {index + 1}
