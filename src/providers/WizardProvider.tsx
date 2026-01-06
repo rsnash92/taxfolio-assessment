@@ -325,6 +325,21 @@ export function WizardProvider({
     }
   }, [currentStep, data, currentBusinessId, currentPropertyId]);
 
+  // goNextWithData allows passing updated data for navigation decisions
+  // This is needed when navigation depends on data that was just updated
+  const goNextWithData = useCallback((updatedData: Partial<WizardData>) => {
+    const mergedData = { ...data, ...updatedData };
+    setData(mergedData);
+
+    const nextStep = getNextStep(currentStep, mergedData, currentBusinessId, currentPropertyId);
+    console.log('[WizardProvider] goNextWithData, nextStep:', nextStep);
+
+    if (nextStep) {
+      setNavigationDirection('forward');
+      setCurrentStep(nextStep);
+    }
+  }, [currentStep, data, currentBusinessId, currentPropertyId]);
+
   const goBack = useCallback(() => {
     const prevStep = getPreviousStep(currentStep, data, currentBusinessId, currentPropertyId);
     if (prevStep) {
@@ -525,6 +540,7 @@ export function WizardProvider({
     goToPropertyStep,
     goToEmployerStep,
     goNext,
+    goNextWithData,
     goBack,
     canGoNext,
     canGoBack,

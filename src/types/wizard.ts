@@ -736,6 +736,7 @@ export interface WizardContextType {
   goToPropertyStep: (propertyId: string, step: StepId) => void;
   goToEmployerStep: (employerId: string, step: StepId) => void;
   goNext: () => void;
+  goNextWithData: (updatedData: Partial<WizardData>) => void;
   goBack: () => void;
   canGoNext: boolean;
   canGoBack: boolean;

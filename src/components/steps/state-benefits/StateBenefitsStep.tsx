@@ -139,8 +139,8 @@ export function StateBenefitsStep() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
-            <Heart className="h-5 w-5 text-pink-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Heart className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">State Benefits</h1>
         </div>
@@ -150,9 +150,9 @@ export function StateBenefitsStep() {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-blue-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-[#00c4d4] mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-[#00858c]">
           <p className="font-medium mb-1">Most Benefits Are Not Taxable</p>
           <p>
             Benefits like Universal Credit, Housing Benefit, Personal Independence

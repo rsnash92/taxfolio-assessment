@@ -46,7 +46,7 @@ const RELIEF_OPTIONS = [
 ];
 
 export function GeneralOverviewStep() {
-  const { data, updateData, goNext } = useWizard();
+  const { data, goNextWithData } = useWizard();
   const [selected, setSelected] = useState<string[]>(
     data.general?.selectedReliefs || []
   );
@@ -58,13 +58,13 @@ export function GeneralOverviewStep() {
   };
 
   const handleContinue = () => {
-    updateData({
+    // Use goNextWithData to ensure navigation uses the updated selectedReliefs
+    goNextWithData({
       general: {
         ...data.general,
         selectedReliefs: selected,
       },
     });
-    goNext();
   };
 
   return (

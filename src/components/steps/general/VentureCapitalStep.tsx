@@ -49,7 +49,7 @@ export function VentureCapitalStep() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <span className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+        <span className="text-sm text-[#00858c] bg-[#e6fafb] px-3 py-1 rounded-full">
           2024/25 Tax Year
         </span>
       </div>
@@ -63,10 +63,10 @@ export function VentureCapitalStep() {
       </p>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-8">
         <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-          <div className="text-sm text-blue-800">
+          <Info className="h-5 w-5 text-[#00c4d4] mt-0.5" />
+          <div className="text-sm text-[#00858c]">
             <p className="font-medium mb-1">Tax relief rates:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>EIS: 30% relief (up to £1m invested)</li>

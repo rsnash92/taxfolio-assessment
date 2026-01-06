@@ -34,7 +34,7 @@ export function MarriageAllowanceStep() {
     <div className="max-w-2xl mx-auto">
       {/* Tax Year Badge */}
       <div className="flex items-center justify-between mb-6">
-        <span className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+        <span className="text-sm text-[#00858c] bg-[#e6fafb] px-3 py-1 rounded-full">
           2024/25 Tax Year
         </span>
         <span className="text-sm text-red-500">* Required</span>
@@ -49,8 +49,8 @@ export function MarriageAllowanceStep() {
       </p>
 
       {/* Eligibility Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
-        <p className="text-sm text-blue-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-8">
+        <p className="text-sm text-[#00858c]">
           <strong>Eligibility:</strong> You can transfer allowance if you earn
           less than £12,570 and your partner pays tax at the basic rate (earns
           between £12,571 and £50,270).
