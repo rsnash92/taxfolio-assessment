@@ -115,8 +115,8 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     (data.stateBenefitsData?.statePension || 0) +
     (data.stateBenefitsData?.otherTaxableBenefits || 0));
 
-  // Capital Gains (not included in income tax but tracked separately)
-  // const capitalGains = data.capitalGainsData?.taxableGains || 0;
+  // Capital Gains (not included in income tax but tracked separately for display)
+  const capitalGainsIncome = data.capitalGainsData?.taxableGains || 0;
 
   // Use new data stores if they have data, otherwise fall back to legacy otherIncome
   const finalInterest = interestIncome > 0 ? interestIncome : (data.otherIncome?.interest || 0);
@@ -223,6 +223,13 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     employmentIncome: Math.round(employmentIncome * 100) / 100,
     rentalIncome: Math.round(rentalIncome * 100) / 100,
     otherIncome: Math.round(otherIncome * 100) / 100,
+    // Detailed income breakdowns
+    cisIncome: Math.round(cisIncome * 100) / 100,
+    dividendsIncome: Math.round(finalDividends * 100) / 100,
+    interestIncome: Math.round(finalInterest * 100) / 100,
+    pensionIncome: Math.round(finalPension * 100) / 100,
+    stateBenefitsIncome: Math.round(finalStateBenefits * 100) / 100,
+    capitalGainsIncome: Math.round(capitalGainsIncome * 100) / 100,
     totalExpenses: Math.round(totalExpenses * 100) / 100,
     allowableExpenses: Math.round(totalExpenses * 100) / 100,
     capitalAllowances: Math.round(capitalAllowances * 100) / 100,

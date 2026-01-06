@@ -96,8 +96,19 @@ export function ReviewSummaryStep() {
       { label: 'Employment income', value: calculation.employmentIncome || 0 },
       { label: 'Self-employment income', value: calculation.selfEmploymentIncome || 0 },
       { label: 'Rental income', value: calculation.rentalIncome || 0 },
-      { label: 'Other income', value: calculation.otherIncome || 0 },
+      { label: 'CIS income', value: calculation.cisIncome || 0 },
+      { label: 'Dividends', value: calculation.dividendsIncome || 0 },
+      { label: 'Interest', value: calculation.interestIncome || 0 },
+      { label: 'Pension income', value: calculation.pensionIncome || 0 },
+      { label: 'State benefits', value: calculation.stateBenefitsIncome || 0 },
     ]);
+
+    // Capital Gains (if any)
+    if ((calculation.capitalGainsIncome || 0) > 0) {
+      addSection('Capital Gains', [
+        { label: 'Taxable gains', value: calculation.capitalGainsIncome || 0 },
+      ]);
+    }
 
     // Expenses
     if ((calculation.totalExpenses || 0) > 0) {
@@ -321,9 +332,44 @@ export function ReviewSummaryStep() {
               label: 'Rental income',
               value: calculation?.rentalIncome || 0,
             },
-            { label: 'Other income', value: calculation?.otherIncome || 0 },
+            {
+              label: 'CIS income',
+              value: calculation?.cisIncome || 0,
+            },
+            {
+              label: 'Dividends',
+              value: calculation?.dividendsIncome || 0,
+            },
+            {
+              label: 'Interest',
+              value: calculation?.interestIncome || 0,
+            },
+            {
+              label: 'Pension income',
+              value: calculation?.pensionIncome || 0,
+            },
+            {
+              label: 'State benefits',
+              value: calculation?.stateBenefitsIncome || 0,
+            },
           ].filter((i) => i.value > 0)}
         />
+
+        {/* Capital Gains Section (separate from income tax) */}
+        {(calculation?.capitalGainsIncome || 0) > 0 && (
+          <SummarySection
+            title="Capital Gains"
+            total={calculation?.capitalGainsIncome || 0}
+            isExpanded={expandedSections.includes('capital-gains')}
+            onToggle={() => toggleSection('capital-gains')}
+            items={[
+              {
+                label: 'Taxable gains (after annual exempt amount)',
+                value: calculation?.capitalGainsIncome || 0,
+              },
+            ]}
+          />
+        )}
 
         {/* Expenses Section */}
         {(calculation?.totalExpenses || 0) > 0 && (

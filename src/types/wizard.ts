@@ -562,6 +562,13 @@ export interface TaxCalculation {
   employmentIncome: number;
   rentalIncome: number;
   otherIncome: number;
+  // Detailed income breakdowns
+  cisIncome: number;
+  dividendsIncome: number;
+  interestIncome: number;
+  pensionIncome: number;
+  stateBenefitsIncome: number;
+  capitalGainsIncome: number;
 
   // Expenses & Deductions
   totalExpenses: number;
