@@ -94,8 +94,8 @@ export function EmploymentListStep() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Building2 className="h-5 w-5 text-blue-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Building2 className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Employment Income</h1>
         </div>
@@ -106,9 +106,9 @@ export function EmploymentListStep() {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <h3 className="font-medium text-blue-900 mb-2">What you&apos;ll need</h3>
-        <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4">
+        <h3 className="font-medium text-[#00858c] mb-2">What you&apos;ll need</h3>
+        <ul className="text-sm text-[#00a8b0] space-y-1 list-disc list-inside">
           <li>P60 (end of year certificate) from each employer</li>
           <li>P45 if you left an employer during the year</li>
           <li>P11D if you received benefits in kind</li>
@@ -126,7 +126,7 @@ export function EmploymentListStep() {
             <p className="text-gray-500 mb-6">
               Add your first employer to get started
             </p>
-            <Button onClick={handleAddEmployment} className="bg-blue-500 hover:bg-blue-600">
+            <Button onClick={handleAddEmployment} className="bg-[#00c4d4] hover:bg-[#00a8b0]">
               <Plus className="h-4 w-4 mr-2" />
               Add Employer
             </Button>
@@ -141,12 +141,12 @@ export function EmploymentListStep() {
               return (
                 <div
                   key={employment.id}
-                  className="bg-white border border-gray-200 rounded-xl p-6 hover:border-blue-300 transition-colors"
+                  className="bg-white border border-gray-200 rounded-xl p-6 hover:border-[#99ebef] transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Building2 className="h-6 w-6 text-blue-600" />
+                      <div className="w-12 h-12 bg-[#e6fafb] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Building2 className="h-6 w-6 text-[#00c4d4]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
@@ -205,7 +205,7 @@ export function EmploymentListStep() {
                       <Button
                         variant="ghost"
                         onClick={() => handleEditEmployment(employment.id)}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        className="text-[#00c4d4] hover:text-[#00a8b0] hover:bg-[#e6fafb]"
                       >
                         {status === 'not_started' ? 'Start' : 'Edit'}
                         <ChevronRight className="h-4 w-4 ml-1" />
@@ -219,7 +219,7 @@ export function EmploymentListStep() {
             {/* Add another employer */}
             <button
               onClick={handleAddEmployment}
-              className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-[#99ebef] hover:text-[#00c4d4] hover:bg-[#e6fafb] transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="h-5 w-5" />
               Add Another Employer

@@ -47,8 +47,8 @@ export function EmploymentIncomeStep() {
           Back to all employers
         </button>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Building2 className="h-5 w-5 text-blue-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Building2 className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Pay & Tax</h1>
@@ -63,9 +63,9 @@ export function EmploymentIncomeStep() {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-blue-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-[#00c4d4] mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-[#00858c]">
           <p className="font-medium">Where to find these figures</p>
           <p>
             Your P60 shows your total pay and tax for the year. If you left this
@@ -223,7 +223,7 @@ export function EmploymentIncomeStep() {
             type="checkbox"
             checked={employmentData.hasStudentLoan || false}
             onChange={(e) => handleUpdate('hasStudentLoan', e.target.checked)}
-            className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-500"
+            className="mt-1 w-4 h-4 rounded border-gray-300 accent-[#00c4d4]"
           />
           <div>
             <p className="font-medium text-gray-900">
@@ -290,7 +290,7 @@ export function EmploymentIncomeStep() {
             type="checkbox"
             checked={employmentData.hasP11D || false}
             onChange={(e) => handleUpdate('hasP11D', e.target.checked)}
-            className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-500"
+            className="mt-1 w-4 h-4 rounded border-gray-300 accent-[#00c4d4]"
           />
           <div>
             <p className="font-medium text-gray-900">
