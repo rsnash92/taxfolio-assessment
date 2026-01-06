@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, Check } from 'lucide-react';
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { getSupportedTaxYears, TaxYearConfig, getDeadlineStatus } from '@/lib/wizard/tax-years';
+import { getSupportedTaxYears, getDeadlineStatus } from '@/lib/wizard/tax-years';
 
 interface TaxYearSelectorProps {
   currentTaxYear: string;
@@ -22,6 +22,11 @@ export function TaxYearSelector({ currentTaxYear, onTaxYearChange }: TaxYearSele
   const [isOpen, setIsOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(currentTaxYear);
   const taxYears = getSupportedTaxYears();
+
+  // Sync selectedYear when currentTaxYear prop changes or modal opens
+  useEffect(() => {
+    setSelectedYear(currentTaxYear);
+  }, [currentTaxYear, isOpen]);
 
   const handleYearSelect = (taxYear: string) => {
     setSelectedYear(taxYear);
@@ -34,8 +39,8 @@ export function TaxYearSelector({ currentTaxYear, onTaxYearChange }: TaxYearSele
     setIsOpen(false);
   };
 
-  const currentYearConfig = taxYears.find((y) => y.id === currentTaxYear);
-  const deadlineStatus = currentYearConfig ? getDeadlineStatus(currentTaxYear) : null;
+  // Get deadline status for the SELECTED year (for the warning)
+  const selectedYearDeadline = getDeadlineStatus(selectedYear);
 
   return (
     <>
@@ -123,8 +128,8 @@ export function TaxYearSelector({ currentTaxYear, onTaxYearChange }: TaxYearSele
             })}
           </div>
 
-          {/* Deadline Warning */}
-          {deadlineStatus && deadlineStatus.isPastDeadline && selectedYear !== currentTaxYear && (
+          {/* Deadline Warning - show when switching to a year with passed deadline */}
+          {selectedYearDeadline.isPastDeadline && selectedYear !== currentTaxYear && (
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 The filing deadline for {selectedYear} has passed. You may incur late filing penalties.
