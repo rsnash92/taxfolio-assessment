@@ -13,6 +13,7 @@ import {
   Plus,
   ChevronRight,
   Circle,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ interface BankAccount {
   provider_name: string;
 }
 
+// Option B: Clearer description for manual entry
 const OTHER_OPTIONS = [
   {
     id: 'upload',
@@ -34,7 +36,7 @@ const OTHER_OPTIONS = [
   {
     id: 'manual',
     label: 'Enter manually',
-    description: "I'll add my income and expenses by hand",
+    description: "I'll enter my P60/P45 details or add income by hand",
     icon: Edit3,
   },
 ];
@@ -50,6 +52,9 @@ const ALL_CONNECTION_OPTIONS = [
   ...OTHER_OPTIONS,
 ];
 
+// Income types that benefit from bank connection
+const BANK_CONNECTION_INCOME_TYPES = ['self-employment', 'rental', 'cis'];
+
 export function ConnectStep() {
   const { data, updateData, goNext, goToStep, saveProgress } = useWizard();
   const [isConnecting, setIsConnecting] = useState(false);
@@ -58,6 +63,24 @@ export function ConnectStep() {
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [bankName, setBankName] = useState<string>('');
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+
+  // Option A: Check if user needs bank connection
+  // Only self-employed, rental, and CIS income benefit from bank connection
+  const incomeTypes = data.incomeSources.map(source => source.type);
+  const needsBankConnection = incomeTypes.some(type =>
+    BANK_CONNECTION_INCOME_TYPES.includes(type)
+  );
+  const hasEmploymentOnly = incomeTypes.length > 0 &&
+    incomeTypes.every(type => type === 'employment');
+
+  // Option A: Auto-skip for employed-only users
+  useEffect(() => {
+    if (hasEmploymentOnly && !data.bankConnected) {
+      // Auto-select manual entry and proceed
+      updateData({ connectionMethod: 'manual' });
+      goNext();
+    }
+  }, [hasEmploymentOnly, data.bankConnected, updateData, goNext]);
 
   // Fetch connected accounts if bank is connected
   useEffect(() => {
@@ -374,6 +397,19 @@ export function ConnectStep() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
           <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
+      {/* Option C: Hint for employed users with mixed income */}
+      {incomeTypes.includes('employment') && needsBankConnection && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-800">
+              <strong>Employed only?</strong> Select &quot;Enter manually&quot; to input your P60 details.
+              Bank connection is most useful for self-employment and rental income.
+            </p>
+          </div>
         </div>
       )}
 
