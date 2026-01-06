@@ -17,6 +17,13 @@ const NI_RATES = {
 };
 
 export function calculateTaxLiability(data: WizardData): TaxCalculation {
+  console.log('[calculations] Starting calculation with data:', {
+    incomeSources: data.incomeSources?.map(s => ({ id: s.id, type: s.type })),
+    selfEmploymentDataKeys: Object.keys(data.selfEmploymentData || {}),
+    employmentDataKeys: Object.keys(data.employmentData || {}),
+    rentalDataKeys: Object.keys(data.rentalData || {}),
+  });
+
   // Calculate total income by source
   let selfEmploymentIncome = 0;
   let employmentIncome = 0;
@@ -129,6 +136,15 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const otherIncome = finalInterest + finalDividends + finalPension + finalStateBenefits + finalOther + cisIncome;
 
   const totalIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncome;
+
+  console.log('[calculations] Income breakdown:', {
+    selfEmploymentIncome,
+    employmentIncome,
+    rentalIncome,
+    otherIncome,
+    totalIncome,
+    totalExpenses,
+  });
 
   // Calculate reliefs
   const pensionRelief =
