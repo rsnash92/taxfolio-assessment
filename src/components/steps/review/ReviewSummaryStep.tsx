@@ -16,9 +16,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaxCalculation } from '@/types/wizard';
+import { jsPDF } from 'jspdf';
 
 export function ReviewSummaryStep() {
-  const { data, updateData, goNext, goBack } = useWizard();
+  const { data, updateData, goNext } = useWizard();
   const [calculation, setCalculation] = useState<TaxCalculation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<string[]>([
@@ -167,6 +168,145 @@ export function ReviewSummaryStep() {
     );
   };
 
+  const handleDownloadPDF = () => {
+    if (!calculation) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(0, 168, 176); // Brand color
+    doc.text('TaxFolio', 20, y);
+    doc.setFontSize(12);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Tax Summary 2024/25', pageWidth - 20, y, { align: 'right' });
+    y += 15;
+
+    // Divider line
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, pageWidth - 20, y);
+    y += 15;
+
+    // Main result
+    doc.setFontSize(14);
+    doc.setTextColor(80, 80, 80);
+    const isRefund = (calculation.refundDue || 0) > 0;
+    doc.text(isRefund ? 'Estimated Refund' : 'Estimated Tax Due', 20, y);
+    doc.setFontSize(24);
+    doc.setTextColor(isRefund ? 0 : 15, isRefund ? 168 : 23, isRefund ? 176 : 42);
+    y += 12;
+    doc.text(
+      formatCurrency(isRefund ? calculation.refundDue || 0 : calculation.totalDue || 0),
+      20,
+      y
+    );
+    y += 20;
+
+    // Breakdown section
+    const addSection = (title: string, items: { label: string; value: number }[]) => {
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, 20, y);
+      y += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+
+      items.forEach((item) => {
+        if (item.value > 0) {
+          doc.text(item.label, 25, y);
+          doc.text(formatCurrency(item.value), pageWidth - 25, y, { align: 'right' });
+          y += 6;
+        }
+      });
+      y += 8;
+    };
+
+    // Income
+    addSection('Income', [
+      { label: 'Self-employment income', value: calculation.selfEmploymentIncome || 0 },
+      { label: 'Rental income', value: calculation.rentalIncome || 0 },
+      { label: 'Other income', value: calculation.otherIncome || 0 },
+    ]);
+
+    // Expenses
+    if ((calculation.totalExpenses || 0) > 0) {
+      addSection('Allowable Expenses', [
+        { label: 'Business expenses', value: calculation.allowableExpenses || 0 },
+        { label: 'Capital allowances', value: calculation.capitalAllowances || 0 },
+      ]);
+    }
+
+    // Tax Reliefs
+    const totalReliefs =
+      (calculation.pensionRelief || 0) +
+      (calculation.giftAidRelief || 0) +
+      (calculation.ventureCapitalRelief || 0);
+    if (totalReliefs > 0) {
+      addSection('Tax Reliefs', [
+        { label: 'Pension contributions', value: calculation.pensionRelief || 0 },
+        { label: 'Gift Aid donations', value: calculation.giftAidRelief || 0 },
+        { label: 'Venture capital relief', value: calculation.ventureCapitalRelief || 0 },
+      ]);
+    }
+
+    // Tax Calculation
+    addSection('Tax Calculation', [
+      { label: 'Personal allowance', value: calculation.personalAllowance || 0 },
+      { label: 'Basic rate tax (20%)', value: calculation.basicRateTax || 0 },
+      { label: 'Higher rate tax (40%)', value: calculation.higherRateTax || 0 },
+      { label: 'Additional rate tax (45%)', value: calculation.additionalRateTax || 0 },
+    ]);
+
+    // National Insurance
+    if ((calculation.totalNICDue || 0) > 0) {
+      addSection('National Insurance', [
+        { label: 'Class 2 NIC', value: calculation.class2NIC || 0 },
+        { label: 'Class 4 NIC', value: calculation.class4NIC || 0 },
+      ]);
+    }
+
+    // Totals
+    y += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Total Income Tax', 20, y);
+    doc.text(formatCurrency(calculation.totalTaxDue || 0), pageWidth - 25, y, { align: 'right' });
+    y += 8;
+    doc.text('Total National Insurance', 20, y);
+    doc.text(formatCurrency(calculation.totalNICDue || 0), pageWidth - 25, y, { align: 'right' });
+    y += 8;
+    doc.text('Total Tax Reliefs', 20, y);
+    doc.setTextColor(0, 168, 176);
+    doc.text('-' + formatCurrency(totalReliefs), pageWidth - 25, y, { align: 'right' });
+    y += 12;
+    doc.setFontSize(14);
+    doc.setTextColor(isRefund ? 0 : 15, isRefund ? 168 : 23, isRefund ? 176 : 42);
+    doc.text(isRefund ? 'Total Refund Due' : 'Total Tax Due', 20, y);
+    doc.text(
+      formatCurrency(isRefund ? calculation.refundDue || 0 : calculation.totalDue || 0),
+      pageWidth - 25,
+      y,
+      { align: 'right' }
+    );
+
+    // Footer
+    y = doc.internal.pageSize.getHeight() - 20;
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Generated by TaxFolio - This is an estimate only', pageWidth / 2, y, { align: 'center' });
+
+    // Save the PDF
+    doc.save('TaxFolio-Tax-Summary-2024-25.pdf');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -221,7 +361,7 @@ export function ReviewSummaryStep() {
           'rounded-2xl p-6 mb-8',
           isRefund
             ? 'bg-[#e6fafb] border-2 border-[#99ebef]'
-            : 'bg-amber-50 border-2 border-amber-200'
+            : 'bg-gradient-to-r from-[#0f172a] to-[#1e293b]'
         )}
       >
         <div className="flex items-center justify-between">
@@ -229,7 +369,7 @@ export function ReviewSummaryStep() {
             <p
               className={cn(
                 'text-sm font-medium mb-1',
-                isRefund ? 'text-[#00c4d4]' : 'text-amber-600'
+                isRefund ? 'text-[#00c4d4]' : 'text-gray-400'
               )}
             >
               {isRefund ? 'Estimated Refund' : 'Estimated Tax Due'}
@@ -237,7 +377,7 @@ export function ReviewSummaryStep() {
             <p
               className={cn(
                 'text-4xl font-bold',
-                isRefund ? 'text-[#00a8b0]' : 'text-amber-700'
+                isRefund ? 'text-[#00a8b0]' : 'text-white'
               )}
             >
               {formatCurrency(
@@ -250,35 +390,38 @@ export function ReviewSummaryStep() {
           <div
             className={cn(
               'w-16 h-16 rounded-full flex items-center justify-center',
-              isRefund ? 'bg-[#ccf5f7]' : 'bg-amber-100'
+              isRefund ? 'bg-[#ccf5f7]' : 'bg-white/10'
             )}
           >
             <FileText
               className={cn(
                 'h-8 w-8',
-                isRefund ? 'text-[#00c4d4]' : 'text-amber-600'
+                isRefund ? 'text-[#00c4d4]' : 'text-white/80'
               )}
             />
           </div>
         </div>
 
         {/* Breakdown Mini */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-dashed border-current/20">
+        <div className={cn(
+          'grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-dashed',
+          isRefund ? 'border-current/20' : 'border-white/20'
+        )}>
           <div>
-            <p className="text-xs text-gray-500">Income Tax</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className={cn('text-xs', isRefund ? 'text-gray-500' : 'text-gray-400')}>Income Tax</p>
+            <p className={cn('text-lg font-semibold', isRefund ? 'text-gray-900' : 'text-white')}>
               {formatCurrency(calculation?.totalTaxDue || 0)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">National Insurance</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className={cn('text-xs', isRefund ? 'text-gray-500' : 'text-gray-400')}>National Insurance</p>
+            <p className={cn('text-lg font-semibold', isRefund ? 'text-gray-900' : 'text-white')}>
               {formatCurrency(calculation?.totalNICDue || 0)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Tax Reliefs</p>
-            <p className="text-lg font-semibold text-[#00c4d4]">
+            <p className={cn('text-xs', isRefund ? 'text-gray-500' : 'text-gray-400')}>Tax Reliefs</p>
+            <p className={cn('text-lg font-semibold', isRefund ? 'text-[#00c4d4]' : 'text-[#00e3ec]')}>
               -
               {formatCurrency(
                 (calculation?.pensionRelief || 0) +
@@ -412,17 +555,17 @@ export function ReviewSummaryStep() {
 
       {/* Download Button */}
       <div className="flex justify-center mb-8">
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={handleDownloadPDF}>
           <Download className="h-4 w-4" />
           Download Tax Summary (PDF)
         </Button>
       </div>
 
       {/* Warning */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 mb-8">
         <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
-          <div className="text-sm text-blue-800">
+          <AlertCircle className="h-5 w-5 text-[#00c4d4] mt-0.5" />
+          <div className="text-sm text-[#00858c]">
             <p className="font-medium mb-1">Please review carefully</p>
             <p>
               Once submitted, you cannot make changes without filing an

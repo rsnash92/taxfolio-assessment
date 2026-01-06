@@ -64,12 +64,12 @@ export function WizardHeader({ onMenuClick }: WizardHeaderProps) {
               <span className="text-sm text-gray-500">Tax liability:</span>
               <span
                 className={`text-lg font-bold ${
-                  (taxCalculation?.totalTaxDue || 0) > 0
+                  (taxCalculation?.totalDue || 0) > 0
                     ? 'text-amber-600'
                     : 'text-[#00c4d4]'
                 }`}
               >
-                {formatCurrency(taxCalculation?.totalTaxDue || 0)}
+                {formatCurrency(taxCalculation?.totalDue || 0)}
               </span>
               <button className="text-gray-400 hover:text-gray-600">
                 <HelpCircle className="h-4 w-4" />

@@ -280,6 +280,9 @@ export function WizardProvider({
     data.rentalData,
     data.deductions,
     data.transactions,
+    data.otherIncome,
+    data.general,
+    data.incomeSources,
     calculateTax,
   ]);
 
