@@ -268,13 +268,12 @@ export function WizardProvider({
   }, [data, currentStep, isLoading, saveProgress]);
 
   // Calculate tax when relevant data changes
-  const calculateTax = useCallback(() => {
-    const calculation = calculateTaxLiability(data);
-    setData((prev) => ({ ...prev, taxCalculation: calculation }));
-  }, []);
-
   useEffect(() => {
-    calculateTax();
+    const calculation = calculateTaxLiability(data);
+    // Only update if the calculation has changed to avoid infinite loops
+    if (JSON.stringify(calculation) !== JSON.stringify(data.taxCalculation)) {
+      setData((prev) => ({ ...prev, taxCalculation: calculation }));
+    }
   }, [
     data.selfEmploymentData,
     data.rentalData,
@@ -283,8 +282,13 @@ export function WizardProvider({
     data.otherIncome,
     data.general,
     data.incomeSources,
-    calculateTax,
   ]);
+
+  // Expose calculateTax for manual trigger if needed
+  const calculateTax = useCallback(() => {
+    const calculation = calculateTaxLiability(data);
+    setData((prev) => ({ ...prev, taxCalculation: calculation }));
+  }, [data]);
 
   // Navigation
   const goToStep = useCallback((step: StepId) => {

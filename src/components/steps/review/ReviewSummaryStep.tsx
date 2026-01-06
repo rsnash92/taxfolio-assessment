@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { Button } from '@/components/ui/button';
@@ -15,150 +15,16 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TaxCalculation } from '@/types/wizard';
 import { jsPDF } from 'jspdf';
 
 export function ReviewSummaryStep() {
-  const { data, updateData, goNext } = useWizard();
-  const [calculation, setCalculation] = useState<TaxCalculation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, goNext } = useWizard();
+  // Use the taxCalculation from the provider directly - it's calculated automatically
+  const calculation = data.taxCalculation;
   const [expandedSections, setExpandedSections] = useState<string[]>([
     'income',
     'tax',
   ]);
-
-  useEffect(() => {
-    calculateTax();
-  }, []);
-
-  const calculateTax = () => {
-    // Calculate tax based on wizard data
-    // This is a simplified calculation - in production would use full HMRC rules
-
-    // Sum up self-employment income
-    let selfEmploymentIncome = 0;
-    let selfEmploymentExpenses = 0;
-    Object.values(data.selfEmploymentData || {}).forEach((business) => {
-      selfEmploymentIncome += business.income?.total || 0;
-      selfEmploymentExpenses += business.expenses?.total || 0;
-    });
-
-    // Sum up rental income
-    let rentalIncome = 0;
-    let rentalExpenses = 0;
-    Object.values(data.rentalData || {}).forEach((property) => {
-      rentalIncome += property.income?.total || 0;
-      rentalExpenses += property.expenses?.total || 0;
-    });
-
-    // Other income
-    const otherIncome =
-      (data.otherIncome?.interest || 0) +
-      (data.otherIncome?.dividends || 0) +
-      (data.otherIncome?.pension || 0) +
-      (data.otherIncome?.other || 0);
-
-    const totalIncome = selfEmploymentIncome + rentalIncome + otherIncome;
-    const totalExpenses = selfEmploymentExpenses + rentalExpenses;
-
-    // Reliefs
-    const pensionRelief =
-      (data.general?.pension?.personalContributions || 0) * 0.2;
-    const giftAidRelief =
-      (data.general?.charitable?.giftAidDonations || 0) * 0.25;
-    const ventureCapitalRelief =
-      (data.general?.ventureCapital?.eisInvestments || 0) * 0.3 +
-      (data.general?.ventureCapital?.seisInvestments || 0) * 0.5 +
-      (data.general?.ventureCapital?.vctInvestments || 0) * 0.3;
-
-    // Personal allowance (2024/25)
-    const personalAllowance = 12570;
-
-    // Taxable income
-    const taxableIncome = Math.max(0, totalIncome - totalExpenses);
-    const taxableAfterAllowance = Math.max(0, taxableIncome - personalAllowance);
-
-    // Tax bands (2024/25)
-    let basicRateTax = 0;
-    let higherRateTax = 0;
-    let additionalRateTax = 0;
-
-    if (taxableAfterAllowance > 0) {
-      const basicRateBand = Math.min(taxableAfterAllowance, 37700);
-      basicRateTax = basicRateBand * 0.2;
-
-      if (taxableAfterAllowance > 37700) {
-        const higherRateBand = Math.min(taxableAfterAllowance - 37700, 87430);
-        higherRateTax = higherRateBand * 0.4;
-      }
-
-      if (taxableAfterAllowance > 125140) {
-        const additionalRateBand = taxableAfterAllowance - 125140;
-        additionalRateTax = additionalRateBand * 0.45;
-      }
-    }
-
-    const totalTaxDue = basicRateTax + higherRateTax + additionalRateTax;
-
-    // National Insurance (Class 2 and 4 for self-employed)
-    const selfEmploymentProfit = selfEmploymentIncome - selfEmploymentExpenses;
-    let class2NIC = 0;
-    let class4NIC = 0;
-
-    if (selfEmploymentProfit > 6725) {
-      class2NIC = 52 * 3.45; // £3.45/week for 52 weeks
-    }
-
-    if (selfEmploymentProfit > 12570) {
-      const class4Band1 = Math.min(selfEmploymentProfit - 12570, 37700);
-      class4NIC = class4Band1 * 0.09;
-
-      if (selfEmploymentProfit > 50270) {
-        const class4Band2 = selfEmploymentProfit - 50270;
-        class4NIC += class4Band2 * 0.02;
-      }
-    }
-
-    const totalNICDue = class2NIC + class4NIC;
-    const totalDue =
-      totalTaxDue +
-      totalNICDue -
-      pensionRelief -
-      giftAidRelief -
-      ventureCapitalRelief;
-
-    const calc: TaxCalculation = {
-      totalIncome,
-      selfEmploymentIncome,
-      employmentIncome: 0,
-      rentalIncome,
-      otherIncome,
-      totalExpenses,
-      allowableExpenses: totalExpenses,
-      capitalAllowances: 0,
-      pensionRelief,
-      giftAidRelief,
-      ventureCapitalRelief,
-      marriageAllowance: 0,
-      blindAllowance: 0,
-      taxableIncome,
-      personalAllowance,
-      taxableAfterAllowance,
-      basicRateTax,
-      higherRateTax,
-      additionalRateTax,
-      class2NIC,
-      class4NIC,
-      totalTaxDue,
-      totalNICDue,
-      totalDue: Math.max(0, totalDue),
-      refundDue: totalDue < 0 ? Math.abs(totalDue) : undefined,
-    };
-
-    setCalculation(calc);
-    updateData({ taxCalculation: calc });
-    setIsLoading(false);
-  };
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) =>
@@ -307,7 +173,7 @@ export function ReviewSummaryStep() {
     doc.save('TaxFolio-Tax-Summary-2024-25.pdf');
   };
 
-  if (isLoading) {
+  if (!calculation) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#00e3ec]" />
