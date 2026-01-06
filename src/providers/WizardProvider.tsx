@@ -129,8 +129,10 @@ export function WizardProvider({
         }
       }
 
-      // Fallback to localStorage if no database data (for backwards compatibility)
-      if (!savedStep) {
+      // Fallback to localStorage ONLY if user is NOT authenticated
+      // When user IS authenticated, we trust the database as the source of truth
+      // localStorage might contain another user's data
+      if (!userId && !savedStep) {
         const localData = localStorage.getItem('wizard-data');
         const localStep = localStorage.getItem('wizard-step');
         const localBusinessId = localStorage.getItem('wizard-business-id');
@@ -149,6 +151,14 @@ export function WizardProvider({
             // Use initial data if parse fails
           }
         }
+      }
+
+      // If user is authenticated, clear localStorage to prevent data leaking between users
+      if (userId) {
+        localStorage.removeItem('wizard-data');
+        localStorage.removeItem('wizard-step');
+        localStorage.removeItem('wizard-business-id');
+        localStorage.removeItem('wizard-property-id');
       }
 
       // Fetch intro data if user is authenticated and we don't already have it
@@ -211,23 +221,9 @@ export function WizardProvider({
     loadSession();
   }, [userId]);
 
-  // Save progress to database (and localStorage as backup)
+  // Save progress to database (or localStorage for unauthenticated users)
   const saveProgress = useCallback(async () => {
     setIsSaving(true);
-
-    // Always save to localStorage as backup
-    localStorage.setItem('wizard-data', JSON.stringify(data));
-    localStorage.setItem('wizard-step', currentStep);
-    if (currentBusinessId) {
-      localStorage.setItem('wizard-business-id', currentBusinessId);
-    } else {
-      localStorage.removeItem('wizard-business-id');
-    }
-    if (currentPropertyId) {
-      localStorage.setItem('wizard-property-id', currentPropertyId);
-    } else {
-      localStorage.removeItem('wizard-property-id');
-    }
 
     // Save to database if user is authenticated
     if (userId) {
@@ -251,6 +247,20 @@ export function WizardProvider({
         }
       } catch (error) {
         console.warn('[WizardProvider] Failed to save to database:', error);
+      }
+    } else {
+      // Save to localStorage only for unauthenticated users
+      localStorage.setItem('wizard-data', JSON.stringify(data));
+      localStorage.setItem('wizard-step', currentStep);
+      if (currentBusinessId) {
+        localStorage.setItem('wizard-business-id', currentBusinessId);
+      } else {
+        localStorage.removeItem('wizard-business-id');
+      }
+      if (currentPropertyId) {
+        localStorage.setItem('wizard-property-id', currentPropertyId);
+      } else {
+        localStorage.removeItem('wizard-property-id');
       }
     }
 
