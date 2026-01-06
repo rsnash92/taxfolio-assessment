@@ -585,6 +585,7 @@ export interface TaxCalculation {
   ventureCapitalRelief: number;
   marriageAllowance: number;
   blindAllowance: number;
+  section24Relief: number; // Finance costs tax credit for landlords
 
   // Tax Calculation
   taxableIncome: number;

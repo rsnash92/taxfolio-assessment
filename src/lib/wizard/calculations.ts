@@ -76,11 +76,20 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     (s) => s.type === 'rental'
   );
 
+  let totalFinanceCosts = 0; // Track Section 24 finance costs for tax credit
+
   for (const property of rentalProperties) {
     const propertyData = data.rentalData[property.id];
     if (propertyData) {
+      const ownershipShare = (propertyData.ownershipShare || 100) / 100;
       rentalIncome += toPounds(propertyData.income?.total || 0);
       totalExpenses += toPounds(propertyData.expenses?.total || 0);
+      // Section 24: Mortgage interest and finance costs are no longer deductible as expenses
+      // Instead, landlords get a 20% tax credit on these costs
+      const propertyFinanceCosts =
+        (toPounds(propertyData.mortgageInterest || 0) +
+         toPounds(propertyData.otherFinanceCosts || 0)) * ownershipShare;
+      totalFinanceCosts += propertyFinanceCosts;
     }
   }
 
@@ -188,7 +197,15 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     additionalRateTax = remainingTaxable * TAX_BANDS.additionalRate.rate;
   }
 
-  const totalTaxDue = basicRateTax + higherRateTax + additionalRateTax;
+  const totalTaxBeforeCredits = basicRateTax + higherRateTax + additionalRateTax;
+
+  // Section 24 Finance Costs Tax Credit (20% of mortgage interest and finance costs)
+  // This is a tax reducer, not a deduction from income
+  // The credit is capped at the total income tax liability (can't create a refund from this alone)
+  const section24TaxCredit = totalFinanceCosts * 0.2;
+  const section24Applied = Math.min(section24TaxCredit, totalTaxBeforeCredits);
+
+  const totalTaxDue = totalTaxBeforeCredits - section24Applied;
 
   // Calculate National Insurance (Class 2 and 4)
   let class2NIC = 0;
@@ -247,6 +264,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     ventureCapitalRelief: toPence(ventureCapitalRelief),
     marriageAllowance: 0,
     blindAllowance: 0,
+    section24Relief: toPence(section24Applied),
     taxableIncome: toPence(taxableIncome),
     personalAllowance: toPence(personalAllowance),
     taxableAfterAllowance: toPence(taxableAfterAllowance),

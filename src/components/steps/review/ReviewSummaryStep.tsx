@@ -122,12 +122,14 @@ export function ReviewSummaryStep() {
     const totalReliefs =
       (calculation.pensionRelief || 0) +
       (calculation.giftAidRelief || 0) +
-      (calculation.ventureCapitalRelief || 0);
+      (calculation.ventureCapitalRelief || 0) +
+      (calculation.section24Relief || 0);
     if (totalReliefs > 0) {
       addSection('Tax Reliefs', [
         { label: 'Pension contributions', value: calculation.pensionRelief || 0 },
         { label: 'Gift Aid donations', value: calculation.giftAidRelief || 0 },
         { label: 'Venture capital relief', value: calculation.ventureCapitalRelief || 0 },
+        { label: 'Section 24 finance costs', value: calculation.section24Relief || 0 },
       ]);
     }
 
@@ -304,7 +306,8 @@ export function ReviewSummaryStep() {
               {formatCurrency(
                 (calculation?.pensionRelief || 0) +
                   (calculation?.giftAidRelief || 0) +
-                  (calculation?.ventureCapitalRelief || 0)
+                  (calculation?.ventureCapitalRelief || 0) +
+                  (calculation?.section24Relief || 0)
               )}
             </p>
           </div>
@@ -395,13 +398,15 @@ export function ReviewSummaryStep() {
         {/* Reliefs Section */}
         {((calculation?.pensionRelief || 0) > 0 ||
           (calculation?.giftAidRelief || 0) > 0 ||
-          (calculation?.ventureCapitalRelief || 0) > 0) && (
+          (calculation?.ventureCapitalRelief || 0) > 0 ||
+          (calculation?.section24Relief || 0) > 0) && (
           <SummarySection
             title="Tax Reliefs"
             total={
               (calculation?.pensionRelief || 0) +
               (calculation?.giftAidRelief || 0) +
-              (calculation?.ventureCapitalRelief || 0)
+              (calculation?.ventureCapitalRelief || 0) +
+              (calculation?.section24Relief || 0)
             }
             isExpanded={expandedSections.includes('reliefs')}
             onToggle={() => toggleSection('reliefs')}
@@ -418,6 +423,10 @@ export function ReviewSummaryStep() {
               {
                 label: 'Venture capital relief',
                 value: calculation?.ventureCapitalRelief || 0,
+              },
+              {
+                label: 'Section 24 finance costs',
+                value: calculation?.section24Relief || 0,
               },
             ].filter((i) => i.value > 0)}
           />
