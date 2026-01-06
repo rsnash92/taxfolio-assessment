@@ -137,14 +137,14 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   const totalIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncome;
 
-  console.log('[calculations] Income breakdown:', {
-    selfEmploymentIncome,
-    employmentIncome,
-    rentalIncome,
-    otherIncome,
-    totalIncome,
-    totalExpenses,
-  });
+  console.log('[calculations] Income breakdown:',
+    'selfEmp=' + selfEmploymentIncome,
+    'emp=' + employmentIncome,
+    'rental=' + rentalIncome,
+    'other=' + otherIncome,
+    'TOTAL=' + totalIncome,
+    'expenses=' + totalExpenses
+  );
 
   // Calculate reliefs
   const pensionRelief =
