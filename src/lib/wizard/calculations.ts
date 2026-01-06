@@ -16,12 +16,13 @@ const NI_RATES = {
   upperRate: 0.02, // 2% above UPL
 };
 
-// Helper to convert pence to pounds (all values in the app are stored in pence)
-const toPounds = (pence: number): number => pence / 100;
+// Note: All monetary values from form inputs are stored in pounds (not pence)
+// The toPounds helper is a no-op since values are already in pounds
+const toPounds = (pounds: number): number => pounds;
 
 export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Calculate total income by source
-  // Note: All values in the app are stored in pence, so we convert to pounds for calculation
+  // All values from forms are already in pounds
   let selfEmploymentIncome = 0;
   let employmentIncome = 0;
   let rentalIncome = 0;
