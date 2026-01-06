@@ -32,6 +32,11 @@ const NI_RATES = {
   upperRate: 0.02, // 2% above UPL
 };
 
+// Trading Allowance for 2024/25
+// Individuals with trading/self-employment income can use the £1,000 trading allowance
+// instead of deducting actual expenses (if it's more beneficial)
+const TRADING_ALLOWANCE = 1000;
+
 // Capital Gains Tax rates for 2024/25
 const CGT_RATES = {
   annualExemptAmount: 3000, // £3,000 for 2024/25
@@ -80,6 +85,27 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
       selfEmploymentExpenses += businessExpenses;
       totalExpenses += businessExpenses;
       capitalAllowances += toPounds(businessData.capitalAllowances?.total || 0);
+    }
+  }
+
+  // Trading Allowance calculation
+  // If self-employment income <= £1,000 and no expenses claimed, trading allowance applies automatically
+  // If income > £1,000, can still use trading allowance as a flat £1,000 deduction instead of actual expenses
+  let tradingAllowanceUsed = 0;
+  if (selfEmploymentIncome > 0) {
+    // Trading allowance is beneficial if:
+    // 1. Income <= £1,000: Covers entire income (net taxable = 0)
+    // 2. Income > £1,000: Use £1,000 flat deduction if actual expenses < £1,000
+    if (selfEmploymentExpenses === 0) {
+      // No expenses claimed - use trading allowance
+      tradingAllowanceUsed = Math.min(selfEmploymentIncome, TRADING_ALLOWANCE);
+      // Remove the income that's covered by trading allowance from taxable income
+      // by treating it as an expense deduction
+      totalExpenses += tradingAllowanceUsed;
+    } else if (selfEmploymentExpenses < TRADING_ALLOWANCE && selfEmploymentIncome > selfEmploymentExpenses) {
+      // Expenses claimed but trading allowance is better - this is a choice scenario
+      // For now, only auto-apply trading allowance when NO expenses are claimed
+      // (The user would need to explicitly choose to use trading allowance vs expenses)
     }
   }
 
@@ -543,6 +569,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     totalExpenses: toPence(totalExpenses),
     allowableExpenses: toPence(totalExpenses),
     capitalAllowances: toPence(capitalAllowances),
+    tradingAllowance: toPence(tradingAllowanceUsed),
     pensionRelief: toPence(pensionRelief),
     giftAidRelief: toPence(giftAidRelief),
     ventureCapitalRelief: toPence(ventureCapitalRelief),

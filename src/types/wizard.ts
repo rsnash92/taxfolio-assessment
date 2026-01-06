@@ -580,6 +580,7 @@ export interface TaxCalculation {
   totalExpenses: number;
   allowableExpenses: number;
   capitalAllowances: number;
+  tradingAllowance: number; // £1,000 trading allowance for small self-employment income
 
   // Reliefs & Allowances
   pensionRelief: number;
