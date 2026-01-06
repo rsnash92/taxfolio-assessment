@@ -100,24 +100,53 @@ export function WizardProvider({
   const [isSaving, setIsSaving] = useState(false);
   const [navigationDirection, setNavigationDirection] = useState<'forward' | 'backward'>('forward');
 
-  // Load existing session on mount (simplified for dev)
+  // Load existing session on mount
   useEffect(() => {
     async function loadSession() {
       setIsLoading(true);
 
-      // In development, just use localStorage for session persistence
-      const savedData = localStorage.getItem('wizard-data');
-      const savedStep = localStorage.getItem('wizard-step');
-      const savedBusinessId = localStorage.getItem('wizard-business-id');
-      const savedPropertyId = localStorage.getItem('wizard-property-id');
-
       let loadedData = initialData;
+      let savedStep: StepId | null = null;
+      let savedBusinessId: string | null = null;
+      let savedPropertyId: string | null = null;
 
-      if (savedData) {
+      // Try to load from database if user is authenticated
+      if (userId) {
         try {
-          loadedData = { ...initialData, ...JSON.parse(savedData) };
-        } catch {
-          // Use initial data if parse fails
+          const response = await fetch('/api/wizard-progress');
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            console.log('[WizardProvider] Loaded progress from database, step:', result.data.currentStep);
+            loadedData = { ...initialData, ...result.data.wizardData };
+            savedStep = result.data.currentStep;
+            savedBusinessId = result.data.currentBusinessId;
+            savedPropertyId = result.data.currentPropertyId;
+          } else {
+            console.log('[WizardProvider] No saved progress in database');
+          }
+        } catch (error) {
+          console.warn('[WizardProvider] Failed to load from database:', error);
+        }
+      }
+
+      // Fallback to localStorage if no database data (for backwards compatibility)
+      if (!savedStep) {
+        const localData = localStorage.getItem('wizard-data');
+        const localStep = localStorage.getItem('wizard-step');
+        const localBusinessId = localStorage.getItem('wizard-business-id');
+        const localPropertyId = localStorage.getItem('wizard-property-id');
+
+        if (localData) {
+          try {
+            loadedData = { ...initialData, ...JSON.parse(localData) };
+            savedStep = localStep as StepId | null;
+            savedBusinessId = localBusinessId;
+            savedPropertyId = localPropertyId;
+            console.log('[WizardProvider] Loaded progress from localStorage');
+          } catch {
+            // Use initial data if parse fails
+          }
         }
       }
 
@@ -137,7 +166,7 @@ export function WizardProvider({
       setData(loadedData);
 
       if (savedStep) {
-        setCurrentStep(savedStep as StepId);
+        setCurrentStep(savedStep);
       }
 
       if (savedBusinessId) {
@@ -181,25 +210,51 @@ export function WizardProvider({
     loadSession();
   }, [userId]);
 
-  // Save progress to localStorage (in production, would be Supabase)
+  // Save progress to database (and localStorage as backup)
   const saveProgress = useCallback(async () => {
     setIsSaving(true);
 
-    // Save to localStorage for development
+    // Always save to localStorage as backup
     localStorage.setItem('wizard-data', JSON.stringify(data));
     localStorage.setItem('wizard-step', currentStep);
     if (currentBusinessId) {
       localStorage.setItem('wizard-business-id', currentBusinessId);
+    } else {
+      localStorage.removeItem('wizard-business-id');
     }
     if (currentPropertyId) {
       localStorage.setItem('wizard-property-id', currentPropertyId);
+    } else {
+      localStorage.removeItem('wizard-property-id');
     }
 
-    // Simulate save delay
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Save to database if user is authenticated
+    if (userId) {
+      try {
+        const response = await fetch('/api/wizard-progress', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            wizardData: data,
+            currentStep,
+            currentBusinessId,
+            currentPropertyId,
+          }),
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          console.warn('[WizardProvider] Failed to save to database:', result.error);
+        }
+      } catch (error) {
+        console.warn('[WizardProvider] Failed to save to database:', error);
+      }
+    }
 
     setIsSaving(false);
-  }, [data, currentStep, currentBusinessId, currentPropertyId]);
+  }, [data, currentStep, currentBusinessId, currentPropertyId, userId]);
 
   // Auto-save on data changes (debounced)
   useEffect(() => {
