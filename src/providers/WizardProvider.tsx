@@ -118,7 +118,9 @@ export function WizardProvider({
 
           if (result.success && result.data) {
             console.log('[WizardProvider] Loaded progress from database, step:', result.data.currentStep);
-            loadedData = { ...initialData, ...result.data.wizardData };
+            // Exclude taxCalculation from loaded data - always compute fresh
+            const { taxCalculation: _ignored, ...wizardDataWithoutCalc } = result.data.wizardData || {};
+            loadedData = { ...initialData, ...wizardDataWithoutCalc, taxCalculation: null };
             savedStep = result.data.currentStep;
             savedBusinessId = result.data.currentBusinessId;
             savedPropertyId = result.data.currentPropertyId;
@@ -139,7 +141,10 @@ export function WizardProvider({
 
         if (localData) {
           try {
-            loadedData = { ...initialData, ...JSON.parse(localData) };
+            const parsedData = JSON.parse(localData);
+            // Exclude taxCalculation from loaded data - always compute fresh
+            const { taxCalculation: _ignored, ...dataWithoutCalc } = parsedData;
+            loadedData = { ...initialData, ...dataWithoutCalc, taxCalculation: null };
             savedStep = localStep as StepId | null;
             savedBusinessId = localBusinessId;
             savedPropertyId = localPropertyId;
@@ -267,14 +272,31 @@ export function WizardProvider({
     return () => clearTimeout(timeout);
   }, [data, currentStep, isLoading, saveProgress]);
 
-  // Calculate tax when relevant data changes
+  // Calculate tax when relevant data changes or after initial load
   useEffect(() => {
-    const calculation = calculateTaxLiability(data);
-    // Only update if the calculation has changed to avoid infinite loops
-    if (JSON.stringify(calculation) !== JSON.stringify(data.taxCalculation)) {
-      setData((prev) => ({ ...prev, taxCalculation: calculation }));
-    }
+    // Don't calculate while still loading
+    if (isLoading) return;
+
+    // Use functional update to ensure we have the latest data
+    setData((prev) => {
+      const calculation = calculateTaxLiability(prev);
+
+      // Only update if the calculation has actually changed
+      if (JSON.stringify(calculation) === JSON.stringify(prev.taxCalculation)) {
+        return prev; // No change
+      }
+
+      console.log('[WizardProvider] Tax calculation updated:', {
+        totalIncome: calculation.totalIncome,
+        employmentIncome: calculation.employmentIncome,
+        selfEmploymentIncome: calculation.selfEmploymentIncome,
+        totalDue: calculation.totalDue,
+      });
+
+      return { ...prev, taxCalculation: calculation };
+    });
   }, [
+    isLoading, // Recalculate after loading completes
     data.selfEmploymentData,
     data.employmentData,
     data.rentalData,
