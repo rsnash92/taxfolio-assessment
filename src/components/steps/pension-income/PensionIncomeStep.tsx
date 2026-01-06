@@ -152,8 +152,8 @@ export function PensionIncomeStep() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Landmark className="h-5 w-5 text-purple-600" />
+          <div className="w-10 h-10 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Landmark className="h-5 w-5 text-[#00c4d4]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Pension Income</h1>
         </div>
@@ -166,8 +166,8 @@ export function PensionIncomeStep() {
       {/* State Pension Section */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Landmark className="h-4 w-4 text-blue-600" />
+          <div className="w-8 h-8 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+            <Landmark className="h-4 w-4 text-[#00c4d4]" />
           </div>
           <h2 className="text-lg font-semibold text-gray-900">State Pension</h2>
         </div>
@@ -240,8 +240,8 @@ export function PensionIncomeStep() {
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <Building2 className="h-4 w-4 text-green-600" />
+            <div className="w-8 h-8 bg-[#e6fafb] rounded-lg flex items-center justify-center">
+              <Building2 className="h-4 w-4 text-[#00c4d4]" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900">
               Private & Workplace Pensions
@@ -373,9 +373,9 @@ export function PensionIncomeStep() {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-blue-800">
+      <div className="bg-[#e6fafb] border border-[#99ebef] rounded-xl p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-[#00c4d4] mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-[#00858c]">
           <p className="font-medium mb-1">Tax-Free Pension Lump Sums</p>
           <p>
             You can usually take up to 25% of your pension pot as a tax-free
