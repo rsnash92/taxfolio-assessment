@@ -93,6 +93,7 @@ export function ReviewSummaryStep() {
 
     // Income
     addSection('Income', [
+      { label: 'Employment income', value: calculation.employmentIncome || 0 },
       { label: 'Self-employment income', value: calculation.selfEmploymentIncome || 0 },
       { label: 'Rental income', value: calculation.rentalIncome || 0 },
       { label: 'Other income', value: calculation.otherIncome || 0 },
@@ -308,6 +309,10 @@ export function ReviewSummaryStep() {
           isExpanded={expandedSections.includes('income')}
           onToggle={() => toggleSection('income')}
           items={[
+            {
+              label: 'Employment income',
+              value: calculation?.employmentIncome || 0,
+            },
             {
               label: 'Self-employment income',
               value: calculation?.selfEmploymentIncome || 0,
