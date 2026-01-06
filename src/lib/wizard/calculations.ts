@@ -16,15 +16,12 @@ const NI_RATES = {
   upperRate: 0.02, // 2% above UPL
 };
 
-export function calculateTaxLiability(data: WizardData): TaxCalculation {
-  console.log('[calculations] Starting calculation with data:', {
-    incomeSources: data.incomeSources?.map(s => ({ id: s.id, type: s.type })),
-    selfEmploymentDataKeys: Object.keys(data.selfEmploymentData || {}),
-    employmentDataKeys: Object.keys(data.employmentData || {}),
-    rentalDataKeys: Object.keys(data.rentalData || {}),
-  });
+// Helper to convert pence to pounds (all values in the app are stored in pence)
+const toPounds = (pence: number): number => pence / 100;
 
+export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Calculate total income by source
+  // Note: All values in the app are stored in pence, so we convert to pounds for calculation
   let selfEmploymentIncome = 0;
   let employmentIncome = 0;
   let rentalIncome = 0;
@@ -40,9 +37,9 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   for (const business of selfEmploymentBusinesses) {
     const businessData = data.selfEmploymentData[business.id];
     if (businessData) {
-      selfEmploymentIncome += businessData.income?.total || 0;
-      totalExpenses += businessData.expenses?.total || 0;
-      capitalAllowances += businessData.capitalAllowances?.total || 0;
+      selfEmploymentIncome += toPounds(businessData.income?.total || 0);
+      totalExpenses += toPounds(businessData.expenses?.total || 0);
+      capitalAllowances += toPounds(businessData.capitalAllowances?.total || 0);
     }
   }
 
@@ -54,21 +51,21 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   for (const employer of employmentSources) {
     const employerData = data.employmentData[employer.id];
     if (employerData) {
-      employmentIncome += employerData.payReceived || 0;
+      employmentIncome += toPounds(employerData.payReceived || 0);
       // Add benefits in kind
-      employmentIncome += employerData.companyCarBenefit || 0;
-      employmentIncome += employerData.fuelBenefit || 0;
-      employmentIncome += employerData.medicalInsuranceBenefit || 0;
-      employmentIncome += employerData.otherBenefits || 0;
-      employmentIncome += employerData.tipsReceived || 0;
+      employmentIncome += toPounds(employerData.companyCarBenefit || 0);
+      employmentIncome += toPounds(employerData.fuelBenefit || 0);
+      employmentIncome += toPounds(employerData.medicalInsuranceBenefit || 0);
+      employmentIncome += toPounds(employerData.otherBenefits || 0);
+      employmentIncome += toPounds(employerData.tipsReceived || 0);
       // Track tax already paid via PAYE
-      taxAlreadyPaid += employerData.taxDeducted || 0;
+      taxAlreadyPaid += toPounds(employerData.taxDeducted || 0);
       // Employment expenses
       if (employerData.claimingExpenses) {
-        totalExpenses += employerData.travelExpenses || 0;
-        totalExpenses += employerData.professionalFees || 0;
-        totalExpenses += employerData.workingFromHome || 0;
-        totalExpenses += employerData.otherExpenses || 0;
+        totalExpenses += toPounds(employerData.travelExpenses || 0);
+        totalExpenses += toPounds(employerData.professionalFees || 0);
+        totalExpenses += toPounds(employerData.workingFromHome || 0);
+        totalExpenses += toPounds(employerData.otherExpenses || 0);
       }
     }
   }
@@ -81,80 +78,71 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   for (const property of rentalProperties) {
     const propertyData = data.rentalData[property.id];
     if (propertyData) {
-      rentalIncome += propertyData.income?.total || 0;
-      totalExpenses += propertyData.expenses?.total || 0;
+      rentalIncome += toPounds(propertyData.income?.total || 0);
+      totalExpenses += toPounds(propertyData.expenses?.total || 0);
     }
   }
 
   // CIS Income (Construction Industry Scheme)
-  const cisIncome = data.cisData?.totalGross || data.cisData?.totalGrossPayments || 0;
-  const cisDeductions = data.cisData?.totalDeductions || data.cisData?.totalCISDeductions || 0;
+  const cisIncome = toPounds(data.cisData?.totalGross || data.cisData?.totalGrossPayments || 0);
+  const cisDeductions = toPounds(data.cisData?.totalDeductions || data.cisData?.totalCISDeductions || 0);
   taxAlreadyPaid += cisDeductions;
 
   // Dividends (from dedicated data store)
-  const dividendsIncome = data.dividendsData?.totalDividends ||
+  const dividendsIncome = toPounds(data.dividendsData?.totalDividends ||
     ((data.dividendsData?.ukDividends || 0) +
     (data.dividendsData?.foreignDividends || 0) +
-    (data.dividendsData?.stockDividends || 0));
+    (data.dividendsData?.stockDividends || 0)));
 
   // Interest (from dedicated data store)
-  const interestIncome = data.interestData?.totalInterest ||
+  const interestIncome = toPounds(data.interestData?.totalInterest ||
     ((data.interestData?.untaxedUKInterest || 0) +
     (data.interestData?.untaxedForeignInterest || 0) +
     (data.interestData?.taxedUKInterest || 0) +
-    (data.interestData?.giltsInterest || 0));
-  taxAlreadyPaid += data.interestData?.taxDeducted || data.interestData?.taxDeductedFromInterest || 0;
+    (data.interestData?.giltsInterest || 0)));
+  taxAlreadyPaid += toPounds(data.interestData?.taxDeducted || data.interestData?.taxDeductedFromInterest || 0);
 
   // Pension Income (from dedicated data store)
-  const pensionIncome = data.pensionIncomeData?.totalPensionIncome ||
+  const pensionIncome = toPounds(data.pensionIncomeData?.totalPensionIncome ||
     ((data.pensionIncomeData?.statePension || 0) +
     (data.pensionIncomeData?.statePensionLumpSum || 0) +
-    (data.pensionIncomeData?.privatePensions?.reduce((sum, p) => sum + (p.pensionAmount || 0), 0) || 0));
-  taxAlreadyPaid += data.pensionIncomeData?.totalTaxDeducted || 0;
+    (data.pensionIncomeData?.privatePensions?.reduce((sum, p) => sum + (p.pensionAmount || 0), 0) || 0)));
+  taxAlreadyPaid += toPounds(data.pensionIncomeData?.totalTaxDeducted || 0);
 
   // State Benefits (from dedicated data store)
-  const stateBenefitsIncome = data.stateBenefitsData?.totalTaxableBenefits ||
+  const stateBenefitsIncome = toPounds(data.stateBenefitsData?.totalTaxableBenefits ||
     ((data.stateBenefitsData?.jobseekersAllowance || 0) +
     (data.stateBenefitsData?.employmentSupportAllowance || 0) +
     (data.stateBenefitsData?.carersAllowance || 0) +
     (data.stateBenefitsData?.bereavementAllowance || 0) +
     (data.stateBenefitsData?.incapacityBenefit || 0) +
     (data.stateBenefitsData?.statePension || 0) +
-    (data.stateBenefitsData?.otherTaxableBenefits || 0));
+    (data.stateBenefitsData?.otherTaxableBenefits || 0)));
 
   // Capital Gains (not included in income tax but tracked separately for display)
-  const capitalGainsIncome = data.capitalGainsData?.taxableGains || 0;
+  const capitalGainsIncome = toPounds(data.capitalGainsData?.taxableGains || 0);
 
   // Use new data stores if they have data, otherwise fall back to legacy otherIncome
-  const finalInterest = interestIncome > 0 ? interestIncome : (data.otherIncome?.interest || 0);
-  const finalDividends = dividendsIncome > 0 ? dividendsIncome : (data.otherIncome?.dividends || 0);
-  const finalPension = pensionIncome > 0 ? pensionIncome : (data.otherIncome?.pension || 0);
-  const finalStateBenefits = stateBenefitsIncome > 0 ? stateBenefitsIncome : (data.otherIncome?.stateBenefits || 0);
-  const finalOther = (data.otherIncome?.other || 0);
+  const finalInterest = interestIncome > 0 ? interestIncome : toPounds(data.otherIncome?.interest || 0);
+  const finalDividends = dividendsIncome > 0 ? dividendsIncome : toPounds(data.otherIncome?.dividends || 0);
+  const finalPension = pensionIncome > 0 ? pensionIncome : toPounds(data.otherIncome?.pension || 0);
+  const finalStateBenefits = stateBenefitsIncome > 0 ? stateBenefitsIncome : toPounds(data.otherIncome?.stateBenefits || 0);
+  const finalOther = toPounds(data.otherIncome?.other || 0);
 
   // Total other income
   const otherIncome = finalInterest + finalDividends + finalPension + finalStateBenefits + finalOther + cisIncome;
 
   const totalIncome = selfEmploymentIncome + employmentIncome + rentalIncome + otherIncome;
 
-  console.log('[calculations] Income breakdown:',
-    'selfEmp=' + selfEmploymentIncome,
-    'emp=' + employmentIncome,
-    'rental=' + rentalIncome,
-    'other=' + otherIncome,
-    'TOTAL=' + totalIncome,
-    'expenses=' + totalExpenses
-  );
-
   // Calculate reliefs
   const pensionRelief =
-    (data.general?.pension?.personalContributions || 0) * 0.2;
+    toPounds(data.general?.pension?.personalContributions || 0) * 0.2;
   const giftAidRelief =
-    (data.general?.charitable?.giftAidDonations || 0) * 0.25;
+    toPounds(data.general?.charitable?.giftAidDonations || 0) * 0.25;
   const ventureCapitalRelief =
-    (data.general?.ventureCapital?.eisInvestments || 0) * 0.3 +
-    (data.general?.ventureCapital?.seisInvestments || 0) * 0.5 +
-    (data.general?.ventureCapital?.vctInvestments || 0) * 0.3;
+    toPounds(data.general?.ventureCapital?.eisInvestments || 0) * 0.3 +
+    toPounds(data.general?.ventureCapital?.seisInvestments || 0) * 0.5 +
+    toPounds(data.general?.ventureCapital?.vctInvestments || 0) * 0.3;
 
   // Calculate taxable income
   const taxableIncome = Math.max(0, totalIncome - totalExpenses - capitalAllowances);
@@ -233,38 +221,42 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const totalDue = Math.max(0, netTaxDue);
   const refundDue = netTaxDue < 0 ? Math.abs(netTaxDue) : undefined;
 
+  // Convert all values back to pence for display (formatCurrency expects pence)
+  // Round to nearest penny (multiply by 100 to convert £ to pence, then round)
+  const toPence = (pounds: number): number => Math.round(pounds * 100);
+
   return {
-    totalIncome: Math.round(totalIncome * 100) / 100,
-    selfEmploymentIncome: Math.round(selfEmploymentIncome * 100) / 100,
-    employmentIncome: Math.round(employmentIncome * 100) / 100,
-    rentalIncome: Math.round(rentalIncome * 100) / 100,
-    otherIncome: Math.round(otherIncome * 100) / 100,
+    totalIncome: toPence(totalIncome),
+    selfEmploymentIncome: toPence(selfEmploymentIncome),
+    employmentIncome: toPence(employmentIncome),
+    rentalIncome: toPence(rentalIncome),
+    otherIncome: toPence(otherIncome),
     // Detailed income breakdowns
-    cisIncome: Math.round(cisIncome * 100) / 100,
-    dividendsIncome: Math.round(finalDividends * 100) / 100,
-    interestIncome: Math.round(finalInterest * 100) / 100,
-    pensionIncome: Math.round(finalPension * 100) / 100,
-    stateBenefitsIncome: Math.round(finalStateBenefits * 100) / 100,
-    capitalGainsIncome: Math.round(capitalGainsIncome * 100) / 100,
-    totalExpenses: Math.round(totalExpenses * 100) / 100,
-    allowableExpenses: Math.round(totalExpenses * 100) / 100,
-    capitalAllowances: Math.round(capitalAllowances * 100) / 100,
-    pensionRelief: Math.round(pensionRelief * 100) / 100,
-    giftAidRelief: Math.round(giftAidRelief * 100) / 100,
-    ventureCapitalRelief: Math.round(ventureCapitalRelief * 100) / 100,
+    cisIncome: toPence(cisIncome),
+    dividendsIncome: toPence(finalDividends),
+    interestIncome: toPence(finalInterest),
+    pensionIncome: toPence(finalPension),
+    stateBenefitsIncome: toPence(finalStateBenefits),
+    capitalGainsIncome: toPence(capitalGainsIncome),
+    totalExpenses: toPence(totalExpenses),
+    allowableExpenses: toPence(totalExpenses),
+    capitalAllowances: toPence(capitalAllowances),
+    pensionRelief: toPence(pensionRelief),
+    giftAidRelief: toPence(giftAidRelief),
+    ventureCapitalRelief: toPence(ventureCapitalRelief),
     marriageAllowance: 0,
     blindAllowance: 0,
-    taxableIncome: Math.round(taxableIncome * 100) / 100,
-    personalAllowance: Math.round(personalAllowance * 100) / 100,
-    taxableAfterAllowance: Math.round(taxableAfterAllowance * 100) / 100,
-    basicRateTax: Math.round(basicRateTax * 100) / 100,
-    higherRateTax: Math.round(higherRateTax * 100) / 100,
-    additionalRateTax: Math.round(additionalRateTax * 100) / 100,
-    class2NIC: Math.round(class2NIC * 100) / 100,
-    class4NIC: Math.round(class4NIC * 100) / 100,
-    totalTaxDue: Math.round(totalTaxDue * 100) / 100,
-    totalNICDue: Math.round(totalNICDue * 100) / 100,
-    totalDue: Math.round(totalDue * 100) / 100,
-    refundDue: refundDue ? Math.round(refundDue * 100) / 100 : undefined,
+    taxableIncome: toPence(taxableIncome),
+    personalAllowance: toPence(personalAllowance),
+    taxableAfterAllowance: toPence(taxableAfterAllowance),
+    basicRateTax: toPence(basicRateTax),
+    higherRateTax: toPence(higherRateTax),
+    additionalRateTax: toPence(additionalRateTax),
+    class2NIC: toPence(class2NIC),
+    class4NIC: toPence(class4NIC),
+    totalTaxDue: toPence(totalTaxDue),
+    totalNICDue: toPence(totalNICDue),
+    totalDue: toPence(totalDue),
+    refundDue: refundDue ? toPence(refundDue) : undefined,
   };
 }

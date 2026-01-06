@@ -117,18 +117,12 @@ export function WizardProvider({
           const result = await response.json();
 
           if (result.success && result.data) {
-            console.log('[WizardProvider] Loaded progress from database, step:', result.data.currentStep);
-            console.log('[WizardProvider] Database taxCalculation (will be ignored):', result.data.wizardData?.taxCalculation?.totalDue);
             // Exclude taxCalculation from loaded data - always compute fresh
             const { taxCalculation: _ignored, ...wizardDataWithoutCalc } = result.data.wizardData || {};
-            console.log('[WizardProvider] After exclusion, taxCalculation should be null:', wizardDataWithoutCalc.taxCalculation);
             loadedData = { ...initialData, ...wizardDataWithoutCalc, taxCalculation: null };
-            console.log('[WizardProvider] Final loadedData.taxCalculation:', loadedData.taxCalculation);
             savedStep = result.data.currentStep;
             savedBusinessId = result.data.currentBusinessId;
             savedPropertyId = result.data.currentPropertyId;
-          } else {
-            console.log('[WizardProvider] No saved progress in database');
           }
         } catch (error) {
           console.warn('[WizardProvider] Failed to load from database:', error);
@@ -151,7 +145,6 @@ export function WizardProvider({
             savedStep = localStep as StepId | null;
             savedBusinessId = localBusinessId;
             savedPropertyId = localPropertyId;
-            console.log('[WizardProvider] Loaded progress from localStorage');
           } catch {
             // Use initial data if parse fails
           }
@@ -171,7 +164,6 @@ export function WizardProvider({
         }
       }
 
-      console.log('[WizardProvider] Setting initial data, taxCalculation:', loadedData.taxCalculation);
       setData(loadedData);
 
       if (savedStep) {
@@ -281,26 +273,14 @@ export function WizardProvider({
     // Don't calculate while still loading
     if (isLoading) return;
 
-    console.log('[WizardProvider] Tax useEffect triggered, isLoading:', isLoading);
-
     // Use functional update to ensure we have the latest data
     setData((prev) => {
-      console.log('[WizardProvider] Previous taxCalculation.totalDue:', prev.taxCalculation?.totalDue);
       const calculation = calculateTaxLiability(prev);
-      console.log('[WizardProvider] New calculation.totalDue:', calculation.totalDue);
 
       // Only update if the calculation has actually changed
       if (JSON.stringify(calculation) === JSON.stringify(prev.taxCalculation)) {
-        console.log('[WizardProvider] No change in calculation, skipping update');
         return prev; // No change
       }
-
-      console.log('[WizardProvider] Tax calculation updated:', {
-        totalIncome: calculation.totalIncome,
-        employmentIncome: calculation.employmentIncome,
-        selfEmploymentIncome: calculation.selfEmploymentIncome,
-        totalDue: calculation.totalDue,
-      });
 
       return { ...prev, taxCalculation: calculation };
     });
@@ -355,18 +335,11 @@ export function WizardProvider({
   }, []);
 
   const goNext = useCallback(() => {
-    console.log('[WizardProvider] goNext called, currentStep:', currentStep);
-    console.log('[WizardProvider] currentBusinessId:', currentBusinessId);
-
     const nextStep = getNextStep(currentStep, data, currentBusinessId, currentPropertyId);
-    console.log('[WizardProvider] nextStep:', nextStep);
 
     if (nextStep) {
-      console.log('[WizardProvider] Setting step to:', nextStep);
       setNavigationDirection('forward');
       setCurrentStep(nextStep);
-    } else {
-      console.log('[WizardProvider] No next step available!');
     }
   }, [currentStep, data, currentBusinessId, currentPropertyId]);
 
@@ -377,7 +350,6 @@ export function WizardProvider({
     setData(mergedData);
 
     const nextStep = getNextStep(currentStep, mergedData, currentBusinessId, currentPropertyId);
-    console.log('[WizardProvider] goNextWithData, nextStep:', nextStep);
 
     if (nextStep) {
       setNavigationDirection('forward');
