@@ -609,6 +609,12 @@ export interface TaxCalculation {
   cgtHigherRateTax: number; // CGT at 20% (or 24% for residential)
   totalCGTDue: number;
 
+  // Student Loan
+  studentLoanDue: number; // Calculated repayment based on income and plan type
+  studentLoanDeducted: number; // Already deducted via PAYE
+  studentLoanToPay: number; // Net amount to pay (due - deducted)
+  studentLoanPlanType?: '1' | '2' | '4' | 'postgrad';
+
   // Final
   totalTaxDue: number;
   totalNICDue: number;

@@ -42,6 +42,15 @@ const CGT_RATES = {
   residentialHigherRate: 0.24, // 24% for residential property above basic band
 };
 
+// Student Loan thresholds for 2024/25
+// Repayment is 9% of income over the threshold (except postgrad which is 6%)
+const STUDENT_LOAN_THRESHOLDS: Record<string, { threshold: number; rate: number }> = {
+  '1': { threshold: 24990, rate: 0.09 }, // Plan 1 (pre-2012 England/Wales, Scotland, NI)
+  '2': { threshold: 27295, rate: 0.09 }, // Plan 2 (post-2012 England/Wales)
+  '4': { threshold: 31395, rate: 0.09 }, // Plan 4 (Scotland post-2012)
+  'postgrad': { threshold: 21000, rate: 0.06 }, // Postgraduate loan
+};
+
 // Note: All monetary values from form inputs are stored in pounds (not pence)
 // The toPounds helper is a no-op since values are already in pounds
 const toPounds = (pounds: number): number => pounds;
@@ -459,8 +468,37 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
 
   const totalCGTDue = capitalGainsTax;
 
+  // Calculate Student Loan repayment
+  // Student loan is calculated on gross income (employment + self-employment)
+  // The income used is before tax but after expenses for self-employment
+  let studentLoanDue = 0;
+  let studentLoanDeducted = 0;
+  let studentLoanPlanType: '1' | '2' | '4' | 'postgrad' | undefined;
+
+  // Collect student loan data from all employment sources
+  for (const employer of employmentSources) {
+    const employerData = data.employmentData[employer.id];
+    if (employerData?.hasStudentLoan && employerData.studentLoanPlanType) {
+      studentLoanPlanType = employerData.studentLoanPlanType;
+      studentLoanDeducted += toPounds(employerData.studentLoanDeducted || 0);
+    }
+  }
+
+  // Calculate repayment if there's a student loan
+  if (studentLoanPlanType) {
+    const loanConfig = STUDENT_LOAN_THRESHOLDS[studentLoanPlanType];
+    if (loanConfig) {
+      // Student loan is based on gross earned income (employment + self-employment profit)
+      const grossEarnedIncome = employmentIncome + Math.max(0, selfEmploymentIncome - totalExpenses);
+      const incomeOverThreshold = Math.max(0, grossEarnedIncome - loanConfig.threshold);
+      studentLoanDue = incomeOverThreshold * loanConfig.rate;
+    }
+  }
+
+  const studentLoanToPay = Math.max(0, studentLoanDue - studentLoanDeducted);
+
   // Total due after reliefs and tax already paid
-  const grossTaxDue = totalTaxDue + totalNICDue + totalCGTDue - pensionRelief - giftAidRelief - ventureCapitalRelief;
+  const grossTaxDue = totalTaxDue + totalNICDue + totalCGTDue + studentLoanToPay - pensionRelief - giftAidRelief - ventureCapitalRelief;
   const netTaxDue = grossTaxDue - taxAlreadyPaid;
   const totalDue = Math.max(0, netTaxDue);
   const refundDue = netTaxDue < 0 ? Math.abs(netTaxDue) : undefined;
@@ -506,6 +544,12 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     cgtBasicRateTax: toPence(cgtBasicRateTax),
     cgtHigherRateTax: toPence(cgtHigherRateTax),
     totalCGTDue: toPence(totalCGTDue),
+    // Student Loan
+    studentLoanDue: toPence(studentLoanDue),
+    studentLoanDeducted: toPence(studentLoanDeducted),
+    studentLoanToPay: toPence(studentLoanToPay),
+    studentLoanPlanType,
+    // Final totals
     totalTaxDue: toPence(totalTaxDue),
     totalNICDue: toPence(totalNICDue),
     totalDue: toPence(totalDue),

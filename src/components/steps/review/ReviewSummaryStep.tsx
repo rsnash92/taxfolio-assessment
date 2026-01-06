@@ -160,6 +160,21 @@ export function ReviewSummaryStep() {
       ]);
     }
 
+    // Student Loan
+    if ((calculation.studentLoanToPay || 0) > 0) {
+      const planNames: Record<string, string> = {
+        '1': 'Plan 1',
+        '2': 'Plan 2',
+        '4': 'Plan 4 (Scotland)',
+        'postgrad': 'Postgraduate',
+      };
+      const planName = calculation.studentLoanPlanType ? planNames[calculation.studentLoanPlanType] || 'Student Loan' : 'Student Loan';
+      addSection('Student Loan Repayment', [
+        { label: `${planName} repayment due`, value: calculation.studentLoanDue || 0 },
+        { label: 'Already deducted via PAYE', value: -(calculation.studentLoanDeducted || 0) },
+      ]);
+    }
+
     // Totals
     y += 5;
     doc.setDrawColor(200, 200, 200);
@@ -177,6 +192,11 @@ export function ReviewSummaryStep() {
     if ((calculation.totalCGTDue || 0) > 0) {
       doc.text('Total Capital Gains Tax', 20, y);
       doc.text(formatCurrency(calculation.totalCGTDue || 0), pageWidth - 25, y, { align: 'right' });
+      y += 8;
+    }
+    if ((calculation.studentLoanToPay || 0) > 0) {
+      doc.text('Student Loan Repayment', 20, y);
+      doc.text(formatCurrency(calculation.studentLoanToPay || 0), pageWidth - 25, y, { align: 'right' });
       y += 8;
     }
     doc.text('Total Tax Reliefs', 20, y);
@@ -300,8 +320,7 @@ export function ReviewSummaryStep() {
 
         {/* Breakdown Mini */}
         <div className={cn(
-          'grid gap-4 mt-6 pt-6 border-t border-dashed',
-          (calculation?.totalCGTDue || 0) > 0 ? 'grid-cols-4' : 'grid-cols-3',
+          'grid gap-4 mt-6 pt-6 border-t border-dashed grid-cols-2 sm:grid-cols-3',
           isRefund ? 'border-current/20' : 'border-white/20'
         )}>
           <div>
@@ -321,6 +340,14 @@ export function ReviewSummaryStep() {
               <p className={cn('text-xs', isRefund ? 'text-gray-500' : 'text-gray-400')}>Capital Gains Tax</p>
               <p className={cn('text-lg font-semibold', isRefund ? 'text-gray-900' : 'text-white')}>
                 {formatCurrency(calculation?.totalCGTDue || 0)}
+              </p>
+            </div>
+          )}
+          {(calculation?.studentLoanToPay || 0) > 0 && (
+            <div>
+              <p className={cn('text-xs', isRefund ? 'text-gray-500' : 'text-gray-400')}>Student Loan</p>
+              <p className={cn('text-lg font-semibold', isRefund ? 'text-gray-900' : 'text-white')}>
+                {formatCurrency(calculation?.studentLoanToPay || 0)}
               </p>
             </div>
           )}
@@ -526,6 +553,20 @@ export function ReviewSummaryStep() {
             items={[
               { label: 'CGT at basic rate (10%/18%)', value: calculation?.cgtBasicRateTax || 0 },
               { label: 'CGT at higher rate (20%/24%)', value: calculation?.cgtHigherRateTax || 0 },
+            ].filter((i) => i.value > 0)}
+          />
+        )}
+
+        {/* Student Loan Section */}
+        {(calculation?.studentLoanToPay || 0) > 0 && (
+          <SummarySection
+            title="Student Loan Repayment"
+            total={calculation?.studentLoanToPay || 0}
+            isExpanded={expandedSections.includes('student-loan')}
+            onToggle={() => toggleSection('student-loan')}
+            items={[
+              { label: `${calculation?.studentLoanPlanType === '1' ? 'Plan 1' : calculation?.studentLoanPlanType === '2' ? 'Plan 2' : calculation?.studentLoanPlanType === '4' ? 'Plan 4' : calculation?.studentLoanPlanType === 'postgrad' ? 'Postgraduate' : 'Student loan'} repayment due`, value: calculation?.studentLoanDue || 0 },
+              { label: 'Already deducted via PAYE', value: calculation?.studentLoanDeducted || 0, isDeduction: true },
             ].filter((i) => i.value > 0)}
           />
         )}
