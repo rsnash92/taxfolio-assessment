@@ -19,6 +19,13 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 11);
 }
 
+const ASSET_TYPE_LABELS: Record<string, string> = {
+  shares: 'Shares & Investments',
+  property: 'Property',
+  crypto: 'Cryptocurrency',
+  other: 'Other Assets',
+};
+
 export function CapitalGainsDisposalsStep() {
   const { data, updateData, goNext, goBack, canGoBack } = useWizard();
 
@@ -125,6 +132,16 @@ export function CapitalGainsDisposalsStep() {
         <p className="text-gray-600">
           Enter details of each asset you sold during 2024/25.
         </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          {assetTypes.map((type) => (
+            <span
+              key={type}
+              className="text-xs px-2 py-1 bg-[#e6fafb] text-[#00858c] rounded-full"
+            >
+              {ASSET_TYPE_LABELS[type] || type}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Disposals List */}
@@ -135,7 +152,6 @@ export function CapitalGainsDisposalsStep() {
             ((disposal.acquisitionCost as number) || 0) -
             ((disposal.allowableCosts as number) || 0);
           const isGain = gainOrLoss > 0;
-          const isLoss = gainOrLoss < 0;
 
           return (
             <div
@@ -180,16 +196,17 @@ export function CapitalGainsDisposalsStep() {
                   <Label htmlFor={`type-${disposal.id}`}>Asset type</Label>
                   <select
                     id={`type-${disposal.id}`}
-                    value={disposal.assetType || 'shares'}
+                    value={disposal.assetType || assetTypes[0]}
                     onChange={(e) =>
                       updateDisposal(disposal.id!, 'assetType', e.target.value)
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   >
-                    <option value="shares">Shares & Investments</option>
-                    <option value="property">Property</option>
-                    <option value="crypto">Cryptocurrency</option>
-                    <option value="other">Other</option>
+                    {assetTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {ASSET_TYPE_LABELS[type] || type}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
