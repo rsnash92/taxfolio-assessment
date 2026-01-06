@@ -177,6 +177,14 @@ export function ReviewSummaryStep() {
       ]);
     }
 
+    // Tax Already Paid
+    if ((calculation.taxAlreadyPaid || 0) > 0) {
+      addSection('Tax Already Paid', [
+        { label: 'PAYE tax deducted', value: calculation.payeTaxDeducted || 0 },
+        { label: 'CIS deductions', value: calculation.cisDeductions || 0 },
+      ]);
+    }
+
     // Totals
     y += 5;
     doc.setDrawColor(200, 200, 200);
@@ -576,6 +584,21 @@ export function ReviewSummaryStep() {
             items={[
               { label: `${calculation?.studentLoanPlanType === '1' ? 'Plan 1' : calculation?.studentLoanPlanType === '2' ? 'Plan 2' : calculation?.studentLoanPlanType === '4' ? 'Plan 4' : calculation?.studentLoanPlanType === 'postgrad' ? 'Postgraduate' : 'Student loan'} repayment due`, value: calculation?.studentLoanDue || 0 },
               { label: 'Already deducted via PAYE', value: calculation?.studentLoanDeducted || 0, isDeduction: true },
+            ].filter((i) => i.value > 0)}
+          />
+        )}
+
+        {/* Tax Already Paid Section */}
+        {(calculation?.taxAlreadyPaid || 0) > 0 && (
+          <SummarySection
+            title="Tax Already Paid"
+            total={calculation?.taxAlreadyPaid || 0}
+            isExpanded={expandedSections.includes('tax-paid')}
+            onToggle={() => toggleSection('tax-paid')}
+            isDeduction
+            items={[
+              { label: 'PAYE tax deducted', value: calculation?.payeTaxDeducted || 0 },
+              { label: 'CIS deductions', value: calculation?.cisDeductions || 0 },
             ].filter((i) => i.value > 0)}
           />
         )}

@@ -64,6 +64,7 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   let totalExpenses = 0;
   let capitalAllowances = 0;
   let taxAlreadyPaid = 0; // Track tax already deducted at source
+  let payeTaxDeducted = 0; // Track PAYE tax specifically
 
   // Self-employment income and expenses (from all businesses)
   const selfEmploymentBusinesses = data.incomeSources.filter(
@@ -95,7 +96,9 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
       employmentIncome += toPounds(employerData.otherBenefits || 0);
       employmentIncome += toPounds(employerData.tipsReceived || 0);
       // Track tax already paid via PAYE
-      taxAlreadyPaid += toPounds(employerData.taxDeducted || 0);
+      const employerTaxDeducted = toPounds(employerData.taxDeducted || 0);
+      payeTaxDeducted += employerTaxDeducted;
+      taxAlreadyPaid += employerTaxDeducted;
       // Employment expenses
       if (employerData.claimingExpenses) {
         totalExpenses += toPounds(employerData.travelExpenses || 0);
@@ -400,25 +403,29 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
   const totalTaxDue = totalTaxBeforeCredits - section24Applied;
 
   // Calculate National Insurance (Class 2 and 4)
+  // CIS subcontractors are self-employed and must pay Class 2 and Class 4 NI
   let class2NIC = 0;
   let class4NIC = 0;
   const selfEmploymentProfit = selfEmploymentIncome - totalExpenses;
+  const cisProfit = cisIncome - cisExpenses;
+  // Combined profit for NI purposes (both self-employment and CIS are self-employed income)
+  const totalSelfEmployedProfit = selfEmploymentProfit + cisProfit;
 
-  // Class 2 NIC (if profit > small profits threshold)
-  if (selfEmploymentProfit > 6725) {
-    class2NIC = 52 * 3.45; // £3.45/week for 52 weeks
+  // Class 2 NIC (if profit > small profits threshold of £6,725)
+  if (totalSelfEmployedProfit > 6725) {
+    class2NIC = 52 * 3.45; // £3.45/week for 52 weeks = £179.40
   }
 
   // Class 4 NIC
-  if (selfEmploymentProfit > NI_RATES.lowerProfitsLimit) {
+  if (totalSelfEmployedProfit > NI_RATES.lowerProfitsLimit) {
     const profitInMainBand = Math.min(
-      selfEmploymentProfit - NI_RATES.lowerProfitsLimit,
+      totalSelfEmployedProfit - NI_RATES.lowerProfitsLimit,
       NI_RATES.upperProfitsLimit - NI_RATES.lowerProfitsLimit
     );
     class4NIC += profitInMainBand * NI_RATES.mainRate;
 
-    if (selfEmploymentProfit > NI_RATES.upperProfitsLimit) {
-      const profitAboveUpper = selfEmploymentProfit - NI_RATES.upperProfitsLimit;
+    if (totalSelfEmployedProfit > NI_RATES.upperProfitsLimit) {
+      const profitAboveUpper = totalSelfEmployedProfit - NI_RATES.upperProfitsLimit;
       class4NIC += profitAboveUpper * NI_RATES.upperRate;
     }
   }
@@ -558,6 +565,10 @@ export function calculateTaxLiability(data: WizardData): TaxCalculation {
     studentLoanDeducted: toPence(studentLoanDeducted),
     studentLoanToPay: toPence(studentLoanToPay),
     studentLoanPlanType,
+    // Tax already paid
+    payeTaxDeducted: toPence(payeTaxDeducted),
+    cisDeductions: toPence(cisDeductions),
+    taxAlreadyPaid: toPence(taxAlreadyPaid),
     // Final totals
     totalTaxDue: toPence(totalTaxDue),
     totalNICDue: toPence(totalNICDue),

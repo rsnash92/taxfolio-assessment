@@ -617,6 +617,11 @@ export interface TaxCalculation {
   studentLoanToPay: number; // Net amount to pay (due - deducted)
   studentLoanPlanType?: '1' | '2' | '4' | 'postgrad';
 
+  // Tax Already Paid
+  payeTaxDeducted: number; // PAYE tax deducted by employers
+  cisDeductions: number; // CIS tax deducted by contractors
+  taxAlreadyPaid: number; // Total tax already paid (PAYE + CIS)
+
   // Final
   totalTaxDue: number;
   totalNICDue: number;
