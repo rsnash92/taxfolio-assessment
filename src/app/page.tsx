@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { WizardProvider } from '@/providers/WizardProvider';
 import { WizardContainer } from '@/components/wizard/WizardContainer';
 import { createClient } from '@/lib/supabase/client';
 
-export default function AssessmentPage() {
+function AssessmentPageContent() {
   const searchParams = useSearchParams();
   const [userId, setUserId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +35,7 @@ export default function AssessmentPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [searchParams]);
 
   if (isLoading) {
     return (
@@ -49,5 +49,19 @@ export default function AssessmentPage() {
     <WizardProvider userId={userId} initialTaxYear={initialTaxYear}>
       <WizardContainer />
     </WizardProvider>
+  );
+}
+
+export default function AssessmentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00e3ec]"></div>
+        </div>
+      }
+    >
+      <AssessmentPageContent />
+    </Suspense>
   );
 }
