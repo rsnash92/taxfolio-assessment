@@ -62,19 +62,30 @@ interface HMRCStatus {
 interface SandboxSetupResult {
   success: boolean;
   businessId?: string;
+  mode?: string;
+  explanation?: string;
   steps: Array<{
     step: string;
-    status: 'success' | 'error' | 'skipped';
+    status: 'success' | 'error' | 'skipped' | 'info';
     message: string;
     data?: unknown;
+    category?: string;
   }>;
   summary?: {
     totalSteps: number;
     successful: number;
     errors: number;
-    skipped: number;
+    skipped?: number;
+    informational?: number;
+  };
+  categorySummary?: {
+    selfEmployment: string;
+    dividends: string;
+    savings: string;
+    calculation: string;
   };
   nextSteps?: string[];
+  notes?: string[];
   error?: string;
   hint?: string;
 }
@@ -293,6 +304,18 @@ export default function HMRCStatusPage() {
           {/* Setup Result */}
           {setupResult && (
             <div className="mt-4 pt-4 border-t border-amber-200">
+              {/* Mode indicator */}
+              {setupResult.mode && (
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                    {setupResult.mode}
+                  </span>
+                  {setupResult.explanation && (
+                    <span className="text-xs text-gray-500">{setupResult.explanation}</span>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center gap-2 mb-3">
                 {setupResult.success ? (
                   <CheckCircle className="h-5 w-5 text-green-500" />
@@ -300,30 +323,70 @@ export default function HMRCStatusPage() {
                   <XCircle className="h-5 w-5 text-red-500" />
                 )}
                 <span className={`font-medium ${setupResult.success ? 'text-green-700' : 'text-red-700'}`}>
-                  {setupResult.success ? 'Setup Complete' : 'Setup Failed'}
+                  {setupResult.success ? 'API Integration Verified' : 'Some Tests Failed'}
                 </span>
               </div>
 
-              {/* Steps */}
-              <div className="space-y-2 mb-4">
-                {setupResult.steps.map((step, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm">
-                    {step.status === 'success' ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                    ) : step.status === 'error' ? (
-                      <XCircle className="h-4 w-4 text-red-500 mt-0.5" />
-                    ) : (
-                      <Circle className="h-4 w-4 text-gray-400 mt-0.5" />
-                    )}
-                    <div>
-                      <span className="font-medium">{step.step}:</span>{' '}
-                      <span className={step.status === 'error' ? 'text-red-600' : 'text-gray-600'}>
-                        {step.message}
+              {/* Category Summary */}
+              {setupResult.categorySummary && (
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {Object.entries(setupResult.categorySummary).map(([category, status]) => (
+                    <div key={category} className="flex items-center gap-2 text-sm">
+                      {status === 'Working' ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : status === 'Error' ? (
+                        <XCircle className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      )}
+                      <span className="capitalize">{category.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                      <span className={
+                        status === 'Working' ? 'text-green-600' :
+                        status === 'Error' ? 'text-red-600' : 'text-amber-600'
+                      }>
+                        {status}
                       </span>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Steps */}
+              <details className="mb-4">
+                <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
+                  View detailed steps ({setupResult.steps.length})
+                </summary>
+                <div className="space-y-2 mt-2">
+                  {setupResult.steps.map((step, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                      {step.status === 'success' ? (
+                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
+                      ) : step.status === 'error' ? (
+                        <XCircle className="h-4 w-4 text-red-500 mt-0.5" />
+                      ) : step.status === 'info' ? (
+                        <AlertTriangle className="h-4 w-4 text-blue-500 mt-0.5" />
+                      ) : (
+                        <Circle className="h-4 w-4 text-gray-400 mt-0.5" />
+                      )}
+                      <div>
+                        <span className="font-medium">{step.step}</span>
+                        {step.category && (
+                          <span className="ml-1 px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
+                            {step.category}
+                          </span>
+                        )}
+                        <span className="mx-1">:</span>
+                        <span className={
+                          step.status === 'error' ? 'text-red-600' :
+                          step.status === 'info' ? 'text-blue-600' : 'text-gray-600'
+                        }>
+                          {step.message}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
 
               {/* Hint for errors */}
               {!setupResult.success && setupResult.hint && (
@@ -342,19 +405,26 @@ export default function HMRCStatusPage() {
               )}
 
               {/* Next Steps */}
-              {setupResult.success && setupResult.nextSteps && (
-                <div className="bg-white/50 rounded-lg p-3">
-                  <p className="text-sm font-medium text-amber-800 mb-2">Next Steps:</p>
+              {setupResult.nextSteps && setupResult.nextSteps.length > 0 && (
+                <div className="bg-white/50 rounded-lg p-3 mb-3">
+                  <p className="text-sm font-medium text-amber-800 mb-2">Results:</p>
                   <ul className="text-sm text-amber-700 space-y-1">
                     {setupResult.nextSteps.map((step, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <span className="w-5 h-5 bg-amber-200 rounded-full flex items-center justify-center text-xs font-medium">
-                          {i + 1}
-                        </span>
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-0.5">•</span>
                         {step}
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Notes */}
+              {setupResult.notes && setupResult.notes.length > 0 && (
+                <div className="text-xs text-gray-500 space-y-1">
+                  {setupResult.notes.map((note, i) => (
+                    <p key={i}>ℹ️ {note}</p>
+                  ))}
                 </div>
               )}
             </div>
