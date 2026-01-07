@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   CheckCircle2,
@@ -10,15 +11,71 @@ import {
   Loader2,
   Shield,
   FileCheck,
+  Link2,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
 export function ReviewSubmitStep() {
   const { data, updateData, goNext } = useWizard();
+  const searchParams = useSearchParams();
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(true);
+  const [isHmrcConnected, setIsHmrcConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check HMRC connection status on mount and after OAuth callback
+  useEffect(() => {
+    const checkHmrcConnection = async () => {
+      setIsCheckingConnection(true);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+          setIsHmrcConnected(false);
+          return;
+        }
+
+        // Check if user has HMRC tokens
+        const { data: tokens } = await supabase
+          .from('hmrc_tokens')
+          .select('expires_at')
+          .eq('user_id', user.id)
+          .single();
+
+        setIsHmrcConnected(!!tokens);
+      } catch {
+        setIsHmrcConnected(false);
+      } finally {
+        setIsCheckingConnection(false);
+      }
+    };
+
+    checkHmrcConnection();
+
+    // Check for OAuth callback params
+    const hmrcConnected = searchParams.get('hmrc_connected');
+    const hmrcError = searchParams.get('hmrc_error');
+
+    if (hmrcConnected === 'true') {
+      setIsHmrcConnected(true);
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    if (hmrcError) {
+      setError(`HMRC connection failed: ${hmrcError}`);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [searchParams]);
+
+  const handleConnectHmrc = () => {
+    // Redirect to HMRC OAuth flow
+    window.location.href = '/api/hmrc/auth';
+  };
 
   const handleSubmit = async () => {
     if (!declarationAccepted) return;
@@ -51,6 +108,10 @@ export function ReviewSubmitStep() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Check if it's a connection error
+        if (result.error?.includes('HMRC not connected')) {
+          setIsHmrcConnected(false);
+        }
         setError(result.error || 'Submission failed. Please try again.');
         return;
       }
@@ -119,6 +180,47 @@ export function ReviewSubmitStep() {
         </p>
       </div>
 
+      {/* HMRC Connection Status */}
+      {isCheckingConnection ? (
+        <div className="bg-gray-50 rounded-xl p-6 mb-8 flex items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-gray-400 mr-2" />
+          <span className="text-gray-600">Checking HMRC connection...</span>
+        </div>
+      ) : !isHmrcConnected ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Link2 className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-gray-900 mb-1">
+                Connect Your HMRC Account
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                To submit your tax return, you need to connect your HMRC Government Gateway account.
+                This allows us to submit your return directly to HMRC on your behalf.
+              </p>
+              <Button
+                onClick={handleConnectHmrc}
+                className="bg-[#00703c] hover:bg-[#005a30] text-white"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Connect to HMRC
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-8">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <span className="text-sm text-green-800 font-medium">
+              HMRC account connected
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Summary Card */}
       <div className="bg-gray-50 rounded-xl p-6 mb-8">
         <h3 className="font-medium text-gray-900 mb-4">Submission Summary</h3>
@@ -137,7 +239,7 @@ export function ReviewSubmitStep() {
             <span className="text-gray-600">Total Income</span>
             <span className="text-gray-900 font-medium">
               £
-              {(data.taxCalculation?.totalIncome || 0).toLocaleString('en-GB', {
+              {((data.taxCalculation?.totalIncome || 0) / 100).toLocaleString('en-GB', {
                 minimumFractionDigits: 2,
               })}
             </span>
@@ -146,7 +248,7 @@ export function ReviewSubmitStep() {
             <span className="text-gray-600">Tax Due</span>
             <span className="text-gray-900 font-medium">
               £
-              {(data.taxCalculation?.totalDue || 0).toLocaleString('en-GB', {
+              {((data.taxCalculation?.totalDue || 0) / 100).toLocaleString('en-GB', {
                 minimumFractionDigits: 2,
               })}
             </span>
@@ -202,10 +304,10 @@ export function ReviewSubmitStep() {
       {/* Submit Button */}
       <Button
         onClick={handleSubmit}
-        disabled={!declarationAccepted || isSubmitting}
+        disabled={!declarationAccepted || isSubmitting || !isHmrcConnected}
         className={cn(
           'w-full py-6 text-lg font-medium',
-          declarationAccepted
+          declarationAccepted && isHmrcConnected
             ? 'bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]'
             : 'bg-gray-300 cursor-not-allowed'
         )}
