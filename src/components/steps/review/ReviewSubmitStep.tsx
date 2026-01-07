@@ -126,7 +126,10 @@ export function ReviewSubmitStep() {
   };
 
   const handleSubmit = async () => {
-    if (!declarationAccepted) return;
+    // Prevent submission if conditions aren't met
+    if (!declarationAccepted || isSubmitting || !isHmrcConnected || isCheckingConnection) {
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -492,10 +495,10 @@ export function ReviewSubmitStep() {
       {/* Submit Button */}
       <Button
         onClick={handleSubmit}
-        disabled={!declarationAccepted || isSubmitting || !isHmrcConnected}
+        disabled={!declarationAccepted || isSubmitting || !isHmrcConnected || isCheckingConnection}
         className={cn(
           'w-full py-6 text-lg font-medium',
-          declarationAccepted && isHmrcConnected
+          declarationAccepted && isHmrcConnected && !isCheckingConnection
             ? 'bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]'
             : 'bg-gray-300 cursor-not-allowed'
         )}

@@ -1353,16 +1353,71 @@ const VALIDATION_RULES = {
 
 ## Testing
 
+**Official HMRC Testing Docs:** https://developer.service.hmrc.gov.uk/api-documentation/docs/testing
+
 ### Sandbox Environment
 
 ```
 Base URL: https://test-api.service.hmrc.gov.uk
 ```
 
-### Gov-Test-Scenarios
+### Stateful vs Dynamic (Stateless) Testing
+
+The HMRC Sandbox has two types of behaviour:
+
+#### Dynamic (Stateless) Scenarios
+- Respond based on submitted parameters (NINO, tax year)
+- Data is **NOT stored** for future requests
+- Does not affect the behaviour of other endpoints
+- Use `Gov-Test-Scenario` headers to trigger specific responses
+
+#### Stateful Scenarios
+- Data **persists for 7 days** after submission
+- Allows testing complete workflows across related APIs
+- Must create test data before it can be retrieved
+- Use `Gov-Test-Scenario: STATEFUL` header to enable
+
+**Important:** Many "resource not found" errors in sandbox occur because:
+1. The test user has no pre-registered businesses
+2. You haven't submitted data to the stateful endpoint first
+3. The test data expired (7-day limit)
+
+### Setting Up Test Data for Full Workflow
+
+To test a complete Self-Employment or Property submission journey:
+
+```
+1. Create Test User (generates NINO, UTR automatically)
+   ↓
+2. Register a Business (Self-Employment or Property)
+   POST /individuals/business/details/{nino}
+   with Gov-Test-Scenario: STATEFUL
+   ↓
+3. Submit Period Summaries (quarterly)
+   POST /individuals/business/self-employment/{nino}/{businessId}/period/{taxYear}
+   ↓
+4. Submit Annual Submission
+   PUT /individuals/business/self-employment/{nino}/{businessId}/annual/{taxYear}
+   ↓
+5. Trigger Tax Calculation
+   POST /individuals/calculations/self-assessment/{nino}/{taxYear}/final-declaration
+   ↓
+6. Retrieve Calculation (use returned calculationId)
+   GET /individuals/calculations/self-assessment/{nino}/self-assessment/{taxYear}/{calculationId}
+   ↓
+7. Submit Final Declaration
+   POST /individuals/calculations/self-assessment/{nino}/{taxYear}/{calculationId}/final-declaration
+```
+
+### Gov-Test-Scenario Headers
+
+Pass via HTTP header: `Gov-Test-Scenario: <SCENARIO_NAME>`
 
 ```typescript
 const GOV_TEST_SCENARIOS = {
+  // Stateful mode (data persists)
+  'STATEFUL': 'Enable stateful mode - data persists for 7 days',
+
   // Self Employment
   'SELF_EMPLOYMENT': 'Default self-employment data',
   'SELF_EMPLOYMENT_MULTIPLE': 'Multiple self-employments',
@@ -1371,22 +1426,60 @@ const GOV_TEST_SCENARIOS = {
   'UK_PROPERTY': 'UK property data',
   'FOREIGN_PROPERTY': 'Foreign property data',
 
+  // Business Details - use specific NINOs for pre-seeded data
+  'DYNAMIC': 'Uses the submitted data (stateless)',
+
   // Calculations
   'TAX_CALCULATION': 'Full calculation response',
   'TAX_CALCULATION_ERROR': 'Calculation with errors',
+  'TAX_CALCULATION_UNCONFIRMED': 'Unconfirmed calculation',
 
   // Final Declaration
   'FINAL_DECLARATION_ACCEPTED': 'Successful submission',
   'FINAL_DECLARATION_TAX_YEAR_NOT_ENDED': 'Tax year not ended error',
+
+  // Error scenarios
+  'NOT_FOUND': 'Resource not found (404)',
+  'TAX_YEAR_NOT_SUPPORTED': 'Tax year not valid',
+  'RULE_INCORRECT_GOV_TEST_SCENARIO': 'Invalid scenario header',
 };
 ```
 
 ### Test Users
 
-Create test users via: https://developer.service.hmrc.gov.uk/api-test-user
+**Create test users via:** https://developer.service.hmrc.gov.uk/api-test-user
 
-Required grant types:
+Or use the **Create Test User API** for automated testing.
+
+Required enrolments:
 - `MTD Income Tax (Self Assessment)`
+
+**Important notes:**
+- Test users inactive for **3 months** are automatically deleted
+- Tax identifiers (NINO, UTR) are auto-generated - cannot be customized
+- Each test user starts with no pre-existing data
+- To "reset" test data, create a new test user
+
+### Common Sandbox Errors and Solutions
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `MATCHING_RESOURCE_NOT_FOUND` | No business registered | Register business first with POST to business details API |
+| `NOT_FOUND` (404) | No data submitted | Submit period/annual data before retrieving |
+| `NOT_SUBSCRIBED` | Missing API subscription | Subscribe app to required APIs in Developer Hub |
+| `RULE_TAX_YEAR_NOT_SUPPORTED` | Tax year out of range | Use current or recent tax years (2021-22 onwards) |
+| `INVALID_NINO` | Wrong NINO format | Use test user's generated NINO exactly |
+
+### Sandbox vs Production Differences
+
+| Aspect | Sandbox | Production |
+|--------|---------|------------|
+| Base URL | test-api.service.hmrc.gov.uk | api.service.hmrc.gov.uk |
+| Data persistence | 7 days | Permanent |
+| Pre-populated data | None (must create) | Real taxpayer data |
+| 2-step verification | Skipped | Required |
+| Identity checks | Skipped | Required |
+| Rate limiting | Relaxed | Strict |
 
 ---
 

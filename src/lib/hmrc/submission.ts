@@ -139,7 +139,13 @@ export async function submitSelfAssessment(
     message?: string,
     data?: unknown
   ) => {
-    result.steps.push({ name, status, message, data });
+    // Find existing step with same name and update it, or add new
+    const existingIndex = result.steps.findIndex(s => s.name === name);
+    if (existingIndex >= 0) {
+      result.steps[existingIndex] = { name, status, message, data };
+    } else {
+      result.steps.push({ name, status, message, data });
+    }
 
     // Log to database (async, don't await to avoid blocking)
     if (status === 'skipped') {
@@ -221,12 +227,13 @@ export async function submitSelfAssessment(
         const summary = calculateSelfEmploymentSummary(
           wizardData.selfEmploymentData as Record<string, Partial<SelfEmploymentBusiness>>
         );
-        addStep(
-          'Self-Employment Income',
-          selfEmploymentResult.submitted.length > 0 ? 'completed' : 'error',
-          `${selfEmploymentResult.submitted.length} business(es), £${summary.totalProfit.toFixed(2)} profit`,
-          summary
-        );
+        const stepStatus = selfEmploymentResult.submitted.length > 0 ? 'completed' : 'error';
+        const stepMessage = selfEmploymentResult.submitted.length > 0
+          ? `${selfEmploymentResult.submitted.length} business(es) submitted, £${summary.totalProfit.toFixed(2)} profit`
+          : selfEmploymentResult.errors.length > 0
+            ? selfEmploymentResult.errors[0].error
+            : 'Failed to submit';
+        addStep('Self-Employment Income', stepStatus, stepMessage, summary);
       } catch (error) {
         addStep('Self-Employment Income', 'error', error instanceof Error ? error.message : 'Unknown error');
         result.errors.push(`Self-Employment: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -255,12 +262,13 @@ export async function submitSelfAssessment(
         const summary = calculatePropertySummary(
           wizardData.rentalData as Record<string, Partial<RentalProperty>>
         );
-        addStep(
-          'Rental Income',
-          propertyResult.submitted.length > 0 ? 'completed' : 'error',
-          `${propertyResult.submitted.length} property(ies), £${summary.totalProfit.toFixed(2)} profit`,
-          summary
-        );
+        const stepStatus = propertyResult.submitted.length > 0 ? 'completed' : 'error';
+        const stepMessage = propertyResult.submitted.length > 0
+          ? `${propertyResult.submitted.length} property(ies) submitted, £${summary.totalProfit.toFixed(2)} profit`
+          : propertyResult.errors.length > 0
+            ? propertyResult.errors[0].error
+            : 'Failed to submit';
+        addStep('Rental Income', stepStatus, stepMessage, summary);
       } catch (error) {
         addStep('Rental Income', 'error', error instanceof Error ? error.message : 'Unknown error');
         result.errors.push(`Rental Income: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -414,8 +422,11 @@ export async function submitSelfAssessment(
           result.warnings.push(`Capital Gains: ${cgtResult.error}`);
         }
         const summary = calculateDisposalsSummary(wizardData.capitalGainsData.disposals);
-        addStep('Capital Gains', cgtResult.submitted ? 'completed' : 'skipped',
-          `${summary.numberOfDisposals} disposals`, summary);
+        const cgtStatus = cgtResult.submitted ? 'completed' : cgtResult.error ? 'error' : 'skipped';
+        const cgtMessage = cgtResult.submitted
+          ? `${summary.numberOfDisposals} disposal(s) submitted, £${summary.totalGains.toFixed(2)} gains`
+          : cgtResult.error || 'No data to submit';
+        addStep('Capital Gains', cgtStatus, cgtMessage, summary);
       } catch (error) {
         addStep('Capital Gains', 'error', error instanceof Error ? error.message : 'Unknown error');
         result.errors.push(`Capital Gains: ${error instanceof Error ? error.message : 'Unknown error'}`);

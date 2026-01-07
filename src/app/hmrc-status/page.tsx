@@ -15,6 +15,9 @@ import {
   PiggyBank,
   TrendingUp,
   Calculator,
+  Wrench,
+  CheckCircle,
+  Circle,
 } from 'lucide-react';
 
 interface HMRCStatus {
@@ -56,6 +59,25 @@ interface HMRCStatus {
   sandboxWarnings: string[];
 }
 
+interface SandboxSetupResult {
+  success: boolean;
+  businessId?: string;
+  steps: Array<{
+    step: string;
+    status: 'success' | 'error' | 'skipped';
+    message: string;
+    data?: unknown;
+  }>;
+  summary?: {
+    totalSteps: number;
+    successful: number;
+    errors: number;
+    skipped: number;
+  };
+  nextSteps?: string[];
+  error?: string;
+}
+
 export default function HMRCStatusPage() {
   const [nino, setNino] = useState('');
   const [taxYear, setTaxYear] = useState('2024-25');
@@ -63,6 +85,8 @@ export default function HMRCStatusPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [setupResult, setSetupResult] = useState<SandboxSetupResult | null>(null);
 
   // Load NINO from wizard progress on mount
   useEffect(() => {
@@ -117,6 +141,47 @@ export default function HMRCStatusPage() {
       setError(err instanceof Error ? err.message : 'Failed to fetch status');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const setupSandboxData = async () => {
+    if (!nino) {
+      setError('Please enter your NINO first');
+      return;
+    }
+
+    setSetupLoading(true);
+    setSetupResult(null);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/hmrc/sandbox/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nino,
+          taxYear,
+          businessName: 'Test Business',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to setup sandbox data');
+        return;
+      }
+
+      setSetupResult(data);
+
+      // Refresh status after setup
+      if (data.success) {
+        setTimeout(() => fetchStatus(), 1000);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to setup sandbox data');
+    } finally {
+      setSetupLoading(false);
     }
   };
 
@@ -189,6 +254,92 @@ export default function HMRCStatusPage() {
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
               <XCircle className="h-5 w-5" />
               {error}
+            </div>
+          )}
+        </div>
+
+        {/* Sandbox Setup */}
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-amber-100 rounded-lg">
+              <Wrench className="h-6 w-6 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-amber-900 mb-1">
+                Sandbox Test Data Setup
+              </h2>
+              <p className="text-sm text-amber-700 mb-4">
+                Set up test data in the HMRC sandbox to test the full submission flow.
+                This creates a self-employment business with sample income and expenses.
+                Data persists for 7 days.
+              </p>
+              <Button
+                onClick={setupSandboxData}
+                disabled={setupLoading || !nino}
+                variant="outline"
+                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+              >
+                {setupLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Wrench className="h-4 w-4 mr-2" />
+                )}
+                Setup Test Data
+              </Button>
+            </div>
+          </div>
+
+          {/* Setup Result */}
+          {setupResult && (
+            <div className="mt-4 pt-4 border-t border-amber-200">
+              <div className="flex items-center gap-2 mb-3">
+                {setupResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-500" />
+                )}
+                <span className={`font-medium ${setupResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                  {setupResult.success ? 'Setup Complete' : 'Setup Failed'}
+                </span>
+              </div>
+
+              {/* Steps */}
+              <div className="space-y-2 mb-4">
+                {setupResult.steps.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    {step.status === 'success' ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
+                    ) : step.status === 'error' ? (
+                      <XCircle className="h-4 w-4 text-red-500 mt-0.5" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-gray-400 mt-0.5" />
+                    )}
+                    <div>
+                      <span className="font-medium">{step.step}:</span>{' '}
+                      <span className={step.status === 'error' ? 'text-red-600' : 'text-gray-600'}>
+                        {step.message}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Next Steps */}
+              {setupResult.success && setupResult.nextSteps && (
+                <div className="bg-white/50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-amber-800 mb-2">Next Steps:</p>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    {setupResult.nextSteps.map((step, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <span className="w-5 h-5 bg-amber-200 rounded-full flex items-center justify-center text-xs font-medium">
+                          {i + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
