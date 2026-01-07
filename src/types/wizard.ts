@@ -637,6 +637,7 @@ export interface SubmissionData {
   status: 'pending' | 'submitted' | 'accepted' | 'rejected';
   submittedAt?: string;
   hmrcReferenceNumber?: string;
+  calculationId?: string;
   declarationAccepted: boolean;
   declarationTimestamp?: string;
 }

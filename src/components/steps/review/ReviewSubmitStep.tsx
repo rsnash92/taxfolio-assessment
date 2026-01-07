@@ -12,6 +12,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 export function ReviewSubmitStep() {
   const { data, updateData, goNext } = useWizard();
@@ -26,25 +27,53 @@ export function ReviewSubmitStep() {
     setError(null);
 
     try {
-      // Simulate HMRC submission
-      // In production, this would call the HMRC API via our backend
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Get user ID
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
 
-      // Generate a mock reference number
-      const referenceNumber = `TF${Date.now().toString().slice(-10)}`;
+      if (!user) {
+        setError('You must be logged in to submit.');
+        return;
+      }
 
-      updateData({
-        submission: {
-          status: 'submitted',
-          submittedAt: new Date().toISOString(),
-          hmrcReferenceNumber: referenceNumber,
-          declarationAccepted: true,
-          declarationTimestamp: new Date().toISOString(),
-        },
+      // Call the HMRC submission API
+      const response = await fetch('/api/hmrc/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          nino: data.personalInfo?.nino,
+          taxYear: data.taxYear || '2024-25',
+          wizardData: data,
+        }),
       });
 
-      goNext();
-    } catch {
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || 'Submission failed. Please try again.');
+        return;
+      }
+
+      if (result.success) {
+        updateData({
+          submission: {
+            status: 'submitted',
+            submittedAt: new Date().toISOString(),
+            hmrcReferenceNumber: result.hmrcReferenceNumber || result.calculationId,
+            calculationId: result.calculationId,
+            declarationAccepted: true,
+            declarationTimestamp: new Date().toISOString(),
+          },
+        });
+
+        goNext();
+      } else {
+        const errorMessage = result.errors?.join(', ') || 'Submission failed';
+        setError(errorMessage);
+      }
+    } catch (err) {
+      console.error('Submission error:', err);
       setError('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
