@@ -207,7 +207,7 @@ export default function HMRCStatusPage() {
                   {status.connected ? 'Connected to HMRC' : 'Not Connected'}
                 </h2>
               </div>
-              {status.errors.length > 0 && (
+              {status.errors && status.errors.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {status.errors.map((err, i) => (
                     <div key={i} className="flex items-center gap-2 text-amber-700 text-sm">
@@ -225,7 +225,7 @@ export default function HMRCStatusPage() {
                 <Building2 className="h-6 w-6 text-gray-400" />
                 <h2 className="text-lg font-semibold">Registered Businesses</h2>
               </div>
-              {status.businesses.length === 0 ? (
+              {!status.businesses || status.businesses.length === 0 ? (
                 <p className="text-gray-500">No businesses registered with HMRC</p>
               ) : (
                 <div className="space-y-3">
@@ -246,7 +246,7 @@ export default function HMRCStatusPage() {
             </div>
 
             {/* Self-Employment */}
-            {status.selfEmployment.length > 0 && (
+            {status.selfEmployment && status.selfEmployment.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <Briefcase className="h-6 w-6 text-blue-500" />
@@ -305,7 +305,7 @@ export default function HMRCStatusPage() {
             )}
 
             {/* Employment */}
-            {status.employment.length > 0 && (
+            {status.employment && status.employment.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <Briefcase className="h-6 w-6 text-purple-500" />
@@ -366,7 +366,7 @@ export default function HMRCStatusPage() {
                 <Calculator className="h-6 w-6 text-indigo-500" />
                 <h2 className="text-lg font-semibold">Tax Calculations</h2>
               </div>
-              {status.calculations.length === 0 ? (
+              {!status.calculations || status.calculations.length === 0 ? (
                 <p className="text-gray-500">No calculations triggered</p>
               ) : (
                 <div className="space-y-3">
@@ -381,7 +381,7 @@ export default function HMRCStatusPage() {
                           {new Date(calc.calculationTimestamp).toLocaleString()}
                         </p>
                       </div>
-                      <code className="text-xs text-gray-400">{calc.calculationId.slice(0, 8)}...</code>
+                      <code className="text-xs text-gray-400">{calc.calculationId?.slice(0, 8)}...</code>
                     </div>
                   ))}
                 </div>
