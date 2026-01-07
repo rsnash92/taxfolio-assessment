@@ -41,12 +41,13 @@ export async function POST(request: NextRequest) {
 
     const steps: Array<{ step: string; status: 'success' | 'error' | 'skipped'; message: string; data?: unknown }> = [];
 
-    // Step 1: Get business ID using SELF_EMPLOYMENT scenario
-    // In sandbox, we use Gov-Test-Scenario headers to get pre-seeded test data
+    // Step 1: Get business ID from HMRC
+    // In sandbox, test users with MTD ITSA enrolment should have pre-registered businesses
     let businessId: string | null = null;
+    let allBusinesses: Array<{ businessId: string; typeOfBusiness: string; tradingName?: string }> = [];
 
-    // First try STATEFUL mode to check for existing businesses
     try {
+      // Use STATEFUL mode to get businesses (only valid scenario for Business Details API)
       const businessesResponse = await hmrcClient.get<{
         listOfBusinesses: Array<{
           businessId: string;
@@ -57,7 +58,8 @@ export async function POST(request: NextRequest) {
         govTestScenario: 'STATEFUL',
       });
 
-      const selfEmploymentBusiness = businessesResponse.listOfBusinesses?.find(
+      allBusinesses = businessesResponse.listOfBusinesses || [];
+      const selfEmploymentBusiness = allBusinesses.find(
         (b) => b.typeOfBusiness === 'self-employment'
       );
 
@@ -66,65 +68,64 @@ export async function POST(request: NextRequest) {
         steps.push({
           step: 'Get business ID',
           status: 'success',
-          message: `Found existing business: ${selfEmploymentBusiness.tradingName || 'Unnamed'}`,
-          data: { businessId },
+          message: `Found self-employment business: ${selfEmploymentBusiness.tradingName || businessId}`,
+          data: { businessId, allBusinesses },
         });
-      }
-    } catch {
-      // No stateful businesses found, try scenario-based
-    }
-
-    // If no stateful business, try SELF_EMPLOYMENT scenario for pre-seeded data
-    if (!businessId) {
-      try {
-        const scenarioResponse = await hmrcClient.get<{
-          listOfBusinesses: Array<{
-            businessId: string;
-            typeOfBusiness: string;
-            tradingName?: string;
-          }>;
-        }>(user.id, `/individuals/business/details/${cleanNino}/list`, {
-          govTestScenario: 'SELF_EMPLOYMENT',
-        });
-
-        const selfEmploymentBusiness = scenarioResponse.listOfBusinesses?.find(
-          (b) => b.typeOfBusiness === 'self-employment'
-        );
-
-        if (selfEmploymentBusiness) {
-          businessId = selfEmploymentBusiness.businessId;
-          steps.push({
-            step: 'Get business ID',
-            status: 'success',
-            message: `Using pre-seeded sandbox business: ${selfEmploymentBusiness.tradingName || businessId}`,
-            data: { businessId, scenario: 'SELF_EMPLOYMENT' },
-          });
-        }
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      } else if (allBusinesses.length > 0) {
+        // Has businesses but none are self-employment
         steps.push({
           step: 'Get business ID',
           status: 'error',
-          message: `Could not get business ID. The test user may need MTD ITSA enrolment. Error: ${errorMsg}`,
+          message: `Found ${allBusinesses.length} business(es) but none are self-employment type. Found: ${allBusinesses.map(b => b.typeOfBusiness).join(', ')}`,
+          data: { allBusinesses },
         });
         return NextResponse.json({
           success: false,
           steps,
-          error: 'Failed to get business ID - ensure test user has MTD Income Tax enrolment',
+          error: 'No self-employment business found. Your test user may only have property business enrolment.',
+          hint: 'Create a new test user at developer.service.hmrc.gov.uk/api-test-user and ensure you select "MTD Income Tax" with self-employment.',
+        });
+      } else {
+        // No businesses at all
+        steps.push({
+          step: 'Get business ID',
+          status: 'error',
+          message: 'No businesses registered for this test user.',
+        });
+        return NextResponse.json({
+          success: false,
+          steps,
+          error: 'No businesses found for this NINO.',
+          hint: 'Test users need to be created with MTD Income Tax (Self Assessment) enrolment. Create one at developer.service.hmrc.gov.uk/api-test-user',
         });
       }
-    }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
 
-    if (!businessId) {
+      // Check for specific error types
+      if (errorMsg.includes('MATCHING_RESOURCE_NOT_FOUND') || errorMsg.includes('NOT_FOUND')) {
+        steps.push({
+          step: 'Get business ID',
+          status: 'error',
+          message: 'No businesses registered. The test user needs MTD ITSA enrolment with a self-employment business.',
+        });
+        return NextResponse.json({
+          success: false,
+          steps,
+          error: 'Test user has no registered businesses',
+          hint: 'Create a new test user at developer.service.hmrc.gov.uk/api-test-user. Select "MTD Income Tax" and choose self-employment as the business type.',
+        });
+      }
+
       steps.push({
         step: 'Get business ID',
         status: 'error',
-        message: 'No business ID available. Try creating a new test user with MTD ITSA enrolment.',
+        message: `Failed to retrieve businesses: ${errorMsg}`,
       });
       return NextResponse.json({
         success: false,
         steps,
-        error: 'No business ID available',
+        error: errorMsg,
       });
     }
 

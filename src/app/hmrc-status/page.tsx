@@ -76,6 +76,7 @@ interface SandboxSetupResult {
   };
   nextSteps?: string[];
   error?: string;
+  hint?: string;
 }
 
 export default function HMRCStatusPage() {
@@ -323,6 +324,22 @@ export default function HMRCStatusPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Hint for errors */}
+              {!setupResult.success && setupResult.hint && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm font-medium text-blue-800 mb-1">💡 How to fix:</p>
+                  <p className="text-sm text-blue-700">{setupResult.hint}</p>
+                  <a
+                    href="https://developer.service.hmrc.gov.uk/api-test-user"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mt-2"
+                  >
+                    Create Test User →
+                  </a>
+                </div>
+              )}
 
               {/* Next Steps */}
               {setupResult.success && setupResult.nextSteps && (
