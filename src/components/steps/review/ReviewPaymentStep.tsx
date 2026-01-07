@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,22 @@ import {
   Lock,
   X,
   Star,
+  CreditCard,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
+
+// Initialize Stripe
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
 
 // Lite plan eligibility criteria
 const LITE_LIMITS = {
@@ -25,6 +39,117 @@ const LITE_LIMITS = {
   // Complex income types that require Pro
   complexIncomeTypes: ['capital-gains', 'rental', 'cis'],
 };
+
+// Stripe Payment Form Component
+function StripePaymentForm({
+  clientSecret,
+  pricing,
+  selectedPlan,
+  appliedDiscount,
+  onSuccess,
+  onError,
+}: {
+  clientSecret: string;
+  pricing: { finalPrice: number; discountAmount: number } | null;
+  selectedPlan: string;
+  appliedDiscount: string | null;
+  onSuccess: (paymentIntentId: string) => void;
+  onError: (message: string) => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.href,
+      },
+      redirect: 'if_required',
+    });
+
+    if (error) {
+      setErrorMessage(error.message || 'Payment failed');
+      onError(error.message || 'Payment failed');
+      setIsProcessing(false);
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      onSuccess(paymentIntent.id);
+    } else {
+      setErrorMessage('Payment was not completed');
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <CreditCard className="h-5 w-5 text-gray-600" />
+          <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
+            Payment Details
+          </h3>
+        </div>
+        <PaymentElement
+          options={{
+            layout: 'tabs',
+          }}
+        />
+      </div>
+
+      {errorMessage && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Security Note */}
+      <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-500">
+        <Shield className="h-4 w-4" />
+        <span>
+          You&apos;ll review your return before it&apos;s submitted to HMRC.
+        </span>
+      </div>
+
+      {/* Pay Button */}
+      <div className="flex justify-center">
+        <Button
+          type="submit"
+          disabled={isProcessing || !stripe || !elements}
+          className="w-full sm:w-auto bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg"
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Processing...
+            </>
+          ) : (
+            <>
+              Pay {formatCurrency(pricing?.finalPrice || 0)}
+              <ChevronRight className="h-5 w-5 ml-2" />
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Payment Methods Note */}
+      <p className="text-center text-[10px] sm:text-xs text-gray-400">
+        Secure payment powered by Stripe. We accept all major credit and debit
+        cards.
+      </p>
+    </form>
+  );
+}
 
 export function ReviewPaymentStep() {
   const { data, updateData, goNext } = useWizard();
@@ -64,7 +189,13 @@ export function ReviewPaymentStep() {
   const [appliedDiscount, setAppliedDiscount] = useState<string | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [showDiscountInput, setShowDiscountInput] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Stripe state
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   const pricing = calculatePrice(selectedPlan, appliedDiscount || undefined);
 
@@ -75,18 +206,54 @@ export function ReviewPaymentStep() {
     if (PRICING.discountCodes[code]) {
       setAppliedDiscount(code);
       setShowDiscountInput(false);
+      // Reset payment intent when discount changes
+      setClientSecret(null);
+      setShowPaymentForm(false);
     } else {
       setDiscountError('Invalid discount code');
     }
   };
 
-  const handlePayment = async () => {
-    setIsProcessing(true);
+  // Reset payment intent when plan changes
+  useEffect(() => {
+    setClientSecret(null);
+    setShowPaymentForm(false);
+  }, [selectedPlan]);
 
-    // Simulate payment processing
-    // In production, this would integrate with Stripe
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  const createPaymentIntent = async () => {
+    setIsCreatingIntent(true);
+    setStripeError(null);
 
+    try {
+      const response = await fetch('/api/payment/create-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: selectedPlan,
+          discountCode: appliedDiscount,
+          // email can be passed if available from auth context
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create payment');
+      }
+
+      setClientSecret(result.clientSecret);
+      setPaymentIntentId(result.paymentIntentId);
+      setShowPaymentForm(true);
+    } catch (error) {
+      setStripeError(
+        error instanceof Error ? error.message : 'Failed to initialize payment'
+      );
+    } finally {
+      setIsCreatingIntent(false);
+    }
+  };
+
+  const handlePaymentSuccess = (intentId: string) => {
     updateData({
       payment: {
         status: 'paid',
@@ -94,12 +261,16 @@ export function ReviewPaymentStep() {
         amount: pricing?.finalPrice || 0,
         discountCode: appliedDiscount || undefined,
         discountAmount: pricing?.discountAmount || 0,
+        stripePaymentIntentId: intentId,
         paidAt: new Date().toISOString(),
       },
     });
 
-    setIsProcessing(false);
     goNext();
+  };
+
+  const handlePaymentError = (message: string) => {
+    setStripeError(message);
   };
 
   // If already paid, show success and continue
@@ -404,7 +575,11 @@ export function ReviewPaymentStep() {
                 </span>
               </div>
               <button
-                onClick={() => setAppliedDiscount(null)}
+                onClick={() => {
+                  setAppliedDiscount(null);
+                  setClientSecret(null);
+                  setShowPaymentForm(false);
+                }}
                 className="text-xs sm:text-sm text-gray-500 hover:text-gray-700"
               >
                 Remove
@@ -440,39 +615,79 @@ export function ReviewPaymentStep() {
           </div>
         </div>
 
-        {/* Security Note */}
-        <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-500 mb-6 sm:mb-8">
-          <Shield className="h-4 w-4" />
-          <span>
-            You&apos;ll review your return before it&apos;s submitted to HMRC.
-          </span>
-        </div>
+        {/* Stripe Error */}
+        {stripeError && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-6">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {stripeError}
+          </div>
+        )}
 
-        {/* Pay Button */}
-        <div className="flex justify-center">
-          <Button
-            onClick={handlePayment}
-            disabled={isProcessing}
-            className="w-full sm:w-auto bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg"
+        {/* Payment Section */}
+        {showPaymentForm && clientSecret ? (
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: 'stripe',
+                variables: {
+                  colorPrimary: '#00e3ec',
+                  colorBackground: '#ffffff',
+                  colorText: '#1f2937',
+                  colorDanger: '#ef4444',
+                  fontFamily: 'system-ui, sans-serif',
+                  borderRadius: '8px',
+                },
+              },
+            }}
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Processing...
-              </>
-            ) : (
-              <>
-                Pay {formatCurrency(pricing?.finalPrice || 0)}
-                <ChevronRight className="h-5 w-5 ml-2" />
-              </>
-            )}
-          </Button>
-        </div>
+            <StripePaymentForm
+              clientSecret={clientSecret}
+              pricing={pricing}
+              selectedPlan={selectedPlan}
+              appliedDiscount={appliedDiscount}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
+          </Elements>
+        ) : (
+          <>
+            {/* Security Note */}
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-500 mb-6 sm:mb-8">
+              <Shield className="h-4 w-4" />
+              <span>
+                You&apos;ll review your return before it&apos;s submitted to HMRC.
+              </span>
+            </div>
 
-        {/* Payment Methods Note */}
-        <p className="text-center text-[10px] sm:text-xs text-gray-400 mt-3 sm:mt-4">
-          Secure payment powered by Stripe. We accept all major credit and debit
-          cards.
-        </p>
+            {/* Continue to Payment Button */}
+            <div className="flex justify-center">
+              <Button
+                onClick={createPaymentIntent}
+                disabled={isCreatingIntent}
+                className="w-full sm:w-auto bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155] px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg"
+              >
+                {isCreatingIntent ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Loading...
+                  </>
+                ) : (
+                  <>
+                    Continue to Payment
+                    <ChevronRight className="h-5 w-5 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Payment Methods Note */}
+            <p className="text-center text-[10px] sm:text-xs text-gray-400 mt-3 sm:mt-4">
+              Secure payment powered by Stripe. We accept all major credit and debit
+              cards.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

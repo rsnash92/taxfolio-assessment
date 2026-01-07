@@ -87,9 +87,11 @@ const WizardContext = createContext<WizardContextType | undefined>(undefined);
 export function WizardProvider({
   children,
   userId,
+  initialTaxYear,
 }: {
   children: ReactNode;
   userId?: string;
+  initialTaxYear?: string;
 }) {
   const [currentStep, setCurrentStep] = useState<StepId>('residency');
   const [currentBusinessId, setCurrentBusinessId] = useState<string | null>(null);
@@ -144,10 +146,13 @@ export function WizardProvider({
       let savedBusinessId: string | null = null;
       let savedPropertyId: string | null = null;
 
-      // Try to load from database if user is authenticated (default to 2024-25)
+      // Determine which tax year to load (from URL param or default to 2024-25)
+      const taxYearToLoad = initialTaxYear || '2024-25';
+
+      // Try to load from database if user is authenticated
       if (userId) {
         try {
-          const response = await fetch('/api/wizard-progress?taxYear=2024-25');
+          const response = await fetch(`/api/wizard-progress?taxYear=${taxYearToLoad}`);
           const result = await response.json();
 
           if (result.success && result.data) {
@@ -253,7 +258,7 @@ export function WizardProvider({
     }
 
     loadSession();
-  }, [userId]);
+  }, [userId, initialTaxYear]);
 
   // Save progress to database (or localStorage for unauthenticated users)
   const saveProgress = useCallback(async () => {

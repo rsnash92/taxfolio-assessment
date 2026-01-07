@@ -2,23 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   submitSelfAssessment,
   validateForSubmission,
-  setTokenStore,
+  isHMRCConnected,
 } from '@/lib/hmrc';
 import { WizardData } from '@/types/wizard';
-
-// Configure token store (in production, this would use your auth system)
-// For now, we'll use a placeholder that should be configured at app startup
-const mockTokenStore = {
-  async getTokens(userId: string) {
-    // In production, fetch from your database
-    // This is a placeholder
-    console.log('Getting tokens for user:', userId);
-    return null; // Will trigger "no tokens" error if not configured
-  },
-};
-
-// Set the token store
-setTokenStore(mockTokenStore);
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,6 +80,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         validation,
       });
+    }
+
+    // Check HMRC connection before attempting submission
+    const connected = await isHMRCConnected(userId);
+    if (!connected) {
+      return NextResponse.json(
+        { error: 'HMRC not connected. Please connect your HMRC account first.' },
+        { status: 401 }
+      );
     }
 
     // Run pre-submission validation

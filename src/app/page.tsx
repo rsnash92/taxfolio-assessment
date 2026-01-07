@@ -1,15 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { WizardProvider } from '@/providers/WizardProvider';
 import { WizardContainer } from '@/components/wizard/WizardContainer';
 import { createClient } from '@/lib/supabase/client';
 
 export default function AssessmentPage() {
+  const searchParams = useSearchParams();
   const [userId, setUserId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialTaxYear, setInitialTaxYear] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    // Read tax year from URL params
+    const taxYearParam = searchParams.get('tax_year');
+    if (taxYearParam) {
+      setInitialTaxYear(taxYearParam);
+    }
+
     const supabase = createClient();
 
     // Get user on mount
@@ -37,7 +46,7 @@ export default function AssessmentPage() {
   }
 
   return (
-    <WizardProvider userId={userId}>
+    <WizardProvider userId={userId} initialTaxYear={initialTaxYear}>
       <WizardContainer />
     </WizardProvider>
   );
