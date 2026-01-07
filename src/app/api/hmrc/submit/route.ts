@@ -107,6 +107,23 @@ export async function POST(request: NextRequest) {
     // Note: In sandbox mode, we'll skip the final declaration to allow testing
     const isSandbox = process.env.HMRC_API_BASE_URL?.includes('test-api');
 
+    // For testing in sandbox without full HMRC business setup,
+    // we can simulate success if TEST_SUBMISSION_MODE is set
+    if (process.env.TEST_SUBMISSION_MODE === 'simulate') {
+      console.log('Simulating HMRC submission for testing');
+      return NextResponse.json({
+        success: true,
+        calculationId: `sim-calc-${Date.now()}`,
+        hmrcReferenceNumber: `TF${Date.now().toString().slice(-10)}`,
+        steps: [
+          { name: 'Self Employment', status: 'completed', message: 'Simulated' },
+          { name: 'Dividends', status: 'completed', message: 'Simulated' },
+          { name: 'Tax Calculation', status: 'completed', message: 'Simulated' },
+        ],
+        warnings: ['This was a simulated submission for testing'],
+      });
+    }
+
     const result = await submitSelfAssessment(
       userId,
       nino.replace(/\s/g, '').toUpperCase(),
