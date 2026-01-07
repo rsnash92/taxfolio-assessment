@@ -41,8 +41,11 @@ export async function POST(request: NextRequest) {
 
     const steps: Array<{ step: string; status: 'success' | 'error' | 'skipped'; message: string; data?: unknown }> = [];
 
-    // Step 1: Check if business already exists
-    let existingBusinessId: string | null = null;
+    // Step 1: Get business ID using SELF_EMPLOYMENT scenario
+    // In sandbox, we use Gov-Test-Scenario headers to get pre-seeded test data
+    let businessId: string | null = null;
+
+    // First try STATEFUL mode to check for existing businesses
     try {
       const businessesResponse = await hmrcClient.get<{
         listOfBusinesses: Array<{
@@ -59,78 +62,73 @@ export async function POST(request: NextRequest) {
       );
 
       if (selfEmploymentBusiness) {
-        existingBusinessId = selfEmploymentBusiness.businessId;
+        businessId = selfEmploymentBusiness.businessId;
         steps.push({
-          step: 'Check existing businesses',
+          step: 'Get business ID',
           status: 'success',
-          message: `Found existing self-employment business: ${selfEmploymentBusiness.tradingName || 'Unnamed'}`,
-          data: { businessId: existingBusinessId },
-        });
-      } else {
-        steps.push({
-          step: 'Check existing businesses',
-          status: 'success',
-          message: 'No existing self-employment business found',
-        });
-      }
-    } catch (err) {
-      // No businesses exist yet - that's fine
-      steps.push({
-        step: 'Check existing businesses',
-        status: 'success',
-        message: 'No businesses registered yet',
-      });
-    }
-
-    // Step 2: Create self-employment business (if none exists)
-    let businessId = existingBusinessId;
-    if (!businessId) {
-      try {
-        const createResponse = await hmrcClient.post<{ businessId: string }>(
-          user.id,
-          `/individuals/business/self-employment/${cleanNino}`,
-          {
-            accountingPeriodStartDate: `${startYear}-04-06`,
-            accountingPeriodEndDate: `${startYear + 1}-04-05`,
-            tradingName: businessName,
-            addressLineOne: '123 Test Street',
-            addressLineTwo: 'Test Town',
-            postalCode: 'TE1 1ST',
-            countryCode: 'GB',
-            commencementDate: `${startYear}-04-06`,
-          },
-          { govTestScenario: 'STATEFUL' }
-        );
-        businessId = createResponse.businessId;
-        steps.push({
-          step: 'Create self-employment business',
-          status: 'success',
-          message: `Created business "${businessName}"`,
+          message: `Found existing business: ${selfEmploymentBusiness.tradingName || 'Unnamed'}`,
           data: { businessId },
         });
+      }
+    } catch {
+      // No stateful businesses found, try scenario-based
+    }
+
+    // If no stateful business, try SELF_EMPLOYMENT scenario for pre-seeded data
+    if (!businessId) {
+      try {
+        const scenarioResponse = await hmrcClient.get<{
+          listOfBusinesses: Array<{
+            businessId: string;
+            typeOfBusiness: string;
+            tradingName?: string;
+          }>;
+        }>(user.id, `/individuals/business/details/${cleanNino}/list`, {
+          govTestScenario: 'SELF_EMPLOYMENT',
+        });
+
+        const selfEmploymentBusiness = scenarioResponse.listOfBusinesses?.find(
+          (b) => b.typeOfBusiness === 'self-employment'
+        );
+
+        if (selfEmploymentBusiness) {
+          businessId = selfEmploymentBusiness.businessId;
+          steps.push({
+            step: 'Get business ID',
+            status: 'success',
+            message: `Using pre-seeded sandbox business: ${selfEmploymentBusiness.tradingName || businessId}`,
+            data: { businessId, scenario: 'SELF_EMPLOYMENT' },
+          });
+        }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         steps.push({
-          step: 'Create self-employment business',
+          step: 'Get business ID',
           status: 'error',
-          message: errorMsg,
+          message: `Could not get business ID. The test user may need MTD ITSA enrolment. Error: ${errorMsg}`,
         });
         return NextResponse.json({
           success: false,
           steps,
-          error: 'Failed to create business',
+          error: 'Failed to get business ID - ensure test user has MTD Income Tax enrolment',
         });
       }
-    } else {
+    }
+
+    if (!businessId) {
       steps.push({
-        step: 'Create self-employment business',
-        status: 'skipped',
-        message: 'Using existing business',
-        data: { businessId },
+        step: 'Get business ID',
+        status: 'error',
+        message: 'No business ID available. Try creating a new test user with MTD ITSA enrolment.',
+      });
+      return NextResponse.json({
+        success: false,
+        steps,
+        error: 'No business ID available',
       });
     }
 
-    // Step 3: Submit cumulative period summary
+    // Step 2: Submit cumulative period summary
     try {
       await hmrcClient.put(
         user.id,
@@ -164,7 +162,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Step 4: Submit annual summary (capital allowances)
+    // Step 3: Submit annual summary (capital allowances)
     try {
       await hmrcClient.put(
         user.id,
