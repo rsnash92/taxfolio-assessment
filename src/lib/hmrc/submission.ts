@@ -14,6 +14,7 @@ import { submitAllPensionIncomeData } from './pensions';
 import { submitAllCapitalGainsData, calculateDisposalsSummary } from './capital-gains';
 import { submitAllReliefsData } from './reliefs';
 import { TaxCalculationResult, CalculationType } from './types';
+import { createSubmissionLogger, SubmissionLogger } from './submission-logger';
 import {
   WizardData,
   EmploymentData,
@@ -94,6 +95,7 @@ export interface SubmissionStep {
 
 export interface SubmissionResult {
   success: boolean;
+  submissionId: string;
   steps: SubmissionStep[];
   calculationId?: string;
   calculation?: TaxCalculationResult;
@@ -120,20 +122,46 @@ export async function submitSelfAssessment(
     skipFinalDeclaration?: boolean;
   } = {}
 ): Promise<SubmissionResult> {
+  // Create logger for this submission
+  const logger = createSubmissionLogger(userId, taxYear);
+
   const result: SubmissionResult = {
     success: false,
+    submissionId: logger.submissionId,
     steps: [],
     errors: [],
     warnings: [],
   };
 
-  const addStep = (
+  const addStep = async (
     name: string,
     status: SubmissionStep['status'],
     message?: string,
     data?: unknown
   ) => {
     result.steps.push({ name, status, message, data });
+
+    // Log to database (async, don't await to avoid blocking)
+    if (status === 'skipped') {
+      logger.skipStep(name, message || 'Skipped').catch(console.error);
+    }
+  };
+
+  // Helper to execute and log a step
+  const executeStep = async <T>(
+    stepName: string,
+    fn: () => Promise<T>
+  ): Promise<{ success: true; data: T } | { success: false; error: Error }> => {
+    const { stepNumber, startTime } = await logger.startStep(stepName);
+    try {
+      const data = await fn();
+      await logger.completeStep(stepName, stepNumber, startTime, 200, data);
+      return { success: true, data };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      await logger.errorStep(stepName, stepNumber, startTime, err);
+      return { success: false, error: err };
+    }
   };
 
   try {
@@ -141,26 +169,36 @@ export async function submitSelfAssessment(
     // Step 1: Submit Employment Income (SA102)
     // =========================================================================
     if (wizardData.employmentData && Object.keys(wizardData.employmentData).length > 0) {
-      addStep('Employment Income', 'in_progress');
-      try {
-        const employmentResult = await submitAllEmploymentData(
+      const stepResult = await executeStep('Employment Income', () =>
+        submitAllEmploymentData(
           userId,
           nino,
           taxYear,
           wizardData.employmentData as Record<string, EmploymentData>
-        );
+        )
+      );
+      if (stepResult.success) {
+        const employmentResult = stepResult.data;
         if (employmentResult.errors.length > 0) {
           result.warnings.push(
             ...employmentResult.errors.map((e) => `Employment (${e.employerId}): ${e.error}`)
           );
         }
-        addStep('Employment Income', 'completed', `${employmentResult.submitted.length} employers submitted`);
-      } catch (error) {
-        addStep('Employment Income', 'error', error instanceof Error ? error.message : 'Unknown error');
-        result.errors.push(`Employment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        result.steps.push({
+          name: 'Employment Income',
+          status: 'completed',
+          message: `${employmentResult.submitted.length} employers submitted`,
+        });
+      } else {
+        result.steps.push({
+          name: 'Employment Income',
+          status: 'error',
+          message: stepResult.error.message,
+        });
+        result.errors.push(`Employment: ${stepResult.error.message}`);
       }
     } else {
-      addStep('Employment Income', 'skipped', 'No employment data');
+      await addStep('Employment Income', 'skipped', 'No employment data');
     }
 
     // =========================================================================

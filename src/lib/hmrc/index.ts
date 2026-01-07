@@ -237,3 +237,15 @@ export type {
   SubmissionResult,
   ValidationResult,
 } from './submission';
+
+// Submission Preview (Dry Run)
+export { generateSubmissionPreview } from './preview';
+export type { PreviewItem, SubmissionPreview } from './preview';
+
+// Submission Logging
+export {
+  createSubmissionLogger,
+  getSubmissionLogs,
+  generateSubmissionId,
+} from './submission-logger';
+export type { SubmissionLogEntry } from './submission-logger';

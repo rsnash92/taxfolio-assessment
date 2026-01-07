@@ -13,9 +13,30 @@ import {
   FileCheck,
   Link2,
   ExternalLink,
+  Eye,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+
+interface PreviewItem {
+  name: string;
+  status: 'ready' | 'warning' | 'error' | 'skipped';
+  summary: string;
+  details?: Record<string, unknown>;
+  warnings?: string[];
+  errors?: string[];
+}
+
+interface SubmissionPreview {
+  isValid: boolean;
+  totalIncome: number;
+  items: PreviewItem[];
+  warnings: string[];
+  errors: string[];
+}
 
 export function ReviewSubmitStep() {
   const { data, updateData, goNext } = useWizard();
@@ -25,6 +46,9 @@ export function ReviewSubmitStep() {
   const [isCheckingConnection, setIsCheckingConnection] = useState(true);
   const [isHmrcConnected, setIsHmrcConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<SubmissionPreview | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [showPreviewDetails, setShowPreviewDetails] = useState(false);
 
   // Check HMRC connection status on mount and after OAuth callback
   useEffect(() => {
@@ -71,6 +95,30 @@ export function ReviewSubmitStep() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [searchParams]);
+
+  // Load preview when HMRC is connected
+  useEffect(() => {
+    if (isHmrcConnected && !preview && !isLoadingPreview) {
+      loadPreview();
+    }
+  }, [isHmrcConnected]);
+
+  const loadPreview = async () => {
+    setIsLoadingPreview(true);
+    try {
+      const response = await fetch('/api/hmrc/preview', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setPreview(data);
+      }
+    } catch (err) {
+      console.error('Failed to load preview:', err);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
 
   const handleConnectHmrc = () => {
     // Redirect to HMRC OAuth flow
@@ -229,6 +277,135 @@ export function ReviewSubmitStep() {
               HMRC account connected
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Submission Preview */}
+      {isLoadingPreview ? (
+        <div className="bg-gray-50 rounded-xl p-6 mb-8">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            <span className="text-gray-600">Validating submission data...</span>
+          </div>
+        </div>
+      ) : preview && (
+        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Eye className="h-5 w-5 text-gray-600" />
+              <h3 className="font-medium text-gray-900">Submission Preview</h3>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPreviewDetails(!showPreviewDetails)}
+              className="text-gray-500"
+            >
+              {showPreviewDetails ? (
+                <>Hide Details <ChevronUp className="h-4 w-4 ml-1" /></>
+              ) : (
+                <>Show Details <ChevronDown className="h-4 w-4 ml-1" /></>
+              )}
+            </Button>
+          </div>
+
+          {/* Preview Status */}
+          <div className={cn(
+            'rounded-lg p-3 mb-4',
+            preview.isValid ? 'bg-green-50' : 'bg-red-50'
+          )}>
+            <div className="flex items-center gap-2">
+              {preview.isValid ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <span className="text-sm text-green-800 font-medium">
+                    Data validated - ready to submit
+                  </span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  <span className="text-sm text-red-800 font-medium">
+                    {preview.errors.length} error(s) found - please fix before submitting
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Preview Warnings */}
+          {preview.warnings.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium mb-1">{preview.warnings.length} warning(s):</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {preview.warnings.slice(0, 3).map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                    {preview.warnings.length > 3 && (
+                      <li className="text-amber-600">...and {preview.warnings.length - 3} more</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Preview Errors */}
+          {preview.errors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <XCircle className="h-4 w-4 text-red-600 mt-0.5" />
+                <div className="text-sm text-red-800">
+                  <p className="font-medium mb-1">Errors that must be fixed:</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {preview.errors.map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Detailed Preview Items */}
+          {showPreviewDetails && (
+            <div className="space-y-2 mt-4 pt-4 border-t border-gray-100">
+              {preview.items.map((item, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'flex items-center justify-between p-3 rounded-lg text-sm',
+                    item.status === 'ready' && 'bg-green-50',
+                    item.status === 'warning' && 'bg-amber-50',
+                    item.status === 'error' && 'bg-red-50',
+                    item.status === 'skipped' && 'bg-gray-50'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    {item.status === 'ready' && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                    {item.status === 'warning' && <AlertTriangle className="h-4 w-4 text-amber-600" />}
+                    {item.status === 'error' && <XCircle className="h-4 w-4 text-red-600" />}
+                    {item.status === 'skipped' && <div className="h-4 w-4 rounded-full bg-gray-300" />}
+                    <span className={cn(
+                      'font-medium',
+                      item.status === 'skipped' && 'text-gray-500'
+                    )}>
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className={cn(
+                    'text-xs',
+                    item.status === 'skipped' ? 'text-gray-400' : 'text-gray-600'
+                  )}>
+                    {item.summary}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
