@@ -5,6 +5,7 @@ import { useWizard } from '@/providers/WizardProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PRICING, calculatePrice, formatCurrency } from '@/lib/config/pricing';
+import { createClient } from '@/lib/supabase/client';
 import {
   Check,
   Shield,
@@ -196,6 +197,17 @@ export function ReviewPaymentStep() {
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Fetch user email for receipt
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    });
+  }, []);
 
   const pricing = calculatePrice(selectedPlan, appliedDiscount || undefined);
 
@@ -231,7 +243,7 @@ export function ReviewPaymentStep() {
         body: JSON.stringify({
           planId: selectedPlan,
           discountCode: appliedDiscount,
-          // email can be passed if available from auth context
+          email: userEmail,
         }),
       });
 
