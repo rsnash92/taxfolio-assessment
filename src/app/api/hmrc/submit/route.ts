@@ -104,6 +104,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Submit to HMRC
+    // Note: In sandbox mode, we'll skip the final declaration to allow testing
+    const isSandbox = process.env.HMRC_API_BASE_URL?.includes('test-api');
+
     const result = await submitSelfAssessment(
       userId,
       nino.replace(/\s/g, '').toUpperCase(),
@@ -111,9 +114,12 @@ export async function POST(request: NextRequest) {
       wizardData,
       {
         skipCalculation: options?.skipCalculation,
-        skipFinalDeclaration: options?.skipFinalDeclaration,
+        // Skip final declaration in sandbox for easier testing
+        skipFinalDeclaration: options?.skipFinalDeclaration ?? isSandbox,
       }
     );
+
+    console.log('HMRC submission result:', JSON.stringify(result, null, 2));
 
     if (result.success) {
       return NextResponse.json({

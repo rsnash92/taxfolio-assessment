@@ -112,7 +112,12 @@ export function ReviewSubmitStep() {
         if (result.error?.includes('HMRC not connected')) {
           setIsHmrcConnected(false);
         }
-        setError(result.error || 'Submission failed. Please try again.');
+        // Show detailed errors if available
+        const errorMessage = result.errors?.length > 0
+          ? result.errors.join(', ')
+          : result.error || 'Submission failed. Please try again.';
+        setError(errorMessage);
+        console.error('Submission failed:', result);
         return;
       }
 
