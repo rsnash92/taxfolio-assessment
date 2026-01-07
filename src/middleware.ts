@@ -45,6 +45,12 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   );
 
+  // API routes should not redirect (they handle their own auth)
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
+  if (isApiRoute) {
+    return supabaseResponse;
+  }
+
   // If user is not logged in and trying to access protected route
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
