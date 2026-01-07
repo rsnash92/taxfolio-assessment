@@ -90,6 +90,28 @@ export {
   submitAllEmploymentData,
 } from './employment';
 
+// Self-Employment API (SA103)
+export {
+  getSelfEmploymentBusinesses,
+  createSelfEmploymentBusiness,
+  submitSelfEmploymentPeriod,
+  submitAnnualSummary,
+  submitAllSelfEmploymentData,
+  calculateSelfEmploymentSummary,
+} from './self-employment';
+export type { SelfEmploymentSubmissionResult } from './self-employment';
+
+// Property API (SA105)
+export {
+  getPropertyBusiness,
+  createPropertyBusiness,
+  submitPropertyPeriod,
+  submitPropertyAnnualSummary,
+  submitAllPropertyData,
+  calculatePropertySummary,
+} from './property';
+export type { PropertySubmissionResult } from './property';
+
 // Dividends API
 export {
   getUKDividends,

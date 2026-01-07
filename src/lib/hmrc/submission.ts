@@ -4,6 +4,8 @@
 
 import { hmrcClient } from './client';
 import { submitAllEmploymentData, mapEmploymentDataToHMRC } from './employment';
+import { submitAllSelfEmploymentData, calculateSelfEmploymentSummary } from './self-employment';
+import { submitAllPropertyData, calculatePropertySummary } from './property';
 import { submitAllDividendsData } from './dividends';
 import { submitAllInterestData } from './savings';
 import { submitAllCISData, calculateCISSummary } from './cis';
@@ -15,6 +17,8 @@ import { TaxCalculationResult, CalculationType } from './types';
 import {
   WizardData,
   EmploymentData,
+  SelfEmploymentBusiness,
+  RentalProperty,
   DividendsData,
   InterestData,
   CISData,
@@ -160,7 +164,75 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 2: Submit Dividends Income
+    // Step 2: Submit Self-Employment Income (SA103)
+    // =========================================================================
+    if (wizardData.selfEmploymentData && Object.keys(wizardData.selfEmploymentData).length > 0) {
+      addStep('Self-Employment Income', 'in_progress');
+      try {
+        const selfEmploymentResult = await submitAllSelfEmploymentData(
+          userId,
+          nino,
+          taxYear,
+          wizardData.selfEmploymentData as Record<string, Partial<SelfEmploymentBusiness>>
+        );
+        if (selfEmploymentResult.errors.length > 0) {
+          result.warnings.push(
+            ...selfEmploymentResult.errors.map((e) => `Self-Employment (${e.businessName}): ${e.error}`)
+          );
+        }
+        const summary = calculateSelfEmploymentSummary(
+          wizardData.selfEmploymentData as Record<string, Partial<SelfEmploymentBusiness>>
+        );
+        addStep(
+          'Self-Employment Income',
+          selfEmploymentResult.submitted.length > 0 ? 'completed' : 'error',
+          `${selfEmploymentResult.submitted.length} business(es), £${summary.totalProfit.toFixed(2)} profit`,
+          summary
+        );
+      } catch (error) {
+        addStep('Self-Employment Income', 'error', error instanceof Error ? error.message : 'Unknown error');
+        result.errors.push(`Self-Employment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } else {
+      addStep('Self-Employment Income', 'skipped', 'No self-employment data');
+    }
+
+    // =========================================================================
+    // Step 3: Submit Rental Income (SA105)
+    // =========================================================================
+    if (wizardData.rentalData && Object.keys(wizardData.rentalData).length > 0) {
+      addStep('Rental Income', 'in_progress');
+      try {
+        const propertyResult = await submitAllPropertyData(
+          userId,
+          nino,
+          taxYear,
+          wizardData.rentalData as Record<string, Partial<RentalProperty>>
+        );
+        if (propertyResult.errors.length > 0) {
+          result.warnings.push(
+            ...propertyResult.errors.map((e) => `Property (${e.address}): ${e.error}`)
+          );
+        }
+        const summary = calculatePropertySummary(
+          wizardData.rentalData as Record<string, Partial<RentalProperty>>
+        );
+        addStep(
+          'Rental Income',
+          propertyResult.submitted.length > 0 ? 'completed' : 'error',
+          `${propertyResult.submitted.length} property(ies), £${summary.totalProfit.toFixed(2)} profit`,
+          summary
+        );
+      } catch (error) {
+        addStep('Rental Income', 'error', error instanceof Error ? error.message : 'Unknown error');
+        result.errors.push(`Rental Income: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } else {
+      addStep('Rental Income', 'skipped', 'No rental data');
+    }
+
+    // =========================================================================
+    // Step 4: Submit Dividends Income
     // =========================================================================
     if (wizardData.dividendsData && wizardData.dividendsData.ukDividends !== undefined) {
       addStep('Dividends Income', 'in_progress');
@@ -189,7 +261,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 3: Submit Interest/Savings Income
+    // Step 5: Submit Interest/Savings Income
     // =========================================================================
     if (wizardData.interestData && wizardData.interestData.untaxedUKInterest !== undefined) {
       addStep('Interest Income', 'in_progress');
@@ -213,7 +285,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 4: Submit CIS Deductions
+    // Step 6: Submit CIS Deductions
     // =========================================================================
     if (wizardData.cisData && wizardData.cisData.contractors && wizardData.cisData.contractors.length > 0) {
       addStep('CIS Deductions', 'in_progress');
@@ -241,7 +313,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 5: Submit State Benefits
+    // Step 7: Submit State Benefits
     // =========================================================================
     if (wizardData.stateBenefitsData && wizardData.stateBenefitsData.totalTaxableBenefits !== undefined) {
       addStep('State Benefits', 'in_progress');
@@ -265,7 +337,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 6: Submit Pension Income
+    // Step 8: Submit Pension Income
     // =========================================================================
     if (wizardData.pensionIncomeData && wizardData.pensionIncomeData.privatePensions !== undefined) {
       addStep('Pension Income', 'in_progress');
@@ -289,7 +361,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 7: Submit Capital Gains (SA108)
+    // Step 9: Submit Capital Gains (SA108)
     // =========================================================================
     if (wizardData.capitalGainsData && wizardData.capitalGainsData.disposals && wizardData.capitalGainsData.disposals.length > 0) {
       addStep('Capital Gains', 'in_progress');
@@ -315,7 +387,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 8: Submit Reliefs & Allowances
+    // Step 10: Submit Reliefs & Allowances
     // =========================================================================
     if (wizardData.general && wizardData.general.selectedReliefs !== undefined) {
       addStep('Reliefs & Allowances', 'in_progress');
@@ -345,7 +417,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 9: Trigger Tax Calculation
+    // Step 11: Trigger Tax Calculation
     // =========================================================================
     if (!options.skipCalculation) {
       addStep('Tax Calculation', 'in_progress');
@@ -387,7 +459,7 @@ export async function submitSelfAssessment(
     }
 
     // =========================================================================
-    // Step 10: Submit Final Declaration
+    // Step 12: Submit Final Declaration
     // =========================================================================
     if (!options.skipFinalDeclaration && result.calculationId) {
       addStep('Final Declaration', 'in_progress');
