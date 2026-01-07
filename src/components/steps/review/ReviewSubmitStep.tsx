@@ -122,16 +122,22 @@ export function ReviewSubmitStep() {
       }
 
       if (result.success) {
-        updateData({
+        const referenceNumber = result.hmrcReferenceNumber || result.calculationId || `TF${Date.now()}`;
+        console.log('Submission successful, reference:', referenceNumber);
+
+        await updateData({
           submission: {
             status: 'submitted',
             submittedAt: new Date().toISOString(),
-            hmrcReferenceNumber: result.hmrcReferenceNumber || result.calculationId,
+            hmrcReferenceNumber: referenceNumber,
             calculationId: result.calculationId,
             declarationAccepted: true,
             declarationTimestamp: new Date().toISOString(),
           },
         });
+
+        // Small delay to ensure data is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         goNext();
       } else {
