@@ -53,6 +53,7 @@ interface HMRCStatus {
     calculationType: string;
   }>;
   errors: string[];
+  sandboxWarnings: string[];
 }
 
 export default function HMRCStatusPage() {
@@ -207,15 +208,34 @@ export default function HMRCStatusPage() {
                   {status.connected ? 'Connected to HMRC' : 'Not Connected'}
                 </h2>
               </div>
+
+              {/* Real errors - shown prominently */}
               {status.errors && status.errors.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {status.errors.map((err, i) => (
-                    <div key={i} className="flex items-center gap-2 text-amber-700 text-sm">
-                      <AlertTriangle className="h-4 w-4" />
+                    <div key={i} className="flex items-center gap-2 text-red-700 text-sm bg-red-50 p-2 rounded">
+                      <XCircle className="h-4 w-4 flex-shrink-0" />
                       {err}
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Sandbox warnings - less prominent, collapsible */}
+              {status.sandboxWarnings && status.sandboxWarnings.length > 0 && (
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    {status.sandboxWarnings.length} sandbox limitation{status.sandboxWarnings.length !== 1 ? 's' : ''} (expected in test mode)
+                  </summary>
+                  <div className="mt-2 space-y-1 pl-6">
+                    {status.sandboxWarnings.map((warn, i) => (
+                      <p key={i} className="text-xs text-gray-500">
+                        {warn}
+                      </p>
+                    ))}
+                  </div>
+                </details>
               )}
             </div>
 

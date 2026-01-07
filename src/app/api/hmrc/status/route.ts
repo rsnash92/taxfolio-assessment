@@ -52,6 +52,16 @@ export async function GET(request: NextRequest) {
       accountingPeriods?: Array<{ start: string; end: string }>;
     }
 
+    // Helper to categorize errors
+    const isSandboxError = (message: string): boolean => {
+      return (
+        message.includes('not subscribed to the API') ||
+        message.includes('resource with the name in the request can not be found') ||
+        message.includes('MATCHING_RESOURCE_NOT_FOUND') ||
+        message.includes('NOT_FOUND')
+      );
+    };
+
     const status: {
       connected: boolean;
       nino: string;
@@ -64,6 +74,7 @@ export async function GET(request: NextRequest) {
       interest: unknown;
       calculations: Array<{ calculationId: string; calculationTimestamp: string; calculationType: string }>;
       errors: string[];
+      sandboxWarnings: string[];
     } = {
       connected: true,
       nino: cleanNino,
@@ -76,6 +87,7 @@ export async function GET(request: NextRequest) {
       interest: null,
       calculations: [],
       errors: [],
+      sandboxWarnings: [],
     };
 
     // 1. List all businesses
@@ -137,7 +149,12 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (err) {
-      status.errors.push(`Businesses: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      if (isSandboxError(msg)) {
+        status.sandboxWarnings.push(`Businesses: ${msg}`);
+      } else {
+        status.errors.push(`Businesses: ${msg}`);
+      }
     }
 
     // 4. Get employment data
@@ -151,9 +168,14 @@ export async function GET(request: NextRequest) {
       }>(user.id, `/individuals/employments-income/employments/${cleanNino}/${taxYear}`);
       status.employment = employmentResponse.employments || [];
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       // Employment endpoint might return 404 if no employments
-      if (!(err instanceof Error && err.message.includes('404'))) {
-        status.errors.push(`Employment: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      if (!msg.includes('404')) {
+        if (isSandboxError(msg)) {
+          status.sandboxWarnings.push(`Employment: ${msg}`);
+        } else {
+          status.errors.push(`Employment: ${msg}`);
+        }
       }
     }
 
@@ -165,9 +187,14 @@ export async function GET(request: NextRequest) {
       );
       status.dividends = dividendsResponse;
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       // Might return 404 if no dividends submitted
-      if (!(err instanceof Error && err.message.includes('404'))) {
-        status.errors.push(`Dividends: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      if (!msg.includes('404')) {
+        if (isSandboxError(msg)) {
+          status.sandboxWarnings.push(`Dividends: ${msg}`);
+        } else {
+          status.errors.push(`Dividends: ${msg}`);
+        }
       }
     }
 
@@ -179,9 +206,14 @@ export async function GET(request: NextRequest) {
       );
       status.interest = interestResponse;
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       // Might return 404 if no interest submitted
-      if (!(err instanceof Error && err.message.includes('404'))) {
-        status.errors.push(`Interest: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      if (!msg.includes('404')) {
+        if (isSandboxError(msg)) {
+          status.sandboxWarnings.push(`Interest: ${msg}`);
+        } else {
+          status.errors.push(`Interest: ${msg}`);
+        }
       }
     }
 
@@ -196,9 +228,14 @@ export async function GET(request: NextRequest) {
       }>(user.id, `/individuals/calculations/self-assessment/${cleanNino}/${taxYear}`);
       status.calculations = calculationsResponse.calculations || [];
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       // Might return 404 if no calculations triggered
-      if (!(err instanceof Error && err.message.includes('404'))) {
-        status.errors.push(`Calculations: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      if (!msg.includes('404')) {
+        if (isSandboxError(msg)) {
+          status.sandboxWarnings.push(`Calculations: ${msg}`);
+        } else {
+          status.errors.push(`Calculations: ${msg}`);
+        }
       }
     }
 
