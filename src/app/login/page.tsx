@@ -99,11 +99,11 @@ export default function LoginPage() {
 
         <div className="flex flex-col md:flex-row">
           {/* Left side - Marketing copy */}
-          <div className="md:w-5/12 bg-gradient-to-br from-cyan-50 to-blue-50 p-8 md:p-10">
+          <div className="md:w-5/12 bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-8 md:p-10">
             {/* Logo - Desktop */}
             <div className="hidden md:block mb-10">
               <Image
-                src="/taxfolio.png"
+                src="/taxfolio-white.png"
                 alt="TaxFolio"
                 width={140}
                 height={35}
@@ -111,12 +111,12 @@ export default function LoginPage() {
               />
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
               Simple and Speedy Tax Returns with{' '}
               <span className="text-[#00c4d4]">TaxFolio</span>
             </h1>
 
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-300 mb-6">
               A streamlined Self Assessment designed for sole traders, with built-in HMRC submission.
             </p>
 
@@ -126,7 +126,7 @@ export default function LoginPage() {
                   <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#00c4d4]/20 flex items-center justify-center mt-0.5">
                     <Check className="w-3 h-3 text-[#00c4d4]" />
                   </span>
-                  <span className="text-gray-700">{feature}</span>
+                  <span className="text-gray-200">{feature}</span>
                 </li>
               ))}
             </ul>
