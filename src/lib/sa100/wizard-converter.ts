@@ -18,17 +18,73 @@ import type { WizardData } from '@/types/wizard'
 import type {
   TaxpayerIdentification,
   SA100Return,
-  SA100YourPersonalDetails,
-  SA100Declaration,
   SA101AdditionalInfo,
   SA102Employment,
-  SA103SelfEmployment,
-  SA103Expenses,
   SA105UKProperty,
-  SA106ForeignIncome,
   SA108CapitalGains,
   SA100Reliefs,
 } from './types'
+
+// Local interfaces for wizard data conversion (intermediate format before XML generation)
+interface WizardSelfEmployment {
+  businessName: string
+  businessDescription: string
+  businessAddress?: {
+    line1: string
+    postcode: string
+  }
+  accountingPeriod: {
+    start: string
+    end: string
+  }
+  accountingBasis: string
+  income: {
+    turnover: number
+    otherIncome?: number
+  }
+  expenses: WizardExpenses
+  capitalAllowances?: {
+    annualInvestmentAllowance?: number
+    otherCapitalAllowances?: number
+  }
+  losses?: {
+    broughtForward?: number
+    carriedForward?: number
+  }
+}
+
+interface WizardExpenses {
+  useConsolidated?: boolean
+  consolidatedExpenses?: number
+  costOfGoodsSold?: number
+  carVanTravel?: number
+  wages?: number
+  rent?: number
+  repairs?: number
+  generalAdmin?: number
+  advertising?: number
+  interest?: number
+  phone?: number
+  otherExpenses?: number
+}
+
+interface WizardForeignIncome {
+  foreignDividends?: Array<{
+    countryCode: string
+    amountBeforeTax: number
+    taxPaid: number
+  }>
+  foreignInterest?: Array<{
+    countryCode: string
+    amountBeforeTax: number
+    taxPaid: number
+  }>
+  foreignPensions?: Array<{
+    countryCode: string
+    amount: number
+    taxPaid: number
+  }>
+}
 
 // =============================================================================
 // Main Converter
@@ -125,7 +181,7 @@ function convertPersonalDetails(
   taxpayer: TaxpayerIdentification,
   firstName: string,
   lastName: string
-): SA100YourPersonalDetails {
+) {
   const personalInfo = wizardData.personalInfo || {}
 
   // Parse address into lines
@@ -212,8 +268,8 @@ function convertEmployments(wizardData: WizardData): SA102Employment[] {
 // Self-Employment Income (SA103)
 // =============================================================================
 
-function convertSelfEmployments(wizardData: WizardData): SA103SelfEmployment[] {
-  const selfEmployments: SA103SelfEmployment[] = []
+function convertSelfEmployments(wizardData: WizardData): WizardSelfEmployment[] {
+  const selfEmployments: WizardSelfEmployment[] = []
 
   for (const [, seData] of Object.entries(wizardData.selfEmploymentData || {})) {
     if (!seData || !seData.businessName) continue
@@ -221,7 +277,7 @@ function convertSelfEmployments(wizardData: WizardData): SA103SelfEmployment[] {
     // Map wizard expense categories to SA103 categories
     const expenses = convertSelfEmploymentExpenses(seData.expenses)
 
-    const selfEmployment: SA103SelfEmployment = {
+    const selfEmployment: WizardSelfEmployment = {
       businessName: seData.businessName,
       businessDescription: seData.businessDescription || seData.industry || '',
       businessAddress: seData.businessPostcode
@@ -269,7 +325,7 @@ function convertSelfEmployments(wizardData: WizardData): SA103SelfEmployment[] {
 
   // Also handle CIS income as self-employment
   if (wizardData.cisData?.totalGross && wizardData.cisData.totalGross > 0) {
-    const cisExpenses: SA103Expenses = {
+    const cisExpenses: WizardExpenses = {
       useConsolidated: true,
       consolidatedExpenses: toWholePounds(wizardData.cisData.expenses || 0),
     }
@@ -294,7 +350,7 @@ function convertSelfEmployments(wizardData: WizardData): SA103SelfEmployment[] {
 
 function convertSelfEmploymentExpenses(
   expenses: { byCategory?: Record<string, number>; total?: number } | undefined
-): SA103Expenses {
+): WizardExpenses {
   if (!expenses) {
     return { useConsolidated: true, consolidatedExpenses: 0 }
   }
@@ -402,7 +458,7 @@ function convertUKProperty(wizardData: WizardData): SA105UKProperty | undefined 
 // Foreign Income (SA106)
 // =============================================================================
 
-function convertForeignIncome(wizardData: WizardData): SA106ForeignIncome | undefined {
+function convertForeignIncome(wizardData: WizardData): WizardForeignIncome | undefined {
   const hasForeignDividends =
     (wizardData.dividendsData?.foreignDividends || 0) > 0 ||
     (wizardData.dividendsData?.foreignDividendsByCountry?.length || 0) > 0
@@ -417,7 +473,7 @@ function convertForeignIncome(wizardData: WizardData): SA106ForeignIncome | unde
     return undefined
   }
 
-  const foreignIncome: SA106ForeignIncome = {}
+  const foreignIncome: WizardForeignIncome = {}
 
   // Foreign dividends
   if (hasForeignDividends) {
