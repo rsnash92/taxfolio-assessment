@@ -7,13 +7,15 @@ import { hmrcClient } from '@/lib/hmrc';
  *
  * Tests HMRC sandbox API integration using STATEFUL scenarios.
  *
- * IMPORTANT: Per HMRC guidance (Jan 2025), to test STATEFUL flow you must:
- * 1. Create a test business using the Self Assessment Test Support (MTD) API
- * 2. Then submit income data to that business
- * 3. Then trigger calculations
+ * Flow:
+ * 1. Create a test business using Self Assessment Test Support API
+ * 2. Submit self-employment income
+ * 3. Submit dividends income
+ * 4. Submit savings interest
+ * 5. Trigger tax calculation
  *
- * Endpoint: POST /individuals/self-assessment-test-support/business/{nino}
- * (from mtd-sa-test-support-api)
+ * Based on HMRC guidance: Use the "Create a Test Business" endpoint
+ * within the Self Assessment Test Support (MTD) API for STATEFUL testing.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +31,9 @@ export async function POST(request: NextRequest) {
 
     // Get authenticated user
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json(
@@ -58,14 +62,17 @@ export async function POST(request: NextRequest) {
       );
     };
 
-    let selfEmploymentBusinessId: string | null = null;
+    // Track the businessId we create
+    let businessId: string | null = null;
 
     // =========================================================================
     // Step 1: Create Test Business using Self Assessment Test Support API
-    // Endpoint: POST /individuals/self-assessment-test-support/business/{nino}
     // =========================================================================
     try {
-      const createBusinessResponse = await hmrcClient.post<{ businessId: string }>(
+      const createBusinessResponse = await hmrcClient.post<{
+        businessId: string;
+        links?: Array<{ href: string; method: string; rel: string }>;
+      }>(
         user.id,
         `/individuals/self-assessment-test-support/business/${cleanNino}`,
         {
@@ -82,33 +89,39 @@ export async function POST(request: NextRequest) {
             latencyIndicator2: 'A',
           },
           addressLineOne: '123 Test Street',
+          addressLineTwo: 'Test Town',
           addressPostcode: 'SW1A 1AA',
           countryCode: 'GB',
         },
         { govTestScenario: 'STATEFUL' }
       );
 
-      selfEmploymentBusinessId = createBusinessResponse.businessId;
+      businessId = createBusinessResponse.businessId;
+
       steps.push({
         step: 'Create test business',
         status: 'success',
         category: 'self-employment',
-        message: `Created test business: ${selfEmploymentBusinessId}`,
-        data: { businessId: selfEmploymentBusinessId, tradingName: 'TaxFolio Test Business' },
+        message: `Test business created: ${businessId}`,
+        data: {
+          businessId,
+          tradingName: 'TaxFolio Test Business',
+          accountingType: 'CASH',
+        },
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
 
-      // Check if business already exists - if so, try to retrieve it
+      // Check if business already exists (common scenario)
       if (errorMsg.includes('BUSINESS_ALREADY_EXISTS') || errorMsg.includes('already exists')) {
         steps.push({
           step: 'Create test business',
           status: 'info',
           category: 'self-employment',
-          message: 'Test business already exists for this NINO. Attempting to retrieve existing business...',
+          message: 'Business already exists for this test user. Attempting to retrieve...',
         });
 
-        // Try to get existing business from Business Details API
+        // Try to get existing business
         try {
           const businessesResponse = await hmrcClient.get<{
             listOfBusinesses: Array<{
@@ -125,21 +138,21 @@ export async function POST(request: NextRequest) {
           );
 
           if (selfEmploymentBusiness) {
-            selfEmploymentBusinessId = selfEmploymentBusiness.businessId;
+            businessId = selfEmploymentBusiness.businessId;
             steps.push({
               step: 'Retrieve existing business',
               status: 'success',
               category: 'self-employment',
-              message: `Found existing business: ${selfEmploymentBusiness.tradingName || selfEmploymentBusinessId}`,
-              data: { businessId: selfEmploymentBusinessId },
+              message: `Found existing business: ${businessId}`,
+              data: selfEmploymentBusiness,
             });
           }
-        } catch {
+        } catch (listErr) {
           steps.push({
             step: 'Retrieve existing business',
             status: 'error',
             category: 'self-employment',
-            message: 'Could not retrieve existing business details',
+            message: `Could not retrieve existing business: ${listErr instanceof Error ? listErr.message : 'Unknown error'}`,
           });
         }
       } else if (isSandboxLimitation(errorMsg)) {
@@ -147,27 +160,27 @@ export async function POST(request: NextRequest) {
           step: 'Create test business',
           status: 'info',
           category: 'self-employment',
-          message: 'Test Support API not available for this test user. Ensure user has MTD ITSA enrolment.',
+          message: 'Test Support API not available for this test user. This is a sandbox limitation.',
         });
       } else {
         steps.push({
           step: 'Create test business',
           status: 'error',
           category: 'self-employment',
-          message: `Failed to create test business: ${errorMsg}`,
+          message: `Error creating test business: ${errorMsg}`,
         });
       }
     }
 
     // =========================================================================
-    // Step 2: Submit Self-Employment Income (if we have a business)
-    // Uses self-employment-business-api
+    // Step 2: Submit Self-Employment Income (if we have a businessId)
     // =========================================================================
-    if (selfEmploymentBusinessId) {
+    if (businessId) {
       try {
+        // Submit cumulative self-employment data
         await hmrcClient.put(
           user.id,
-          `/individuals/business/self-employment/${cleanNino}/${selfEmploymentBusinessId}/cumulative/${taxYear}`,
+          `/individuals/business/self-employment/${cleanNino}/${businessId}/cumulative/${taxYear}`,
           {
             periodDates: {
               periodStartDate: `${startYear}-04-06`,
@@ -183,17 +196,24 @@ export async function POST(request: NextRequest) {
           },
           { govTestScenario: 'STATEFUL' }
         );
+
         steps.push({
-          step: 'Submit self-employment',
+          step: 'Submit self-employment income',
           status: 'success',
           category: 'self-employment',
-          message: 'Self-employment submitted: £50,000 turnover, £15,000 expenses (profit: £35,500)',
-          data: { mode: 'STATEFUL', turnover: 50000, other: 500, expenses: 15000, profit: 35500 },
+          message: 'Self-employment income submitted: £50,000 turnover, £15,000 expenses (£35,500 profit)',
+          data: {
+            businessId,
+            turnover: 50000,
+            other: 500,
+            expenses: 15000,
+            profit: 35500,
+          },
         });
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         steps.push({
-          step: 'Submit self-employment',
+          step: 'Submit self-employment income',
           status: 'error',
           category: 'self-employment',
           message: `Self-employment submission error: ${errorMsg}`,
@@ -201,16 +221,15 @@ export async function POST(request: NextRequest) {
       }
     } else {
       steps.push({
-        step: 'Submit self-employment',
+        step: 'Submit self-employment income',
         status: 'skipped',
         category: 'self-employment',
-        message: 'Skipped - no business ID available (create test business first)',
+        message: 'Skipped - no business ID available',
       });
     }
 
     // =========================================================================
     // Step 3: Submit UK Dividends (STATEFUL mode)
-    // Uses individuals-dividends-income-api
     // =========================================================================
     try {
       await hmrcClient.put(
@@ -222,12 +241,13 @@ export async function POST(request: NextRequest) {
         },
         { govTestScenario: 'STATEFUL' }
       );
+
       steps.push({
         step: 'Submit UK dividends',
         status: 'success',
         category: 'dividends',
         message: 'UK Dividends submitted: £2,500 dividends + £500 other dividends',
-        data: { mode: 'STATEFUL', ukDividends: 2500, otherUkDividends: 500 },
+        data: { ukDividends: 2500, otherUkDividends: 500 },
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -236,7 +256,7 @@ export async function POST(request: NextRequest) {
           step: 'Submit UK dividends',
           status: 'info',
           category: 'dividends',
-          message: 'Dividends API requires MTD ITSA subscription on test user.',
+          message: 'Dividends API requires MTD ITSA subscription. This is a sandbox limitation.',
         });
       } else {
         steps.push({
@@ -249,8 +269,7 @@ export async function POST(request: NextRequest) {
     }
 
     // =========================================================================
-    // Step 4: Submit UK Savings Interest (STATEFUL mode)
-    // Uses individuals-savings-income-api
+    // Step 4: Submit Savings Interest (STATEFUL mode)
     // =========================================================================
     try {
       await hmrcClient.put(
@@ -265,12 +284,13 @@ export async function POST(request: NextRequest) {
         },
         { govTestScenario: 'STATEFUL' }
       );
+
       steps.push({
         step: 'Submit savings interest',
         status: 'success',
         category: 'savings',
         message: 'Savings submitted: £1,000 gross (£200 tax deducted)',
-        data: { mode: 'STATEFUL', grossAmount: 1000, taxTakenOff: 200 },
+        data: { grossAmount: 1000, taxTakenOff: 200, netAmount: 800 },
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -279,7 +299,7 @@ export async function POST(request: NextRequest) {
           step: 'Submit savings interest',
           status: 'info',
           category: 'savings',
-          message: 'Savings API requires MTD ITSA subscription on test user.',
+          message: 'Savings API requires MTD ITSA subscription. This is a sandbox limitation.',
         });
       } else {
         steps.push({
@@ -292,30 +312,36 @@ export async function POST(request: NextRequest) {
     }
 
     // =========================================================================
-    // Step 5: Submit UK Interest (bank accounts)
-    // Uses individuals-savings-income-api /uk-accounts endpoint
+    // Step 5: Submit UK Interest (taxed and untaxed)
     // =========================================================================
     try {
       await hmrcClient.put(
         user.id,
         `/individuals/income-received/savings/uk-accounts/${cleanNino}/${taxYear}`,
         {
-          savingsAccounts: [
+          taxedUkInterest: [
             {
-              savingsAccountId: 'SAVKB2UVwUTBQGJ', // Example format from HMRC docs
-              taxedUkInterest: 500,
-              untaxedUkInterest: 200,
+              accountName: 'Test Bank Savings Account',
+              grossAmount: 500,
+              taxDeducted: 100,
+            },
+          ],
+          untaxedUkInterest: [
+            {
+              accountName: 'Test ISA Account',
+              grossAmount: 200,
             },
           ],
         },
         { govTestScenario: 'STATEFUL' }
       );
+
       steps.push({
         step: 'Submit UK interest',
         status: 'success',
         category: 'savings',
         message: 'UK Interest submitted: £500 taxed + £200 untaxed',
-        data: { mode: 'STATEFUL', taxedUkInterest: 500, untaxedUkInterest: 200 },
+        data: { taxedInterest: 500, untaxedInterest: 200 },
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -324,7 +350,7 @@ export async function POST(request: NextRequest) {
           step: 'Submit UK interest',
           status: 'info',
           category: 'savings',
-          message: 'UK Interest API requires MTD ITSA subscription.',
+          message: 'UK Interest API requires MTD ITSA subscription. This is a sandbox limitation.',
         });
       } else {
         steps.push({
@@ -337,12 +363,15 @@ export async function POST(request: NextRequest) {
     }
 
     // =========================================================================
-    // Step 6: Trigger Tax Calculation (STATEFUL mode)
-    // Uses individual-calculations-api
+    // Step 6: Trigger Tax Calculation
     // =========================================================================
     let calculationId: string | null = null;
+
     try {
-      const calcResponse = await hmrcClient.post<{ calculationId?: string; id?: string }>(
+      const calcResponse = await hmrcClient.post<{
+        calculationId?: string;
+        id?: string;
+      }>(
         user.id,
         `/individuals/calculations/${cleanNino}/self-assessment/${taxYear}`,
         {
@@ -350,29 +379,28 @@ export async function POST(request: NextRequest) {
         },
         { govTestScenario: 'STATEFUL' }
       );
+
       calculationId = calcResponse.calculationId || calcResponse.id || null;
+
       steps.push({
-        step: 'Trigger calculation',
+        step: 'Trigger tax calculation',
         status: 'success',
         category: 'calculation',
-        message: calculationId ? `Tax calculation triggered: ${calculationId}` : 'Tax calculation triggered',
-        data: {
-          calculationId,
-          mode: 'STATEFUL',
-        },
+        message: `Tax calculation triggered${calculationId ? `: ${calculationId}` : ''}`,
+        data: { calculationId },
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       if (isSandboxLimitation(errorMsg)) {
         steps.push({
-          step: 'Trigger calculation',
+          step: 'Trigger tax calculation',
           status: 'info',
           category: 'calculation',
           message: 'Calculation API requires submitted income data and MTD ITSA subscription.',
         });
       } else {
         steps.push({
-          step: 'Trigger calculation',
+          step: 'Trigger tax calculation',
           status: 'error',
           category: 'calculation',
           message: `Calculation API error: ${errorMsg}`,
@@ -381,15 +409,20 @@ export async function POST(request: NextRequest) {
     }
 
     // =========================================================================
-    // Step 7: Retrieve Calculation Results (if we have a calculation ID)
+    // Step 7: Retrieve Calculation Results (if calculation triggered)
     // =========================================================================
     if (calculationId) {
       try {
         const calcDetails = await hmrcClient.get<{
           calculation?: {
-            taxCalculation?: {
-              incomeTax?: { totalIncomeReceivedFromAllSources?: number };
-              totalIncomeTaxAndNicsDue?: number;
+            incomeTax?: {
+              totalIncomeReceivedFromAllSources?: number;
+              totalTaxableIncome?: number;
+              incomeTaxAmount?: number;
+            };
+            nationalInsuranceContributions?: {
+              class2Nics?: { amount?: number };
+              class4Nics?: { amount?: number };
             };
           };
         }>(
@@ -398,25 +431,29 @@ export async function POST(request: NextRequest) {
           { govTestScenario: 'STATEFUL' }
         );
 
-        const taxDue = calcDetails.calculation?.taxCalculation?.totalIncomeTaxAndNicsDue;
-        const totalIncome = calcDetails.calculation?.taxCalculation?.incomeTax?.totalIncomeReceivedFromAllSources;
+        const incomeTax = calcDetails.calculation?.incomeTax;
+        const nics = calcDetails.calculation?.nationalInsuranceContributions;
 
         steps.push({
-          step: 'Retrieve calculation',
+          step: 'Retrieve calculation results',
           status: 'success',
           category: 'calculation',
-          message: taxDue !== undefined
-            ? `Tax calculation complete: £${taxDue.toLocaleString()} due on £${totalIncome?.toLocaleString() || 'N/A'} income`
-            : 'Calculation retrieved (details may be processing)',
-          data: calcDetails,
+          message: 'Calculation results retrieved',
+          data: {
+            totalIncome: incomeTax?.totalIncomeReceivedFromAllSources,
+            taxableIncome: incomeTax?.totalTaxableIncome,
+            incomeTaxAmount: incomeTax?.incomeTaxAmount,
+            class2Nics: nics?.class2Nics?.amount,
+            class4Nics: nics?.class4Nics?.amount,
+          },
         });
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         steps.push({
-          step: 'Retrieve calculation',
-          status: 'info',
+          step: 'Retrieve calculation results',
+          status: 'error',
           category: 'calculation',
-          message: `Calculation may still be processing: ${errorMsg}`,
+          message: `Could not retrieve calculation: ${errorMsg}`,
         });
       }
     }
@@ -431,10 +468,10 @@ export async function POST(request: NextRequest) {
 
     // Determine category status
     const getCategoryStatus = (category: string) => {
-      const categorySteps = steps.filter(s => s.category === category);
-      if (categorySteps.some(s => s.status === 'success')) return 'Working';
-      if (categorySteps.some(s => s.status === 'error')) return 'Error';
-      if (categorySteps.some(s => s.status === 'info')) return 'Sandbox Limitation';
+      const categorySteps = steps.filter((s) => s.category === category);
+      if (categorySteps.some((s) => s.status === 'success')) return 'Working';
+      if (categorySteps.some((s) => s.status === 'error')) return 'Error';
+      if (categorySteps.some((s) => s.status === 'info')) return 'Sandbox Limitation';
       return 'Skipped';
     };
 
@@ -445,14 +482,13 @@ export async function POST(request: NextRequest) {
       calculation: getCategoryStatus('calculation'),
     };
 
-    // Check if all issues are sandbox limitations (info status) vs real errors
-    const allIssuesAreSandboxLimitations = errorCount === 0;
-
     return NextResponse.json({
-      success: successCount > 0 || allIssuesAreSandboxLimitations,
-      businessId: selfEmploymentBusinessId,
+      success: successCount > 0,
       mode: 'STATEFUL',
-      explanation: 'Using Self Assessment Test Support API to create test business, then submit income data in STATEFUL mode.',
+      explanation:
+        'Using Self Assessment Test Support API to create test business, then submitting income data.',
+      businessId,
+      calculationId,
       steps,
       summary: {
         totalSteps: steps.length,
@@ -462,32 +498,25 @@ export async function POST(request: NextRequest) {
         skipped: skippedCount,
       },
       categorySummary,
-      nextSteps: errorCount > 0
-        ? [
-            'Review errors above',
-            'Check HMRC API credentials and permissions',
-            'Verify test user has correct MTD ITSA enrolment',
-          ]
-        : successCount > 0
-        ? [
-            '✓ APIs working successfully',
-            selfEmploymentBusinessId ? `✓ Using business: ${selfEmploymentBusinessId}` : null,
-            'Check HMRC Status to verify submitted data',
-          ].filter(Boolean)
-        : [
-            'All APIs showing sandbox limitations',
-            'Test user may need different MTD enrolments',
-            'Try creating a new Individual test user with MTD Income Tax enrolment',
-          ],
+      nextSteps:
+        successCount > 0
+          ? [
+              '✓ Test data created successfully',
+              'Check HMRC Status page to verify submitted data',
+              'Data persists for 7 days in sandbox',
+              businessId ? `Business ID: ${businessId}` : null,
+              calculationId ? `Calculation ID: ${calculationId}` : null,
+            ].filter(Boolean)
+          : [
+              'Some APIs not available for this test user',
+              'Try creating a new Individual test user at developer.service.hmrc.gov.uk/api-test-user',
+              'Ensure MTD Income Tax (Self Assessment) is selected',
+            ],
       notes: [
         'STATEFUL mode persists data for 7 days',
-        'Test business created using Self Assessment Test Support API',
-        'Individual test users should have MTD ITSA enrolment',
-        '"Sandbox Limitation" means the API is not available for this test user configuration',
+        'Test business created via Self Assessment Test Support API',
+        'Production API will work differently - real users will have proper subscriptions',
       ],
-      hint: errorCount > 0 || successCount === 0
-        ? 'Try creating a new Individual test user at developer.service.hmrc.gov.uk/api-test-user with MTD Income Tax (Self Assessment) enrolment'
-        : undefined,
     });
   } catch (error) {
     console.error('Sandbox setup error:', error);
@@ -501,7 +530,8 @@ export async function POST(request: NextRequest) {
 /**
  * DELETE /api/hmrc/sandbox/setup
  *
- * Clean up test data for a NINO using the Self Assessment Test Support API
+ * Cleans up test data from the sandbox.
+ * Uses the Self Assessment Test Support API to delete stateful data.
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -510,14 +540,15 @@ export async function DELETE(request: NextRequest) {
 
     if (!nino) {
       return NextResponse.json(
-        { error: 'NINO is required as query parameter' },
+        { error: 'NINO is required' },
         { status: 400 }
       );
     }
 
-    // Get authenticated user
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json(
@@ -528,25 +559,17 @@ export async function DELETE(request: NextRequest) {
 
     const cleanNino = nino.replace(/\s/g, '').toUpperCase();
 
-    // Delete test data using the Test Support API
-    try {
-      await hmrcClient.delete(
-        user.id,
-        `/individuals/self-assessment-test-support/business/${cleanNino}`,
-        { govTestScenario: 'STATEFUL' }
-      );
+    // Delete stateful test data
+    await hmrcClient.delete(
+      user.id,
+      `/individuals/self-assessment-test-support/vendor-state?nino=${cleanNino}`,
+      { govTestScenario: 'STATEFUL' }
+    );
 
-      return NextResponse.json({
-        success: true,
-        message: `Test data deleted for NINO: ${cleanNino}`,
-      });
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-      return NextResponse.json({
-        success: false,
-        message: `Could not delete test data: ${errorMsg}`,
-      });
-    }
+    return NextResponse.json({
+      success: true,
+      message: `Stateful test data deleted for NINO: ${cleanNino}`,
+    });
   } catch (error) {
     console.error('Sandbox cleanup error:', error);
     return NextResponse.json(
