@@ -1,7 +1,7 @@
 'use client';
 
-import { Turnstile as TurnstileWidget } from '@marsidev/react-turnstile';
-import { forwardRef } from 'react';
+import { Turnstile as TurnstileWidget, type TurnstileInstance } from '@marsidev/react-turnstile';
+import { useRef, useImperativeHandle, forwardRef } from 'react';
 
 interface TurnstileProps {
   onSuccess: (token: string) => void;
@@ -9,9 +9,20 @@ interface TurnstileProps {
   onExpire?: () => void;
 }
 
-const Turnstile = forwardRef<{ reset: () => void }, TurnstileProps>(
+export interface TurnstileRef {
+  reset: () => void;
+}
+
+const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
   ({ onSuccess, onError, onExpire }, ref) => {
+    const turnstileRef = useRef<TurnstileInstance>(null);
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+    useImperativeHandle(ref, () => ({
+      reset: () => {
+        turnstileRef.current?.reset();
+      },
+    }));
 
     if (!siteKey) {
       // In development without keys, auto-pass
@@ -27,7 +38,7 @@ const Turnstile = forwardRef<{ reset: () => void }, TurnstileProps>(
 
     return (
       <TurnstileWidget
-        ref={ref}
+        ref={turnstileRef}
         siteKey={siteKey}
         onSuccess={onSuccess}
         onError={onError}
