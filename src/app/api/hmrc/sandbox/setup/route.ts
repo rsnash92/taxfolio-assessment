@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { hmrcClient } from '@/lib/hmrc';
+import { hmrcClient, hmrcAppClient } from '@/lib/hmrc';
 
 /**
  * POST /api/hmrc/sandbox/setup
@@ -67,13 +67,13 @@ export async function POST(request: NextRequest) {
 
     // =========================================================================
     // Step 1: Create Test Business using Self Assessment Test Support API
+    // NOTE: This uses APPLICATION-RESTRICTED auth (client credentials)
     // =========================================================================
     try {
-      const createBusinessResponse = await hmrcClient.post<{
+      const createBusinessResponse = await hmrcAppClient.post<{
         businessId: string;
         links?: Array<{ href: string; method: string; rel: string }>;
       }>(
-        user.id,
         `/individuals/self-assessment-test-support/business/${cleanNino}`,
         {
           typeOfBusiness: 'self-employment',
@@ -570,9 +570,8 @@ export async function DELETE(request: NextRequest) {
 
     const cleanNino = nino.replace(/\s/g, '').toUpperCase();
 
-    // Delete stateful test data
-    await hmrcClient.delete(
-      user.id,
+    // Delete stateful test data using Application-Restricted auth
+    await hmrcAppClient.delete(
       `/individuals/self-assessment-test-support/vendor-state?nino=${cleanNino}`,
       { govTestScenario: 'STATEFUL' }
     );

@@ -1,5 +1,18 @@
 // HMRC API Client
 // Handles authentication and API requests to HMRC MTD APIs
+//
+// Supports two authentication types:
+// 1. User-Restricted: OAuth tokens for accessing user data (most APIs)
+// 2. Application-Restricted: Client credentials for sandbox/test APIs
+//
+// Usage:
+//   import { hmrcClient, hmrcAppClient } from '@/lib/hmrc';
+//
+//   // User-restricted (needs userId to get their OAuth token)
+//   await hmrcClient.get(userId, '/individuals/income-received/...', options);
+//
+//   // Application-restricted (no user needed)
+//   await hmrcAppClient.post('/individuals/self-assessment-test-support/...', body, options);
 
 import { createClient } from '@/lib/supabase/server';
 import { HMRCApiError } from './types';
@@ -22,6 +35,10 @@ interface HMRCRequestOptions {
   headers?: Record<string, string>;
 }
 
+interface AppRequestOptions {
+  govTestScenario?: string;
+}
+
 interface StoredHMRCTokens {
   user_id: string;
   access_token: string;
@@ -38,6 +55,14 @@ interface HMRCTokens {
   expires_in: number;
   scope: string;
 }
+
+interface AppTokenCache {
+  token: string;
+  expiresAt: number;
+}
+
+// Cache for application-restricted token (valid for 4 hours)
+let appTokenCache: AppTokenCache | null = null;
 
 /**
  * Get stored HMRC tokens for a user from Supabase
@@ -268,3 +293,124 @@ export async function hmrcRequest<T>(
 ): Promise<T> {
   return hmrcClient.request<T>(userId, endpoint, options);
 }
+
+// =============================================================================
+// Application-Restricted Authentication (Client Credentials Grant)
+// Used for: Self Assessment Test Support API, other app-level endpoints
+// =============================================================================
+
+/**
+ * Get an application-restricted access token using client credentials grant.
+ * Tokens are cached and reused until they expire.
+ */
+async function getApplicationToken(): Promise<string> {
+  // Return cached token if still valid (with 5 min buffer)
+  if (appTokenCache && appTokenCache.expiresAt > Date.now() + 300000) {
+    return appTokenCache.token;
+  }
+
+  console.log('[HMRC] Requesting new application-restricted token...');
+
+  const response = await fetch(`${HMRC_API_BASE_URL}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: HMRC_CLIENT_ID,
+      client_secret: HMRC_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+      scope: 'write:self-assessment',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[HMRC] Application token error:', errorText);
+    throw new Error(`Failed to get application token: ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  // Cache the token
+  appTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + data.expires_in * 1000,
+  };
+
+  console.log('[HMRC] Application token obtained, expires in', data.expires_in, 'seconds');
+
+  return data.access_token;
+}
+
+/**
+ * Make an application-restricted API request.
+ * Uses client credentials instead of user OAuth token.
+ */
+async function appRequest<T>(
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  endpoint: string,
+  body?: unknown,
+  options: AppRequestOptions = {}
+): Promise<T> {
+  const token = await getApplicationToken();
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.hmrc.1.0+json',
+    'Content-Type': 'application/json',
+  };
+
+  if (options.govTestScenario) {
+    headers['Gov-Test-Scenario'] = options.govTestScenario;
+  }
+
+  const url = `${HMRC_API_BASE_URL}${endpoint}`;
+
+  console.log(`[HMRC App] ${method} ${endpoint}`);
+
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    const error = responseData as HMRCApiError;
+    console.error(`[HMRC App] Error ${response.status}:`, responseData);
+    throw new HMRCError(
+      error.message || 'HMRC API Error',
+      error.code || 'UNKNOWN_ERROR',
+      response.status,
+      error.errors
+    );
+  }
+
+  return responseData as T;
+}
+
+/**
+ * Application-restricted API client.
+ * Use for Test Support APIs and other app-level endpoints.
+ * Does NOT require a userId - uses client credentials.
+ */
+export const hmrcAppClient = {
+  get: <T>(endpoint: string, options?: AppRequestOptions) =>
+    appRequest<T>('GET', endpoint, undefined, options),
+
+  post: <T>(endpoint: string, body: unknown, options?: AppRequestOptions) =>
+    appRequest<T>('POST', endpoint, body, options),
+
+  put: <T>(endpoint: string, body: unknown, options?: AppRequestOptions) =>
+    appRequest<T>('PUT', endpoint, body, options),
+
+  delete: <T>(endpoint: string, options?: AppRequestOptions) =>
+    appRequest<T>('DELETE', endpoint, undefined, options),
+};

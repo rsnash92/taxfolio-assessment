@@ -2,7 +2,7 @@
 // Provides a unified interface for all HMRC MTD API interactions
 
 // Client
-export { hmrcClient, HMRCError, getHMRCTokens, isHMRCConnected } from './client';
+export { hmrcClient, hmrcAppClient, HMRCError, getHMRCTokens, isHMRCConnected } from './client';
 
 // Types
 export type {
