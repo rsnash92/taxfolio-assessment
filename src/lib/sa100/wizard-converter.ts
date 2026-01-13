@@ -17,10 +17,15 @@
 import type { WizardData } from '@/types/wizard'
 import type {
   TaxpayerIdentification,
+  SA102Employment,
+  SA105UKProperty,
+  SA108CapitalGains,
+  SA101AdditionalInfo,
+  SA100Reliefs,
 } from './types'
 
 // Wizard converter output format - intermediate structure before XML generation
-// This is different from the SA100Return type used by the XML builder
+// Uses SA100 types from ./types for schedule data
 export interface WizardSA100Output {
   taxYear: string
   personalDetails: ReturnType<typeof convertPersonalDetails>
@@ -29,62 +34,15 @@ export interface WizardSA100Output {
     name: string
     date: string
   }
-  employments?: WizardEmployment[]
+  employments?: SA102Employment[]
   selfEmployments?: WizardSelfEmployment[]
-  ukProperty?: WizardUKProperty
+  ukProperty?: SA105UKProperty
   foreignIncome?: WizardForeignIncome
-  capitalGains?: WizardCapitalGains
-  additionalInfo?: WizardAdditionalInfo
-  reliefs?: WizardReliefs
+  capitalGains?: SA108CapitalGains
+  additionalInfo?: SA101AdditionalInfo
+  reliefs?: SA100Reliefs
 }
 
-interface WizardEmployment {
-  employerName: string
-  payeReference?: string
-  pay: number
-  taxDeducted: number
-  benefits?: {
-    total?: number
-    car?: number
-    medical?: number
-    other?: number
-  }
-  expenses?: number
-}
-
-interface WizardUKProperty {
-  propertyIncome?: number
-  expenses?: number
-  netProfit?: number
-  loanInterest?: number
-}
-
-interface WizardCapitalGains {
-  totalGains?: number
-  totalLosses?: number
-  annualExemptAmount?: number
-  gainsAfterExemption?: number
-  disposals?: Array<{
-    assetType: string
-    disposalProceeds: number
-    allowableCosts: number
-    gain: number
-  }>
-}
-
-interface WizardAdditionalInfo {
-  foreignDividends?: number
-  otherIncome?: Array<{
-    description: string
-    amount: number
-  }>
-}
-
-interface WizardReliefs {
-  pensionContributions?: number
-  giftAid?: number
-  otherReliefs?: number
-}
 
 // Local interfaces for wizard data conversion (intermediate format before XML generation)
 interface WizardSelfEmployment {
@@ -143,7 +101,7 @@ interface WizardForeignIncome {
   foreignPensions?: Array<{
     countryCode: string
     amount: number
-    taxPaid: number
+    taxPaid?: number
   }>
 }
 
@@ -280,39 +238,37 @@ function convertEmployments(wizardData: WizardData): SA102Employment[] {
     if (!empData || !empData.employerName) continue
 
     const employment: SA102Employment = {
-      employerName: empData.employerName,
-      employerPAYERef: empData.employerPAYERef,
-      startDate: empData.startDate,
-      endDate: empData.endDate,
-
+      employerDetails: {
+        employerName: empData.employerName,
+        payeReference: empData.employerPAYERef,
+      },
       payFromEmployment: toWholePounds(empData.payReceived || 0),
-      taxDeducted: toWholePounds(empData.taxDeducted || 0),
-
+      ukTaxDeducted: toWholePounds(empData.taxDeducted || 0),
       tipsAndOtherPayments: empData.tipsReceived ? toWholePounds(empData.tipsReceived) : undefined,
     }
 
     // Benefits in Kind (P11D)
     if (empData.hasP11D) {
-      employment.benefitsInKind = {
-        companyCar: empData.companyCarBenefit ? toWholePounds(empData.companyCarBenefit) : undefined,
-        fuelForCompanyCar: empData.fuelBenefit ? toWholePounds(empData.fuelBenefit) : undefined,
-        privateMedical: empData.medicalInsuranceBenefit
+      employment.benefitsAndExpenses = {
+        companyCarsAndVans: empData.companyCarBenefit ? toWholePounds(empData.companyCarBenefit) : undefined,
+        fuelForCompanyCarsAndVans: empData.fuelBenefit ? toWholePounds(empData.fuelBenefit) : undefined,
+        privateMedicalInsurance: empData.medicalInsuranceBenefit
           ? toWholePounds(empData.medicalInsuranceBenefit)
           : undefined,
-        other: empData.otherBenefits ? toWholePounds(empData.otherBenefits) : undefined,
+        otherBenefits: empData.otherBenefits ? toWholePounds(empData.otherBenefits) : undefined,
       }
     }
 
     // Expenses
     if (empData.claimingExpenses) {
-      employment.expenses = {
-        travelAndSubsistence: empData.travelExpenses
+      employment.employmentExpenses = {
+        businessTravel: empData.travelExpenses
           ? toWholePounds(empData.travelExpenses)
           : undefined,
         professionalFees: empData.professionalFees
           ? toWholePounds(empData.professionalFees)
           : undefined,
-        other:
+        otherExpenses:
           (empData.workingFromHome || 0) + (empData.otherExpenses || 0) > 0
             ? toWholePounds((empData.workingFromHome || 0) + (empData.otherExpenses || 0))
             : undefined,
@@ -431,7 +387,7 @@ function convertSelfEmploymentExpenses(
   // Map wizard categories to SA103 expense fields
   return {
     useConsolidated: false,
-    costOfGoods: toWholePoundsOrUndefined(byCategory['cost_of_goods'] || byCategory['materials']),
+    costOfGoodsSold: toWholePoundsOrUndefined(byCategory['cost_of_goods'] || byCategory['materials']),
     carVanTravel: toWholePoundsOrUndefined(
       byCategory['travel'] || byCategory['vehicle'] || byCategory['mileage']
     ),
@@ -443,8 +399,8 @@ function convertSelfEmploymentExpenses(
     ),
     advertising: toWholePoundsOrUndefined(byCategory['advertising'] || byCategory['marketing']),
     interest: toWholePoundsOrUndefined(byCategory['interest'] || byCategory['bank_charges']),
-    accountancy: toWholePoundsOrUndefined(byCategory['accountancy'] || byCategory['professional']),
-    other: toWholePoundsOrUndefined(byCategory['other'] || byCategory['miscellaneous']),
+    phone: toWholePoundsOrUndefined(byCategory['phone'] || byCategory['accountancy'] || byCategory['professional']),
+    otherExpenses: toWholePoundsOrUndefined(byCategory['other'] || byCategory['miscellaneous']),
   }
 }
 
@@ -480,39 +436,48 @@ function convertUKProperty(wizardData: WizardData): SA105UKProperty | undefined 
     }
   }
 
-  return {
-    numberOfProperties: validProperties.length,
+  const netProfitOrLoss = totalRentIncome - totalExpenses
 
-    income: {
-      rentAndOtherIncome: toWholePounds(totalRentIncome),
+  const result: SA105UKProperty = {
+    propertyIncome: {
+      totalRentsAndOtherIncome: toWholePounds(totalRentIncome),
     },
 
-    expenses: hasItemizedExpenses
+    propertyExpenses: hasItemizedExpenses
       ? {
-          useConsolidated: false,
-          rentsRatesInsurance: toWholePoundsOrUndefined(
-            expensesByCategory['insurance'] ||
-              expensesByCategory['rates'] ||
-              expensesByCategory['council_tax']
-          ),
-          propertyRepairs: toWholePoundsOrUndefined(
-            expensesByCategory['repairs'] || expensesByCategory['maintenance']
-          ),
-          legalManagementFees: toWholePoundsOrUndefined(
-            expensesByCategory['legal'] ||
-              expensesByCategory['management_fees'] ||
-              expensesByCategory['letting_fees']
-          ),
-          otherAllowableExpenses: toWholePoundsOrUndefined(expensesByCategory['other']),
+          itemizedExpenses: {
+            rentsRatesInsurance: toWholePoundsOrUndefined(
+              expensesByCategory['insurance'] ||
+                expensesByCategory['rates'] ||
+                expensesByCategory['council_tax']
+            ),
+            propertyRepairs: toWholePoundsOrUndefined(
+              expensesByCategory['repairs'] || expensesByCategory['maintenance']
+            ),
+            legalProfessional: toWholePoundsOrUndefined(
+              expensesByCategory['legal'] ||
+                expensesByCategory['management_fees'] ||
+                expensesByCategory['letting_fees']
+            ),
+            otherAllowable: toWholePoundsOrUndefined(expensesByCategory['other']),
+          },
+          totalAllowableExpenses: toWholePounds(totalExpenses),
         }
       : {
-          useConsolidated: true,
           consolidatedExpenses: toWholePounds(totalExpenses),
         },
 
-    // Section 24 - Finance costs now a tax credit, not expense
-    residentialFinanceCosts: totalFinanceCosts > 0 ? toWholePounds(totalFinanceCosts) : undefined,
+    netProfitOrLoss: toWholePounds(netProfitOrLoss),
   }
+
+  // Section 24 - Finance costs now a tax credit, not expense
+  if (totalFinanceCosts > 0) {
+    result.taxAdjustments = {
+      residentialFinanceCosts: toWholePounds(totalFinanceCosts),
+    }
+  }
+
+  return result
 }
 
 // =============================================================================
@@ -597,13 +562,17 @@ function convertCapitalGains(wizardData: WizardData): SA108CapitalGains | undefi
   const disposals = cgData?.disposals || []
   if (!cgData || disposals.length === 0) return undefined
 
-  const capitalGains: SA108CapitalGains = {}
+  const capitalGains: SA108CapitalGains = {
+    summary: {
+      numberOfDisposals: disposals.length,
+    },
+  }
 
   // Group disposals by type
   const listedShares = disposals.filter(
     (d) => d.assetType === 'listed-shares' || d.assetType === 'shares'
   )
-  const unlistedShares = disposals.filter((d) => d.assetType === 'unlisted-shares')
+  const unlistedSharesDisposals = disposals.filter((d) => d.assetType === 'unlisted-shares')
   const residentialProperty = disposals.filter(
     (d) => d.assetType === 'residential-property' || d.assetType === 'property'
   )
@@ -624,44 +593,52 @@ function convertCapitalGains(wizardData: WizardData): SA108CapitalGains | undefi
     const gain = Math.max(0, proceeds - costs)
     const loss = Math.max(0, costs - proceeds)
 
-    capitalGains.listedSharesGains = {
+    capitalGains.listedSharesAndSecurities = {
       disposalProceeds: toWholePounds(proceeds),
       allowableCosts: toWholePounds(costs),
-      gain: gain > 0 ? toWholePounds(gain) : undefined,
-      loss: loss > 0 ? toWholePounds(loss) : undefined,
+      gainsInYear: gain > 0 ? toWholePounds(gain) : undefined,
+      lossesInYear: loss > 0 ? toWholePounds(loss) : undefined,
     }
   }
 
   // Unlisted shares
-  if (unlistedShares.length > 0) {
-    const proceeds = unlistedShares.reduce((sum, d) => sum + d.proceedsAmount, 0)
-    const costs = unlistedShares.reduce(
+  if (unlistedSharesDisposals.length > 0) {
+    const proceeds = unlistedSharesDisposals.reduce((sum, d) => sum + d.proceedsAmount, 0)
+    const costs = unlistedSharesDisposals.reduce(
       (sum, d) => sum + d.acquisitionCost + (d.allowableCosts || 0),
       0
     )
     const gain = Math.max(0, proceeds - costs)
     const loss = Math.max(0, costs - proceeds)
 
-    capitalGains.unlistedSharesGains = {
+    capitalGains.unlistedShares = {
       disposalProceeds: toWholePounds(proceeds),
       allowableCosts: toWholePounds(costs),
-      gain: gain > 0 ? toWholePounds(gain) : undefined,
-      loss: loss > 0 ? toWholePounds(loss) : undefined,
+      gainsInYear: gain > 0 ? toWholePounds(gain) : undefined,
+      lossesInYear: loss > 0 ? toWholePounds(loss) : undefined,
     }
   }
 
   // Residential property
   if (residentialProperty.length > 0) {
-    capitalGains.residentialPropertyGains = residentialProperty.map((d) => ({
-      address: d.assetDescription,
-      disposalDate: d.dateSold,
-      disposalProceeds: toWholePounds(d.proceedsAmount),
-      allowableCosts: toWholePounds(d.acquisitionCost + (d.allowableCosts || 0)),
-      privateResidenceRelief: d.privateResidenceRelief
-        ? toWholePounds(d.privateResidenceRelief)
-        : undefined,
-      gain: d.gain > 0 ? toWholePounds(d.gain) : undefined,
-    }))
+    const totalGains = residentialProperty.reduce((sum, d) => sum + Math.max(0, d.gain || 0), 0)
+    const totalLosses = residentialProperty.reduce((sum, d) => sum + Math.max(0, -(d.gain || 0)), 0)
+
+    capitalGains.ukResidentialProperty = {
+      numberOfProperties: residentialProperty.length,
+      totalGains: totalGains > 0 ? toWholePounds(totalGains) : undefined,
+      totalLosses: totalLosses > 0 ? toWholePounds(totalLosses) : undefined,
+      properties: residentialProperty.map((d) => ({
+        address: d.assetDescription,
+        disposalDate: d.dateSold,
+        disposalProceeds: toWholePounds(d.proceedsAmount),
+        allowableCosts: toWholePounds(d.acquisitionCost + (d.allowableCosts || 0)),
+        privateResidenceRelief: d.privateResidenceRelief
+          ? toWholePounds(d.privateResidenceRelief)
+          : undefined,
+        gain: d.gain > 0 ? toWholePounds(d.gain) : undefined,
+      })),
+    }
   }
 
   // Other gains (crypto, etc.)
@@ -671,24 +648,29 @@ function convertCapitalGains(wizardData: WizardData): SA108CapitalGains | undefi
     const gain = Math.max(0, proceeds - costs)
     const loss = Math.max(0, costs - proceeds)
 
-    capitalGains.otherGains = {
+    capitalGains.otherPropertyAndAssets = {
       disposalProceeds: toWholePounds(proceeds),
       allowableCosts: toWholePounds(costs),
-      gain: gain > 0 ? toWholePounds(gain) : undefined,
-      loss: loss > 0 ? toWholePounds(loss) : undefined,
+      gainsInYear: gain > 0 ? toWholePounds(gain) : undefined,
+      lossesInYear: loss > 0 ? toWholePounds(loss) : undefined,
     }
   }
 
   // Losses
-  if (cgData.lossesFromPreviousYears && cgData.lossesFromPreviousYears > 0) {
-    capitalGains.lossesCarriedForward = toWholePounds(cgData.lossesFromPreviousYears)
+  if (cgData.lossesFromPreviousYears || cgData.totalLosses) {
+    capitalGains.losses = {
+      lossesBroughtForward: cgData.lossesFromPreviousYears
+        ? toWholePounds(cgData.lossesFromPreviousYears)
+        : undefined,
+      lossesUsedThisYear: cgData.totalLosses
+        ? toWholePounds(Math.min(cgData.totalLosses, cgData.totalGains || 0))
+        : undefined,
+    }
   }
 
-  if (cgData.totalLosses && cgData.totalLosses > 0) {
-    capitalGains.lossesUsed = toWholePounds(Math.min(cgData.totalLosses, cgData.totalGains || 0))
+  capitalGains.annualExemptAmount = {
+    amountClaimed: toWholePounds(cgData.annualExemptAmount || 3000),
   }
-
-  capitalGains.annualExemptAmountUsed = toWholePounds(cgData.annualExemptAmount || 3000)
 
   return capitalGains
 }
@@ -697,95 +679,18 @@ function convertCapitalGains(wizardData: WizardData): SA108CapitalGains | undefi
 // Additional Information (SA101)
 // =============================================================================
 
-function convertAdditionalInfo(wizardData: WizardData): SA101AdditionalInfo | undefined {
-  const additionalInfo: SA101AdditionalInfo = {}
-  let hasData = false
-
-  // Student loan (from employment data)
-  const employments = Object.values(wizardData.employmentData || {})
-  const studentLoanEmp = employments.find((e) => e?.hasStudentLoan && e?.studentLoanPlanType)
-  if (studentLoanEmp) {
-    additionalInfo.studentLoan = {
-      planType: mapStudentLoanPlanType(studentLoanEmp.studentLoanPlanType!),
-      amountRepaid: studentLoanEmp.studentLoanDeducted
-        ? toWholePounds(studentLoanEmp.studentLoanDeducted)
-        : undefined,
-    }
-    hasData = true
-  }
-
-  // State pension (from pension income data)
-  if (wizardData.pensionIncomeData?.statePension) {
-    additionalInfo.statePension = {
-      amount: toWholePounds(wizardData.pensionIncomeData.statePension),
-    }
-    hasData = true
-  }
-
-  // Private pensions
-  if (wizardData.pensionIncomeData?.privatePensions?.length) {
-    additionalInfo.otherPensions = wizardData.pensionIncomeData.privatePensions.map((p) => ({
-      payerName: p.providerName,
-      amount: toWholePounds(p.pensionAmount),
-      taxDeducted: toWholePounds(p.taxDeducted),
-    }))
-    hasData = true
-  }
-
-  // State benefits
-  const sbData = wizardData.stateBenefitsData
-  if (sbData && sbData.totalTaxableBenefits && sbData.totalTaxableBenefits > 0) {
-    additionalInfo.stateBenefits = {
-      jobseekersAllowance: sbData.jobseekersAllowance
-        ? toWholePounds(sbData.jobseekersAllowance)
-        : undefined,
-      incapacityBenefit: sbData.incapacityBenefit
-        ? toWholePounds(sbData.incapacityBenefit)
-        : undefined,
-      employmentSupportAllowance: sbData.employmentSupportAllowance
-        ? toWholePounds(sbData.employmentSupportAllowance)
-        : undefined,
-      carersAllowance: sbData.carersAllowance ? toWholePounds(sbData.carersAllowance) : undefined,
-      bereavement: sbData.bereavementAllowance
-        ? toWholePounds(sbData.bereavementAllowance)
-        : undefined,
-      other: sbData.otherTaxableBenefits ? toWholePounds(sbData.otherTaxableBenefits) : undefined,
-    }
-    hasData = true
-  }
-
-  // Untaxed interest
-  if (wizardData.interestData?.untaxedUKInterest) {
-    additionalInfo.untaxedInterest = toWholePounds(wizardData.interestData.untaxedUKInterest)
-    hasData = true
-  }
-
-  // Taxed interest
-  if (wizardData.interestData?.taxedUKInterest) {
-    additionalInfo.taxedInterest = {
-      gross: toWholePounds(wizardData.interestData.taxedUKInterest),
-      taxDeducted: toWholePounds(
-        wizardData.interestData.taxDeducted ||
-          wizardData.interestData.taxDeductedFromInterest ||
-          0
-      ),
-    }
-    hasData = true
-  }
-
-  // UK dividends
-  if (wizardData.dividendsData?.ukDividends) {
-    additionalInfo.ukDividends = toWholePounds(wizardData.dividendsData.ukDividends)
-    hasData = true
-  }
-
-  // Foreign dividends (simple total for SA101, details in SA106)
-  if (wizardData.dividendsData?.foreignDividends) {
-    additionalInfo.foreignDividends = toWholePounds(wizardData.dividendsData.foreignDividends)
-    hasData = true
-  }
-
-  return hasData ? additionalInfo : undefined
+function convertAdditionalInfo(_wizardData: WizardData): SA101AdditionalInfo | undefined {
+  // SA101 Additional Information is for special cases like:
+  // - Other UK income not included elsewhere
+  // - Share schemes
+  // - Disguised remuneration
+  // - Employment lump sums and compensation
+  // - Life insurance gains
+  // - Pension savings tax charges
+  //
+  // The wizard currently doesn't collect data for these specific SA101 fields.
+  // Returns undefined to indicate no SA101 schedule is needed.
+  return undefined
 }
 
 // =============================================================================
@@ -802,7 +707,7 @@ function convertReliefs(wizardData: WizardData): SA100Reliefs | undefined {
   // Pension contributions
   if (general.pension && general.pension.personalContributions > 0) {
     reliefs.pensionContributions = {
-      personal: toWholePounds(general.pension.personalContributions),
+      personalPensions: toWholePounds(general.pension.personalContributions),
       employerScheme: general.pension.employerContributions
         ? toWholePounds(general.pension.employerContributions)
         : undefined,
@@ -828,9 +733,6 @@ function convertReliefs(wizardData: WizardData): SA100Reliefs | undefined {
   if (general.ventureCapital?.eisInvestments && general.ventureCapital.eisInvestments > 0) {
     reliefs.eis = {
       amountInvested: toWholePounds(general.ventureCapital.eisInvestments),
-      reliefClaimed: toWholePounds(
-        general.ventureCapital.eisReliefClaimed || general.ventureCapital.eisInvestments * 0.3
-      ),
     }
     hasData = true
   }
@@ -839,9 +741,6 @@ function convertReliefs(wizardData: WizardData): SA100Reliefs | undefined {
   if (general.ventureCapital?.seisInvestments && general.ventureCapital.seisInvestments > 0) {
     reliefs.seis = {
       amountInvested: toWholePounds(general.ventureCapital.seisInvestments),
-      reliefClaimed: toWholePounds(
-        general.ventureCapital.seisReliefClaimed || general.ventureCapital.seisInvestments * 0.5
-      ),
     }
     hasData = true
   }
@@ -850,19 +749,6 @@ function convertReliefs(wizardData: WizardData): SA100Reliefs | undefined {
   if (general.ventureCapital?.vctInvestments && general.ventureCapital.vctInvestments > 0) {
     reliefs.vct = {
       amountInvested: toWholePounds(general.ventureCapital.vctInvestments),
-      reliefClaimed: toWholePounds(
-        general.ventureCapital.vctReliefClaimed || general.ventureCapital.vctInvestments * 0.3
-      ),
-    }
-    hasData = true
-  }
-
-  // Marriage Allowance
-  if (general.marriageAllowance && general.marriageAllowance.type) {
-    reliefs.marriageAllowance = {
-      transferring: general.marriageAllowance.type === 'transfer',
-      receiving: general.marriageAllowance.type === 'receive',
-      spouseNINO: general.marriageAllowance.spouseNino,
     }
     hasData = true
   }
@@ -969,9 +855,9 @@ export function validateForSubmission(data: WizardSA100Output): ValidationResult
   if (data.employments) {
     for (let i = 0; i < data.employments.length; i++) {
       const emp = data.employments[i]
-      if (!emp.employerName) {
+      if (!emp.employerDetails?.employerName) {
         errors.push({
-          field: `employments[${i}].employerName`,
+          field: `employments[${i}].employerDetails.employerName`,
           message: 'Employer name is required',
           section: 'employment',
         })
@@ -1008,19 +894,19 @@ export function validateForSubmission(data: WizardSA100Output): ValidationResult
   }
 
   // Capital gains validation
-  if (data.capitalGains?.residentialPropertyGains) {
-    for (let i = 0; i < data.capitalGains.residentialPropertyGains.length; i++) {
-      const prop = data.capitalGains.residentialPropertyGains[i]
+  if (data.capitalGains?.ukResidentialProperty?.properties) {
+    for (let i = 0; i < data.capitalGains.ukResidentialProperty.properties.length; i++) {
+      const prop = data.capitalGains.ukResidentialProperty.properties[i]
       if (!prop.address) {
         errors.push({
-          field: `capitalGains.residentialPropertyGains[${i}].address`,
+          field: `capitalGains.ukResidentialProperty.properties[${i}].address`,
           message: 'Property address is required',
           section: 'capitalGains',
         })
       }
       if (!prop.disposalDate) {
         errors.push({
-          field: `capitalGains.residentialPropertyGains[${i}].disposalDate`,
+          field: `capitalGains.ukResidentialProperty.properties[${i}].disposalDate`,
           message: 'Disposal date is required',
           section: 'capitalGains',
         })
@@ -1084,24 +970,6 @@ function parseAddress(address: string): string[] {
     .split(/[,\n]/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-}
-
-/**
- * Map wizard student loan plan type to SA100 format
- */
-function mapStudentLoanPlanType(planType: '1' | '2' | '4' | 'postgrad'): 'plan1' | 'plan2' | 'plan4' | 'postgraduate' {
-  switch (planType) {
-    case '1':
-      return 'plan1'
-    case '2':
-      return 'plan2'
-    case '4':
-      return 'plan4'
-    case 'postgrad':
-      return 'postgraduate'
-    default:
-      return 'plan1'
-  }
 }
 
 /**
