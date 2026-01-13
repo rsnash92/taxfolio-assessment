@@ -73,6 +73,7 @@ export function validateXML(xml: string): ValidationResult {
   // Basic XML structure
   if (!xml.startsWith('<?xml')) {
     errors.push({
+      code: 'XML_DECLARATION',
       field: 'xml',
       message: 'Missing XML declaration',
       severity: 'error',
@@ -93,6 +94,7 @@ export function validateXML(xml: string): ValidationResult {
   for (const element of requiredElements) {
     if (!xml.includes(`<${element}`)) {
       errors.push({
+        code: `MISSING_${element.toUpperCase()}`,
         field: element,
         message: `Missing required element: ${element}`,
         severity: 'error',
@@ -107,6 +109,7 @@ export function validateXML(xml: string): ValidationResult {
     irMarkValid = verifyIRmark(xml, declaredIRmark)
     if (!irMarkValid) {
       errors.push({
+        code: 'IRMARK_INVALID',
         field: 'IRmark',
         message: 'IRmark hash does not match content',
         severity: 'error',
@@ -114,6 +117,7 @@ export function validateXML(xml: string): ValidationResult {
     }
   } else {
     errors.push({
+      code: 'IRMARK_MISSING',
       field: 'IRmark',
       message: 'Missing IRmark element',
       severity: 'error',
@@ -123,6 +127,7 @@ export function validateXML(xml: string): ValidationResult {
   // Check namespace declarations
   if (!xml.includes('xmlns="http://www.govtalk.gov.uk/CM/envelope"')) {
     errors.push({
+      code: 'NAMESPACE_MISSING',
       field: 'namespace',
       message: 'Missing GovTalk namespace declaration',
       severity: 'error',
@@ -145,6 +150,7 @@ function validateRequiredFields(data: SA100Return, errors: ValidationError[]): v
   // Tax year
   if (!data.taxYear) {
     errors.push({
+      code: 'TAX_YEAR_REQUIRED',
       field: 'taxYear',
       message: 'Tax year is required',
       severity: 'error',
@@ -154,6 +160,7 @@ function validateRequiredFields(data: SA100Return, errors: ValidationError[]): v
   // Personal details
   if (!data.yourPersonalDetails) {
     errors.push({
+      code: 'PERSONAL_DETAILS_REQUIRED',
       field: 'yourPersonalDetails',
       message: 'Personal details section is required',
       severity: 'error',
@@ -161,6 +168,7 @@ function validateRequiredFields(data: SA100Return, errors: ValidationError[]): v
   } else {
     if (!data.yourPersonalDetails.dateOfBirth) {
       errors.push({
+        code: 'DOB_REQUIRED',
         field: 'yourPersonalDetails.dateOfBirth',
         message: 'Date of birth is required',
         severity: 'error',
@@ -169,6 +177,7 @@ function validateRequiredFields(data: SA100Return, errors: ValidationError[]): v
 
     if (!data.yourPersonalDetails.nationalInsuranceNumber) {
       errors.push({
+        code: 'NINO_REQUIRED',
         field: 'yourPersonalDetails.nationalInsuranceNumber',
         message: 'National Insurance number is required',
         severity: 'error',
@@ -177,6 +186,7 @@ function validateRequiredFields(data: SA100Return, errors: ValidationError[]): v
 
     if (!data.yourPersonalDetails.taxpayerStatus) {
       errors.push({
+        code: 'TAXPAYER_STATUS_REQUIRED',
         field: 'yourPersonalDetails.taxpayerStatus',
         message: 'Taxpayer status is required (C=Welsh, S=Scottish, U=Rest of UK)',
         severity: 'error',
@@ -187,6 +197,7 @@ function validateRequiredFields(data: SA100Return, errors: ValidationError[]): v
   // Declaration
   if (!data.finishing) {
     errors.push({
+      code: 'FINISHING_REQUIRED',
       field: 'finishing',
       message: 'Declaration (Finishing) section is required',
       severity: 'error',
@@ -194,6 +205,7 @@ function validateRequiredFields(data: SA100Return, errors: ValidationError[]): v
   } else {
     if (!data.finishing.returnSigner) {
       errors.push({
+        code: 'RETURN_SIGNER_REQUIRED',
         field: 'finishing.returnSigner',
         message: 'Return signer is required',
         severity: 'error',
@@ -210,6 +222,7 @@ function validateFormats(data: SA100Return, errors: ValidationError[]): void {
   // Tax year format (YYYY-YY)
   if (data.taxYear && !VALIDATION_PATTERNS.TAX_YEAR.test(data.taxYear)) {
     errors.push({
+      code: 'TAX_YEAR_FORMAT',
       field: 'taxYear',
       message: 'Tax year must be in format YYYY-YY (e.g., 2024-25)',
       severity: 'error',
@@ -221,6 +234,7 @@ function validateFormats(data: SA100Return, errors: ValidationError[]): void {
     const nino = data.yourPersonalDetails.nationalInsuranceNumber.replace(/\s/g, '').toUpperCase()
     if (!VALIDATION_PATTERNS.NINO.test(nino)) {
       errors.push({
+        code: 'NINO_FORMAT',
         field: 'yourPersonalDetails.nationalInsuranceNumber',
         message: 'Invalid National Insurance number format. Expected: XX999999X (e.g., AB123456C)',
         severity: 'error',
@@ -233,6 +247,7 @@ function validateFormats(data: SA100Return, errors: ValidationError[]): void {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(data.yourPersonalDetails.dateOfBirth)) {
       errors.push({
+        code: 'DOB_FORMAT',
         field: 'yourPersonalDetails.dateOfBirth',
         message: 'Date of birth must be in format YYYY-MM-DD',
         severity: 'error',
@@ -244,6 +259,7 @@ function validateFormats(data: SA100Return, errors: ValidationError[]): void {
   if (data.yourPersonalDetails?.taxpayerStatus) {
     if (!['C', 'S', 'U'].includes(data.yourPersonalDetails.taxpayerStatus)) {
       errors.push({
+        code: 'TAXPAYER_STATUS_INVALID',
         field: 'yourPersonalDetails.taxpayerStatus',
         message: 'Taxpayer status must be C (Welsh), S (Scottish), or U (Rest of UK)',
         severity: 'error',
@@ -256,6 +272,7 @@ function validateFormats(data: SA100Return, errors: ValidationError[]): void {
     const postcode = data.yourPersonalDetails.newAddress.postcode.toUpperCase()
     if (!VALIDATION_PATTERNS.POSTCODE.test(postcode)) {
       errors.push({
+        code: 'POSTCODE_FORMAT',
         field: 'yourPersonalDetails.newAddress.postcode',
         message: 'Invalid UK postcode format',
         severity: 'error',
@@ -279,6 +296,7 @@ function validateBusinessRules(
     const currentYear = new Date().getFullYear()
     if (startYear > currentYear || startYear < currentYear - 4) {
       warnings.push({
+        code: 'TAX_YEAR_UNUSUAL',
         field: 'taxYear',
         message: `Tax year ${data.taxYear} seems unusual. Expected recent tax year.`,
         severity: 'warning',
@@ -294,6 +312,7 @@ function validateBusinessRules(
       // Employer name required
       if (!emp.employerDetails?.employerName) {
         errors.push({
+          code: 'EMPLOYER_NAME_REQUIRED',
           field: `sa102[${i}].employerDetails.employerName`,
           message: 'Employer name is required for employment',
           severity: 'error',
@@ -303,6 +322,7 @@ function validateBusinessRules(
       // Tax deducted shouldn't exceed pay
       if (emp.ukTaxDeducted > emp.payFromEmployment) {
         warnings.push({
+          code: 'TAX_EXCEEDS_PAY',
           field: `sa102[${i}].ukTaxDeducted`,
           message: 'Tax deducted exceeds pay from employment',
           severity: 'warning',
@@ -319,6 +339,7 @@ function validateBusinessRules(
       // Business name required
       if (!biz.businessDetails?.businessName) {
         errors.push({
+          code: 'BUSINESS_NAME_REQUIRED',
           field: `sa103S[${i}].businessDetails.businessName`,
           message: 'Business name is required',
           severity: 'error',
@@ -331,6 +352,7 @@ function validateBusinessRules(
         const end = new Date(biz.accountingPeriod.endDate)
         if (end <= start) {
           errors.push({
+            code: 'ACCOUNTING_PERIOD_INVALID',
             field: `sa103S[${i}].accountingPeriod`,
             message: 'Accounting period end date must be after start date',
             severity: 'error',
@@ -344,6 +366,7 @@ function validateBusinessRules(
       const expectedProfit = turnover - expenses
       if (Math.abs(biz.netProfitOrLoss - expectedProfit) > 1) {
         warnings.push({
+          code: 'PROFIT_MISMATCH',
           field: `sa103S[${i}].netProfitOrLoss`,
           message: 'Net profit/loss does not match income minus expenses',
           severity: 'warning',
@@ -355,6 +378,7 @@ function validateBusinessRules(
   // Schedule count limits
   if (data.sa102 && data.sa102.length > 50) {
     errors.push({
+      code: 'SA102_LIMIT',
       field: 'sa102',
       message: 'Maximum 50 employments allowed',
       severity: 'error',
@@ -363,6 +387,7 @@ function validateBusinessRules(
 
   if (data.sa103S && data.sa103S.length > 50) {
     errors.push({
+      code: 'SA103S_LIMIT',
       field: 'sa103S',
       message: 'Maximum 50 short self-employments allowed',
       severity: 'error',
@@ -371,6 +396,7 @@ function validateBusinessRules(
 
   if (data.sa103F && data.sa103F.length > 50) {
     errors.push({
+      code: 'SA103F_LIMIT',
       field: 'sa103F',
       message: 'Maximum 50 full self-employments allowed',
       severity: 'error',
@@ -392,6 +418,7 @@ function validateCrossFields(
     if (data.marriage.transferToSpouseIndicator || data.marriage.receiveFromSpouseIndicator) {
       if (!data.marriage.spouseNINO) {
         errors.push({
+          code: 'SPOUSE_NINO_REQUIRED',
           field: 'marriage.spouseNINO',
           message: "Spouse's NI number required when claiming marriage allowance",
           severity: 'error',
@@ -404,6 +431,7 @@ function validateCrossFields(
   if (data.blindPersonsAllowance?.transferSurplusIndicator) {
     if (!data.blindPersonsAllowance.spouseNINO) {
       errors.push({
+        code: 'BLIND_SPOUSE_NINO_REQUIRED',
         field: 'blindPersonsAllowance.spouseNINO',
         message: "Spouse's NI number required when transferring blind person's allowance",
         severity: 'error',
@@ -421,6 +449,7 @@ function validateCrossFields(
       data.sa108.ukResidentialProperty
     if (!hasData) {
       warnings.push({
+        code: 'SA108_EMPTY',
         field: 'sa108',
         message: 'Capital gains schedule included but no disposals recorded',
         severity: 'warning',
@@ -461,6 +490,7 @@ export async function validateWithLTS(
         valid: false,
         errors: [
           {
+            code: 'LTS_ERROR',
             field: 'lts',
             message: `LTS returned status ${response.status}`,
             severity: 'error',
@@ -478,9 +508,10 @@ export async function validateWithLTS(
     if (hasErrors) {
       // Extract errors from response
       const errorMatches = result.match(/<(?:error|Error)>([^<]+)<\/(?:error|Error)>/g) || []
-      const errors: ValidationError[] = errorMatches.map((match) => {
+      const errors: ValidationError[] = errorMatches.map((match, index) => {
         const message = match.replace(/<\/?(?:error|Error)>/gi, '')
         return {
+          code: `SCHEMA_ERROR_${index}`,
           field: 'schema',
           message,
           severity: 'error' as const,
@@ -496,6 +527,7 @@ export async function validateWithLTS(
       valid: false,
       errors: [
         {
+          code: 'LTS_CONNECTION',
           field: 'lts',
           message: `Failed to connect to LTS: ${error instanceof Error ? error.message : 'Unknown error'}. Is LTS running?`,
           severity: 'error',
