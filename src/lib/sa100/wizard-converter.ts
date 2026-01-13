@@ -17,13 +17,74 @@
 import type { WizardData } from '@/types/wizard'
 import type {
   TaxpayerIdentification,
-  SA100Return,
-  SA101AdditionalInfo,
-  SA102Employment,
-  SA105UKProperty,
-  SA108CapitalGains,
-  SA100Reliefs,
 } from './types'
+
+// Wizard converter output format - intermediate structure before XML generation
+// This is different from the SA100Return type used by the XML builder
+export interface WizardSA100Output {
+  taxYear: string
+  personalDetails: ReturnType<typeof convertPersonalDetails>
+  declaration: {
+    declarantType: 'taxpayer' | 'agent'
+    name: string
+    date: string
+  }
+  employments?: WizardEmployment[]
+  selfEmployments?: WizardSelfEmployment[]
+  ukProperty?: WizardUKProperty
+  foreignIncome?: WizardForeignIncome
+  capitalGains?: WizardCapitalGains
+  additionalInfo?: WizardAdditionalInfo
+  reliefs?: WizardReliefs
+}
+
+interface WizardEmployment {
+  employerName: string
+  payeReference?: string
+  pay: number
+  taxDeducted: number
+  benefits?: {
+    total?: number
+    car?: number
+    medical?: number
+    other?: number
+  }
+  expenses?: number
+}
+
+interface WizardUKProperty {
+  propertyIncome?: number
+  expenses?: number
+  netProfit?: number
+  loanInterest?: number
+}
+
+interface WizardCapitalGains {
+  totalGains?: number
+  totalLosses?: number
+  annualExemptAmount?: number
+  gainsAfterExemption?: number
+  disposals?: Array<{
+    assetType: string
+    disposalProceeds: number
+    allowableCosts: number
+    gain: number
+  }>
+}
+
+interface WizardAdditionalInfo {
+  foreignDividends?: number
+  otherIncome?: Array<{
+    description: string
+    amount: number
+  }>
+}
+
+interface WizardReliefs {
+  pensionContributions?: number
+  giftAid?: number
+  otherReliefs?: number
+}
 
 // Local interfaces for wizard data conversion (intermediate format before XML generation)
 interface WizardSelfEmployment {
@@ -106,7 +167,7 @@ export function convertWizardToSA100(
   wizardData: WizardData,
   taxpayer: TaxpayerIdentification,
   options: ConvertOptions = {}
-): SA100Return {
+): WizardSA100Output {
   const { declarationDate, declarantName, isAgent = false } = options
 
   // Extract first and last name from full name
@@ -115,7 +176,7 @@ export function convertWizardToSA100(
   const lastName = nameParts.slice(1).join(' ') || nameParts[0] || ''
 
   // Build the return
-  const sa100: SA100Return = {
+  const sa100: WizardSA100Output = {
     taxYear: formatTaxYear(wizardData.taxYear),
 
     personalDetails: convertPersonalDetails(wizardData, taxpayer, firstName, lastName),
@@ -828,7 +889,7 @@ export interface ValidationError {
 /**
  * Validate SA100 data for submission
  */
-export function validateForSubmission(data: SA100Return): ValidationResult {
+export function validateForSubmission(data: WizardSA100Output): ValidationResult {
   const errors: ValidationError[] = []
   const warnings: ValidationError[] = []
 
