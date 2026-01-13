@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   switch (event.type) {
     case 'payment_intent.succeeded': {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      const { planId, planName, discountCode, discountAmount, originalPrice } =
+      const { planId, planName, discountCode, discountAmount, originalPrice, userId, taxYear } =
         paymentIntent.metadata;
 
       console.log('Payment succeeded:', paymentIntent.id);
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from('assessment_payments').insert({
         stripe_payment_intent_id: paymentIntent.id,
         stripe_customer_id: paymentIntent.customer as string | null,
+        user_id: userId || null,
         amount: paymentIntent.amount,
         currency: paymentIntent.currency,
         status: 'succeeded',
@@ -71,6 +72,27 @@ export async function POST(request: NextRequest) {
       if (error) {
         console.error('Failed to store payment record:', error);
         // Don't fail the webhook - Stripe will retry
+      }
+
+      // Create or update declaration to 'paid' status
+      if (userId && taxYear) {
+        const { error: declError } = await supabase
+          .from('declarations')
+          .upsert({
+            user_id: userId,
+            tax_year: taxYear,
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+            stripe_payment_intent_id: paymentIntent.id,
+          }, {
+            onConflict: 'user_id,tax_year',
+          });
+
+        if (declError) {
+          console.error('Failed to update declaration status:', declError);
+        } else {
+          console.log(`Declaration for user ${userId} tax year ${taxYear} marked as paid`);
+        }
       }
 
       break;

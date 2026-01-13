@@ -638,14 +638,18 @@ export interface SubmissionData {
   submittedAt?: string;
   hmrcReferenceNumber?: string;
   calculationId?: string;
+  correlationId?: string;
+  irmark?: string;
   declarationAccepted: boolean;
   declarationTimestamp?: string;
+  sandbox?: boolean;
 }
 
 export interface WizardData {
   // Session
   sessionId: string | null;
   taxYear: string;
+  declarationId?: string;
 
   // Getting Started
   isUKResident: boolean | null;

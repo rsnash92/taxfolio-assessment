@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { calculatePrice, getPlanById } from '@/lib/config/pricing';
+import { createClient } from '@/lib/supabase/server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
-    const { planId, discountCode, email } = await request.json();
+    const { planId, discountCode, email, taxYear } = await request.json();
+
+    // Get user ID from session
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
 
     // Validate plan
     const plan = getPlanById(planId);
@@ -47,6 +53,8 @@ export async function POST(request: NextRequest) {
         discountCode: discountCode || '',
         discountAmount: pricing.discountAmount.toString(),
         originalPrice: pricing.originalPrice.toString(),
+        userId: userId || '',
+        taxYear: taxYear || '2024-25',
       },
       receipt_email: email || undefined,
       description: `TaxFolio Assessment - ${plan.name} Plan`,

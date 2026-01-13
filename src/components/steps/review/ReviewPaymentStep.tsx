@@ -244,6 +244,7 @@ export function ReviewPaymentStep() {
           planId: selectedPlan,
           discountCode: appliedDiscount,
           email: userEmail,
+          taxYear: data.taxYear || '2024-25',
         }),
       });
 

@@ -4,10 +4,53 @@
  * These types represent the data structures for HMRC Self Assessment
  * submission via the Transaction Engine XML API.
  *
+ * Based on HMRC RIM Artefacts 2025 v1.0 (MTR-v1-0.xsd)
+ * Tax Year: 2024-25
+ *
  * Key difference from MTD ITSA:
  * - MTD ITSA = REST/JSON APIs with OAuth (for quarterly submissions from 2026)
  * - SA100 = XML API with Government Gateway auth (for annual tax returns)
  */
+
+// =============================================================================
+// Core Data Types (from HMRC schema)
+// =============================================================================
+
+/**
+ * Taxpayer Status - determines which tax rates apply
+ * - C = Welsh taxpayer (Welsh rates apply)
+ * - S = Scottish taxpayer (Scottish rates apply)
+ * - U = Rest of UK (main rates apply)
+ *
+ * This is a MANDATORY field in the SA100 submission.
+ */
+export type TaxpayerStatus = 'C' | 'S' | 'U'
+
+/**
+ * Yes indicator type - presence means 'yes', absence means 'no'
+ * HMRC schema doesn't use 'no' values - just omit the element
+ */
+export type YesIndicator = 'yes'
+
+/**
+ * Sender type for IRheader
+ */
+export type SenderType =
+  | 'Individual'
+  | 'Company'
+  | 'Agent'
+  | 'Bureau'
+  | 'Partnership'
+  | 'Trust'
+  | 'Employer'
+  | 'Government'
+  | 'Acting in Capacity'
+  | 'Other'
+
+/**
+ * Declaration signer type
+ */
+export type DeclarantType = 'Individual' | 'Agent' | 'Nominee'
 
 // =============================================================================
 // Government Gateway Authentication
@@ -23,7 +66,7 @@ export interface GatewayCredentials {
 export interface TaxpayerIdentification {
   /** Unique Taxpayer Reference (10 digits) */
   utr: string
-  /** National Insurance Number */
+  /** National Insurance Number (format: XX999999X) */
   nino: string
 }
 
@@ -32,12 +75,19 @@ export interface TaxpayerIdentification {
 // =============================================================================
 
 export interface GovTalkHeader {
+  /** Message class identifies the service - must be 'HMRC-SA-SA100' for SA100 */
   messageClass: 'HMRC-SA-SA100'
+  /** Qualifier indicates message direction */
   qualifier: 'request' | 'acknowledgement' | 'response' | 'error'
+  /** Function type */
   function: 'submit' | 'delete' | 'list'
+  /** Transaction ID - max 32 hex characters */
   transactionId?: string
+  /** Correlation ID - max 32 hex characters */
   correlationId?: string
+  /** Response endpoint URL */
   responseEndpoint?: string
+  /** Transformation endpoint URL */
   transformationEndpoint?: string
 }
 
@@ -88,14 +138,14 @@ export interface IREnvelope {
 }
 
 export interface IRHeader {
+  /** Keys section contains UTR */
   keys: {
-    key: Array<{ type: string; value: string }>
+    key: Array<{ type: 'UTR'; value: string }>
   }
-  period?: {
-    startDate: string // YYYY-MM-DD
-    endDate: string // YYYY-MM-DD
-  }
-  principal: {
+  /** Period end date (tax year end: YYYY-04-05) */
+  periodEnd: string // YYYY-MM-DD (e.g., "2025-04-05" for 2024-25)
+  /** Principal details (taxpayer contact info) - optional */
+  principal?: {
     contact: {
       name: {
         title?: string
@@ -106,495 +156,1103 @@ export interface IRHeader {
       telephone?: string
     }
   }
+  /** Agent details - if filing as agent */
+  agent?: {
+    contact: {
+      name: {
+        title?: string
+        forename: string
+        surname: string
+      }
+      email?: string
+      telephone?: string
+    }
+    agentId?: string
+  }
+  /** Default currency - always GBP for UK returns */
+  defaultCurrency: 'GBP'
+  /** Manifest - describes the body content */
+  manifest: {
+    contains: {
+      reference: {
+        namespace: string
+        schemaVersion: string
+        topElementName: 'MTR'
+      }
+    }
+  }
+  /** IRmark - digital signature (calculated before submission) */
   irMark?: {
     type: 'generic'
-    value: string // Base64 encoded hash
+    value: string // Base64 encoded SHA-1 hash
   }
-  sender: {
-    type: 'individual' | 'agent'
-  }
+  /** Sender type */
+  sender: SenderType
 }
 
 // =============================================================================
 // SA100 Main Return
 // =============================================================================
 
+/**
+ * SA100 Main Tax Return structure
+ * Maps to /MTR/SA100 in the XML schema
+ */
 export interface SA100Return {
   /** Tax year in format 2024-25 */
   taxYear: string
 
-  /** Personal details */
-  personalDetails: SA100PersonalDetails
+  /** Your Personal Details section - MANDATORY */
+  yourPersonalDetails: SA100YourPersonalDetails
 
-  /** Employment income (SA102) */
-  employments?: SA102Employment[]
+  /** Your Tax Return section - indicates which schedules are included */
+  yourTaxReturn: SA100YourTaxReturn
 
-  /** Self-employment income (SA103S - short, SA103F - full) */
-  selfEmployments?: SA103SelfEmployment[]
+  /** Student Loan Repayments (boxes 1-4) */
+  studentLoanRepayments?: SA100StudentLoan
 
-  /** UK property income (SA105) */
-  ukProperty?: SA105UKProperty
+  /** UK Interest etc (boxes 1-4) */
+  ukInterestEtc?: SA100UKInterest
 
-  /** Foreign income (SA106) */
-  foreignIncome?: SA106ForeignIncome
+  /** UK Dividends (boxes 1-2) */
+  ukDividends?: SA100UKDividends
 
-  /** Capital gains (SA108) */
-  capitalGains?: SA108CapitalGains
+  /** UK Pensions and Annuities */
+  ukPensionsAnnuities?: SA100UKPensions
 
-  /** Additional information (SA101) */
-  additionalInfo?: SA101AdditionalInfo
+  /** State Benefits */
+  stateBenefits?: SA100StateBenefits
 
-  /** Tax reliefs and claims */
+  /** Reliefs section */
   reliefs?: SA100Reliefs
 
-  /** Declaration */
-  declaration: SA100Declaration
+  /** Blind Person's Allowance */
+  blindPersonsAllowance?: SA100BlindPersons
+
+  /** Tax Owed calculation adjustments */
+  taxOwed?: SA100TaxOwed
+
+  /** Marriage Allowance */
+  marriage?: SA100Marriage
+
+  /** Finishing section - declaration - MANDATORY */
+  finishing: SA100Finishing
+
+  /** Employment schedules (SA102) - 0-50 */
+  sa102?: SA102Employment[]
+
+  /** Self-employment full schedules (SA103F) - 0-50 */
+  sa103F?: SA103SelfEmploymentFull[]
+
+  /** Self-employment short schedules (SA103S) - 0-50 */
+  sa103S?: SA103SelfEmploymentShort[]
+
+  /** UK Property schedule (SA105) - 0-1 */
+  sa105?: SA105UKProperty
+
+  /** Foreign schedule (SA106) - 0-1 */
+  sa106?: SA106Foreign
+
+  /** Capital Gains schedule (SA108) - 0-1 */
+  sa108?: SA108CapitalGains
+
+  /** Additional Information schedule (SA101) - 0-1 */
+  sa101?: SA101AdditionalInfo
+
+  /** Tax Calculation Summary (SA110) - auto-generated if not provided */
+  sa110?: SA110TaxCalculation
 }
 
 // =============================================================================
-// SA100 Personal Details
+// SA100 Personal Details (YourPersonalDetails in XML)
 // =============================================================================
 
-export interface SA100PersonalDetails {
-  title?: string
-  firstName: string
-  lastName: string
-  nino: string
-  utr: string
-  dateOfBirth: string // YYYY-MM-DD
-  address: {
-    line1: string
-    line2?: string
-    line3?: string
-    line4?: string
+/**
+ * Maps to /MTR/SA100/YourPersonalDetails
+ * Reference: Box numbers from SA100 form
+ */
+export interface SA100YourPersonalDetails {
+  /** Date of birth (box 1) - YYYY-MM-DD format */
+  dateOfBirth: string
+
+  /** National Insurance Number (box 2) - format: XX999999X */
+  nationalInsuranceNumber: string
+
+  /** Taxpayer Status (box 3) - MANDATORY
+   * C = Welsh, S = Scottish, U = Rest of UK */
+  taxpayerStatus: TaxpayerStatus
+
+  /** New address - only include if address has changed */
+  newAddress?: {
+    addressLine1: string
+    addressLine2?: string
+    addressLine3?: string
+    addressLine4?: string
     postcode: string
-    country?: string
+    /** Date address became effective - YYYY-MM-DD */
+    effectiveFrom?: string
   }
-  telephone?: string
+
+  /** Telephone number (box 6) */
+  telephoneNumber?: string
+
+  /** Email address */
   email?: string
+}
 
-  /** Has address changed since last return? */
-  addressChanged?: boolean
+/**
+ * Maps to /MTR/SA100/YourTaxReturn
+ * Indicates which supplementary schedules are included
+ */
+export interface SA100YourTaxReturn {
+  /** Employment schedule included */
+  employmentSchedule?: YesIndicator
+  numberOfEmploymentSchedules?: number
 
-  /** Marital status */
-  maritalStatus?: 'single' | 'married' | 'civil_partnership' | 'divorced' | 'widowed'
+  /** Minister of Religion schedule */
+  ministerOfReligionSchedule?: YesIndicator
+  numberOfMinisterOfReligionSchedules?: number
 
-  /** Date of marriage/civil partnership if relevant */
+  /** Full self-employment schedule */
+  fullSelfEmploymentSchedule?: YesIndicator
+  numberOfFullSelfEmploymentSchedules?: number
+
+  /** Short self-employment schedule */
+  shortSelfEmploymentSchedule?: YesIndicator
+  numberOfShortSelfEmploymentSchedules?: number
+
+  /** Full partnership schedule */
+  fullPartnershipSchedule?: YesIndicator
+  numberOfFullPartnershipSchedules?: number
+
+  /** Short partnership schedule */
+  shortPartnershipSchedule?: YesIndicator
+  numberOfShortPartnershipSchedules?: number
+
+  /** UK property schedule (SA105) */
+  ukPropertySchedule?: YesIndicator
+
+  /** Foreign schedule (SA106) */
+  foreignSchedule?: YesIndicator
+
+  /** Trusts schedule (SA107) */
+  trustsSchedule?: YesIndicator
+
+  /** Capital gains schedule (SA108) */
+  capitalGainsSchedule?: YesIndicator
+
+  /** Additional information schedule (SA101) */
+  additionalInformationSchedule?: YesIndicator
+
+  /** Residence, remittance schedule (SA109) */
+  residenceRemittanceSchedule?: YesIndicator
+
+  /** Lloyd's schedule (SA103L) */
+  lloydsSchedule?: YesIndicator
+}
+
+/**
+ * Maps to /MTR/SA100/StudentLoanRepayments
+ */
+export interface SA100StudentLoan {
+  /** Income Contingent Student Loan notification received (box 1) */
+  incomeContingentStudentLoanNotification?: YesIndicator
+  /** Postgraduate Loan notification received (box 2) */
+  postgraduateLoanNotification?: YesIndicator
+  /** Student loan repayment deducted by employer (box 3) - whole pounds */
+  studentLoanRepaymentDeductedAmount?: number
+  /** Postgraduate loan repayment deducted by employer (box 4) - whole pounds */
+  postgraduateLoanRepaymentDeductedAmount?: number
+}
+
+/**
+ * Maps to /MTR/SA100/UKInterestEtc
+ */
+export interface SA100UKInterest {
+  /** Untaxed UK interest (box 1) - whole pounds */
+  untaxedUKInterestAmount?: number
+  /** Taxed UK interest (box 2) - whole pounds */
+  taxedUKInterestAmount?: number
+  /** Tax taken off box 2 (box 3) - whole pounds */
+  taxTakenOffBox2Amount?: number
+  /** Untaxed foreign interest (box 4) - whole pounds */
+  untaxedForeignInterestAmount?: number
+}
+
+/**
+ * Maps to /MTR/SA100/UKDividends
+ */
+export interface SA100UKDividends {
+  /** UK dividends (box 1) - whole pounds */
+  ukDividendsAmount?: number
+  /** Other dividends (box 2) - whole pounds */
+  otherDividendsAmount?: number
+  /** Stock dividends (box 3) - whole pounds */
+  stockDividendsAmount?: number
+  /** Non-qualifying distributions (box 4) - whole pounds */
+  nonQualifyingDistributionsAmount?: number
+}
+
+/**
+ * Maps to /MTR/SA100/UKPensionsAnnuities
+ */
+export interface SA100UKPensions {
+  /** State pension (box 1) - whole pounds */
+  statePensionAmount?: number
+  /** State pension lump sum (box 2) - whole pounds */
+  statePensionLumpSumAmount?: number
+  /** Tax taken off state pension lump sum (box 3) - whole pounds */
+  taxTakenOffStatePensionLumpSum?: number
+  /** Taxed pensions/retirement annuities (box 4) - whole pounds */
+  taxedPensionsAndRetirementAnnuitiesAmount?: number
+  /** Tax taken off box 4 (box 5) - whole pounds */
+  taxTakenOffBox4Amount?: number
+}
+
+/**
+ * Maps to /MTR/SA100/StateBenefits
+ */
+export interface SA100StateBenefits {
+  /** Incapacity benefit (box 1) - whole pounds */
+  incapacityBenefitAmount?: number
+  /** Jobseeker's allowance (box 2) - whole pounds */
+  jobseekersAllowanceAmount?: number
+  /** Tax taken off Jobseeker's allowance (box 3) - whole pounds */
+  taxTakenOffJobseekersAllowance?: number
+  /** Employment and Support Allowance (box 4) - whole pounds */
+  employmentSupportAllowanceAmount?: number
+  /** Tax taken off ESA (box 5) - whole pounds */
+  taxTakenOffESAAmount?: number
+  /** Other taxable benefits (box 6) - whole pounds */
+  otherTaxableBenefitsAmount?: number
+  /** Total of any tax taken off benefits (box 7) - whole pounds */
+  totalTaxTakenOffBenefitsAmount?: number
+}
+
+/**
+ * Maps to /MTR/SA100/BlindPersonsAllowance
+ */
+export interface SA100BlindPersons {
+  /** Registered blind or severely sight impaired (box 1) */
+  registeredBlindIndicator?: YesIndicator
+  /** Name of local authority (box 2) */
+  localAuthorityName?: string
+  /** Wants to transfer surplus to spouse (box 3) */
+  transferSurplusIndicator?: YesIndicator
+  /** Spouse/partner's full name (box 4) */
+  spouseName?: string
+  /** Spouse/partner's NI number (box 5) */
+  spouseNINO?: string
+}
+
+/**
+ * Maps to /MTR/SA100/TaxOwed
+ */
+export interface SA100TaxOwed {
+  /** Underpaid tax for earlier years in tax code (box 1) - whole pounds */
+  underpaidTaxForEarlierYearsAmount?: number
+  /** Underpaid tax for 2024-25 included in tax code (box 2) - whole pounds */
+  underpaidTaxIncludedInCodeAmount?: number
+  /** Reduce payments on account (box 3) - whole pounds */
+  reducePaymentsOnAccountAmount?: number
+}
+
+/**
+ * Maps to /MTR/SA100/Marriage
+ */
+export interface SA100Marriage {
+  /** Transfer some of personal allowance to spouse (box 1) */
+  transferToSpouseIndicator?: YesIndicator
+  /** Receive transfer from spouse (box 2) */
+  receiveFromSpouseIndicator?: YesIndicator
+  /** Spouse/partner's NI number (box 3) */
+  spouseNINO?: string
+  /** Spouse/partner's date of birth (box 4) */
+  spouseDateOfBirth?: string
+  /** Spouse/partner's full name (box 5) */
+  spouseName?: string
+  /** Date of marriage or civil partnership */
   dateOfMarriage?: string
+}
 
-  /** Blind person's allowance */
-  claimingBlindPersonsAllowance?: boolean
-  blindFromDate?: string
+/**
+ * Maps to /MTR/SA100/Finishing
+ * Declaration section - MANDATORY
+ */
+export interface SA100Finishing {
+  /** Who is signing the return */
+  returnSigner: DeclarantType
+  /** Capacity if signing as agent/nominee */
+  signerCapacity?: string
+  /** Person preparing the return (for agent) */
+  preparer?: {
+    name: string
+    reference?: string
+  }
+  /** Repayment claim */
+  repaymentClaim?: {
+    /** Claim repayment to taxpayer */
+    claimToTaxpayer?: YesIndicator
+    /** Nominee details for repayment */
+    nomineeDetails?: {
+      name: string
+      address: {
+        line1: string
+        line2?: string
+        postcode: string
+      }
+    }
+  }
 }
 
 // =============================================================================
-// SA101 Additional Information
+// SA101 Additional Information Schedule
 // =============================================================================
 
+/**
+ * SA101 Additional Information schedule
+ * Maps to /MTR/SA100/SA101
+ */
 export interface SA101AdditionalInfo {
-  /** Student loan repayments */
-  studentLoan?: {
-    planType: 'plan1' | 'plan2' | 'plan4' | 'postgraduate'
-    amountRepaid?: number
-  }
-
-  /** State pension */
-  statePension?: {
-    amount: number
+  /** Other UK income not included elsewhere */
+  otherUKIncome?: {
+    /** Description of income */
+    description?: string
+    /** Amount - whole pounds */
+    amount?: number
+    /** Tax deducted - whole pounds */
     taxDeducted?: number
   }
 
-  /** Other pension income */
-  otherPensions?: Array<{
-    payerName: string
-    amount: number
-    taxDeducted: number
-  }>
-
-  /** Benefits received */
-  stateBenefits?: {
-    jobseekersAllowance?: number
-    incapacityBenefit?: number
-    employmentSupportAllowance?: number
-    carersAllowance?: number
-    bereavement?: number
-    other?: number
+  /** Share schemes */
+  shareSchemes?: {
+    /** Taxable amount from share schemes - whole pounds */
+    taxableAmount?: number
   }
 
-  /** Interest received (untaxed) */
-  untaxedInterest?: number
-
-  /** Interest received (taxed) */
-  taxedInterest?: {
-    gross: number
-    taxDeducted: number
+  /** Disguised remuneration */
+  disguisedRemuneration?: {
+    /** Amount received - whole pounds */
+    amount?: number
   }
 
-  /** UK dividends */
-  ukDividends?: number
+  /** Employment lump sums and compensation */
+  employmentLumpSums?: {
+    /** Taxable lump sum - whole pounds */
+    taxableLumpSum?: number
+    /** Tax deducted - whole pounds */
+    taxDeducted?: number
+  }
 
-  /** Foreign dividends */
-  foreignDividends?: number
+  /** Income from transferring or licensing assets */
+  assetTransferIncome?: {
+    /** Amount - whole pounds */
+    amount?: number
+  }
+
+  /** Gains on life insurance policies */
+  lifeInsuranceGains?: {
+    /** Number of years policy held */
+    yearsHeld?: number
+    /** Chargeable gain - whole pounds */
+    chargeableGain?: number
+    /** Deficiency relief claimed - whole pounds */
+    deficiencyRelief?: number
+  }
+
+  /** Pension savings tax charges */
+  pensionSavingsTaxCharges?: {
+    /** Annual allowance charge - whole pounds */
+    annualAllowanceCharge?: number
+    /** Scheme paid charge - whole pounds */
+    schemePaidCharge?: number
+  }
 }
 
 // =============================================================================
-// SA102 Employment Income
+// SA102 Employment Income Schedule
 // =============================================================================
 
+/**
+ * SA102 Employment schedule
+ * Maps to /MTR/SA100/SA102
+ * Up to 50 employments can be included
+ */
 export interface SA102Employment {
-  employerName: string
-  employerPAYERef?: string
-  startDate?: string
-  endDate?: string
+  /** Employer details */
+  employerDetails: {
+    /** Employer name (box 1) */
+    employerName: string
+    /** PAYE reference (box 2) - format: 999/XXXX */
+    payeReference?: string
+  }
 
-  /** Pay and tax from P60/P45 */
+  /** Pay from this employment (box 1) - whole pounds */
   payFromEmployment: number
-  taxDeducted: number
 
-  /** Tips and other payments not on P60 */
+  /** UK tax deducted (box 2) - whole pounds */
+  ukTaxDeducted: number
+
+  /** Tips and other payments not on P60 (box 3) - whole pounds */
   tipsAndOtherPayments?: number
 
-  /** Expenses */
-  expenses?: {
-    travelAndSubsistence?: number
+  /** PAYE tax reference (if different from box 2) */
+  taxReference?: string
+
+  /** Benefits and expenses section */
+  benefitsAndExpenses?: {
+    /** Company cars and vans (box 9) - whole pounds */
+    companyCarsAndVans?: number
+    /** Fuel for company cars and vans (box 10) - whole pounds */
+    fuelForCompanyCarsAndVans?: number
+    /** Private medical and dental insurance (box 11) - whole pounds */
+    privateMedicalInsurance?: number
+    /** Vouchers, credit cards, excess mileage (box 12) - whole pounds */
+    vouchersCreditCards?: number
+    /** Goods and assets (box 13) - whole pounds */
+    goodsAndAssets?: number
+    /** Accommodation (box 14) - whole pounds */
+    accommodation?: number
+    /** Other benefits (box 15) - whole pounds */
+    otherBenefits?: number
+    /** Expenses payments and benefits (box 16) - whole pounds */
+    expensesPaymentsAndBenefits?: number
+  }
+
+  /** Employment expenses section */
+  employmentExpenses?: {
+    /** Business travel (box 17) - whole pounds */
+    businessTravel?: number
+    /** Fixed deductions for expenses (box 18) - whole pounds */
     fixedDeductions?: number
+    /** Professional fees and subscriptions (box 19) - whole pounds */
     professionalFees?: number
-    other?: number
+    /** Other expenses (box 20) - whole pounds */
+    otherExpenses?: number
   }
 
-  /** Benefits in kind */
-  benefitsInKind?: {
-    companyCar?: number
-    fuelForCompanyCar?: number
-    privateMedical?: number
-    other?: number
-  }
-
-  /** Lump sums */
+  /** Lump sums section */
   lumpSums?: {
-    taxableAmount?: number
-    taxDeducted?: number
+    /** Taxable lump sums (box 6) - whole pounds */
+    taxableLumpSums?: number
+    /** Tax on lump sums (box 7) - whole pounds */
+    taxOnLumpSums?: number
+  }
+
+  /** Share schemes section */
+  shareSchemes?: {
+    /** Amount from share schemes (box 8) - whole pounds */
+    amountFromShareSchemes?: number
+  }
+
+  /** Seafarers' Earnings Deduction */
+  seafarersEarningsDeduction?: {
+    /** Days away from UK */
+    daysAwayFromUK?: number
+    /** Amount claimed - whole pounds */
+    amountClaimed?: number
+  }
+
+  /** Foreign earnings not taxable in UK */
+  foreignEarningsNotTaxable?: {
+    /** Amount - whole pounds */
+    amount?: number
   }
 }
 
 // =============================================================================
-// SA103 Self-Employment Income
+// SA103 Self-Employment Income Schedules
 // =============================================================================
 
-export interface SA103SelfEmployment {
-  /** Business name */
-  businessName: string
-
-  /** Business description */
-  businessDescription: string
-
-  /** Business address */
-  businessAddress?: {
-    line1: string
-    line2?: string
-    postcode: string
+/**
+ * SA103S Short Self-Employment schedule
+ * Maps to /MTR/SA100/SA103S
+ * Use for turnover under £85,000 and not using full expenses
+ */
+export interface SA103SelfEmploymentShort {
+  /** Business details */
+  businessDetails: {
+    /** Business name (box 1) */
+    businessName: string
+    /** Description of business (box 2) */
+    descriptionOfBusiness: string
+    /** Business address */
+    businessAddress?: {
+      addressLine1: string
+      addressLine2?: string
+      postcode: string
+    }
+    /** Business start date (box 3) - if started this tax year */
+    businessStartDate?: string
+    /** Business end date (box 4) - if ceased this tax year */
+    businessEndDate?: string
   }
 
   /** Accounting period */
   accountingPeriod: {
-    start: string // YYYY-MM-DD
-    end: string // YYYY-MM-DD
+    /** Start date - YYYY-MM-DD */
+    startDate: string
+    /** End date - YYYY-MM-DD */
+    endDate: string
   }
 
-  /** Basis of accounting */
-  accountingBasis: 'cash' | 'accruals'
+  /** Cash basis indicator (box 5) */
+  cashBasisIndicator?: YesIndicator
 
-  /** Income */
+  /** Income section */
   income: {
+    /** Turnover (box 9) - whole pounds */
     turnover: number
-    otherIncome?: number
+    /** Other business income (box 10) - whole pounds */
+    otherBusinessIncome?: number
   }
 
-  /** Expenses (itemized or consolidated) */
-  expenses: SA103Expenses
+  /** Allowable expenses - total only for short version (box 11) */
+  totalAllowableExpenses?: number
 
-  /** Capital allowances */
-  capitalAllowances?: {
-    annualInvestmentAllowance?: number
-    otherCapitalAllowances?: number
-    balancingCharges?: number
-  }
+  /** Net profit or loss (box 12) - whole pounds (negative for loss) */
+  netProfitOrLoss: number
 
-  /** Adjustments */
-  adjustments?: {
+  /** Tax adjustments section */
+  taxAdjustments?: {
+    /** Goods/services for own use (box 13) - whole pounds */
     goodsForOwnUse?: number
-    disallowableExpenses?: number
-    otherAdjustments?: number
+    /** Balancing charges (box 14) - whole pounds */
+    balancingCharges?: number
+    /** Capital allowances (box 15) - whole pounds */
+    capitalAllowances?: number
   }
 
-  /** Losses */
+  /** Losses section */
   losses?: {
-    broughtForward?: number
-    carriedForward?: number
-    usedThisYear?: number
+    /** Losses brought forward (box 16) - whole pounds */
+    lossesBroughtForward?: number
+    /** Loss to carry forward (box 17) - whole pounds */
+    lossToCarryForward?: number
+    /** Loss offset against other income (box 18) - whole pounds */
+    lossOffsetAgainstOtherIncome?: number
   }
 
-  /** Class 4 NIC */
-  class4NICExempt?: boolean
-  class4NICExemptReason?: 'under16' | 'over-state-pension-age' | 'non-resident' | 'trustee'
+  /** Class 4 NIC section */
+  class4NIC?: {
+    /** Exempt indicator */
+    exemptIndicator?: YesIndicator
+    /** Adjustment to profits */
+    adjustmentToProfits?: number
+  }
+
+  /** Total taxable profits (box 21) - whole pounds */
+  totalTaxableProfits: number
 }
 
-export interface SA103Expenses {
-  /** If true, only consolidatedExpenses is used */
-  useConsolidated: boolean
+/**
+ * SA103F Full Self-Employment schedule
+ * Maps to /MTR/SA100/SA103F
+ * Use for turnover £85,000 or more, or choosing full expenses
+ */
+export interface SA103SelfEmploymentFull {
+  /** Business details - same as short version */
+  businessDetails: {
+    businessName: string
+    descriptionOfBusiness: string
+    businessAddress?: {
+      addressLine1: string
+      addressLine2?: string
+      postcode: string
+    }
+    businessStartDate?: string
+    businessEndDate?: string
+  }
 
-  /** Consolidated expenses (if not itemizing) */
-  consolidatedExpenses?: number
+  /** Accounting period */
+  accountingPeriod: {
+    startDate: string
+    endDate: string
+  }
 
-  /** Itemized expenses */
-  costOfGoods?: number
-  carVanTravel?: number
-  wages?: number
-  rent?: number
-  repairs?: number
-  generalAdmin?: number
-  advertising?: number
-  entertainment?: number
-  legalProfessional?: number
-  interest?: number
-  badDebts?: number
-  accountancy?: number
-  depreciation?: number
-  other?: number
-}
+  /** Cash basis indicator */
+  cashBasisIndicator?: YesIndicator
 
-// =============================================================================
-// SA105 UK Property Income
-// =============================================================================
-
-export interface SA105UKProperty {
-  /** Number of properties */
-  numberOfProperties: number
-
-  /** Property income */
+  /** Income section */
   income: {
-    rentAndOtherIncome: number
+    /** Turnover - whole pounds */
+    turnover: number
+    /** Other business income - whole pounds */
+    otherBusinessIncome?: number
+  }
+
+  /** Itemized expenses (for full version) */
+  expenses: {
+    /** Cost of goods bought for resale (box 10) - whole pounds */
+    costOfGoods?: number
+    /** Construction industry subcontractor costs (box 11) - whole pounds */
+    constructionCosts?: number
+    /** Other direct costs (box 12) - whole pounds */
+    otherDirectCosts?: number
+    /** Employee costs (box 13) - whole pounds */
+    employeeCosts?: number
+    /** Premises costs (box 14) - whole pounds */
+    premisesCosts?: number
+    /** Repairs (box 15) - whole pounds */
+    repairs?: number
+    /** General administrative expenses (box 16) - whole pounds */
+    generalAdmin?: number
+    /** Motor expenses (box 17) - whole pounds */
+    motorExpenses?: number
+    /** Travel and subsistence (box 18) - whole pounds */
+    travelSubsistence?: number
+    /** Advertising, promotion, entertainment (box 19) - whole pounds */
+    advertising?: number
+    /** Legal and professional costs (box 20) - whole pounds */
+    legalProfessional?: number
+    /** Bad debts (box 21) - whole pounds */
+    badDebts?: number
+    /** Interest (box 22) - whole pounds */
+    interest?: number
+    /** Other finance charges (box 23) - whole pounds */
+    otherFinanceCharges?: number
+    /** Depreciation (box 24) - whole pounds */
+    depreciation?: number
+    /** Other expenses (box 25) - whole pounds */
+    other?: number
+    /** Total expenses (box 26) - whole pounds */
+    totalExpenses: number
+  }
+
+  /** Net profit or loss (box 27) - whole pounds */
+  netProfitOrLoss: number
+
+  /** Tax adjustments section */
+  taxAdjustments?: {
+    disallowableExpenses?: number
+    goodsForOwnUse?: number
+    balancingCharges?: number
+    capitalAllowances?: number
+    totalBasisPeriodProfits?: number
+  }
+
+  /** Losses section */
+  losses?: {
+    lossesBroughtForward?: number
+    lossToCarryForward?: number
+    lossOffsetAgainstOtherIncome?: number
+    lossOffsetAgainstCapitalGains?: number
+  }
+
+  /** Class 4 NIC section */
+  class4NIC?: {
+    exemptIndicator?: YesIndicator
+    adjustmentToProfits?: number
+  }
+
+  /** Total taxable profits - whole pounds */
+  totalTaxableProfits: number
+}
+
+// =============================================================================
+// SA105 UK Property Income Schedule
+// =============================================================================
+
+/**
+ * SA105 UK Property schedule
+ * Maps to /MTR/SA100/SA105
+ */
+export interface SA105UKProperty {
+  /** Property income section */
+  propertyIncome: {
+    /** Total rents and other income (box 3) - whole pounds */
+    totalRentsAndOtherIncome: number
+    /** Premiums for granting lease (box 4) - whole pounds */
     premiumsForGrantingLease?: number
+    /** Reverse premiums (box 5) - whole pounds */
     reversePremiums?: number
   }
 
-  /** Expenses (itemized or consolidated) */
-  expenses: {
-    useConsolidated: boolean
+  /** Property expenses - choose itemized or consolidated */
+  propertyExpenses: {
+    /** Using property allowance indicator */
+    usingPropertyAllowance?: YesIndicator
+
+    /** Consolidated expenses - if not itemizing (box 6) - whole pounds */
     consolidatedExpenses?: number
 
-    rentsRatesInsurance?: number
-    propertyRepairs?: number
-    financeCharges?: number
-    legalManagementFees?: number
-    costsOfServices?: number
-    otherAllowableExpenses?: number
+    /** OR itemized expenses */
+    itemizedExpenses?: {
+      /** Rent, rates, insurance (box 7) - whole pounds */
+      rentsRatesInsurance?: number
+      /** Property repairs and maintenance (box 8) - whole pounds */
+      propertyRepairs?: number
+      /** Finance charges/interest (box 9) - whole pounds */
+      financeCharges?: number
+      /** Legal and professional fees (box 10) - whole pounds */
+      legalProfessional?: number
+      /** Costs of services (box 11) - whole pounds */
+      costsOfServices?: number
+      /** Other allowable expenses (box 12) - whole pounds */
+      otherAllowable?: number
+    }
+
+    /** Total allowable expenses (box 13) - whole pounds */
+    totalAllowableExpenses?: number
   }
 
-  /** Capital allowances and adjustments */
-  capitalAllowances?: number
-  residentialFinanceCosts?: number
-  privateUseAdjustment?: number
+  /** Net profit or loss (box 14) - whole pounds */
+  netProfitOrLoss: number
 
-  /** Rent-a-Room relief */
-  rentARoomRelief?: {
-    claimed: boolean
-    totalReceipts?: number
+  /** Tax adjustments */
+  taxAdjustments?: {
+    /** Private use adjustment (box 15) - whole pounds */
+    privateUseAdjustment?: number
+    /** Balancing charges (box 16) - whole pounds */
+    balancingCharges?: number
+    /** Capital allowances (box 17) - whole pounds */
+    capitalAllowances?: number
+    /** Residential finance costs (box 18) - whole pounds */
+    residentialFinanceCosts?: number
   }
 
   /** Losses */
   losses?: {
-    broughtForward?: number
-    carriedForward?: number
+    /** Losses brought forward (box 20) - whole pounds */
+    lossesBroughtForward?: number
+    /** Loss to carry forward (box 21) - whole pounds */
+    lossToCarryForward?: number
   }
 
-  /** Furnished Holiday Lettings */
+  /** Total taxable profit (box 22) - whole pounds */
+  totalTaxableProfit?: number
+
+  /** Rent-a-room section */
+  rentARoom?: {
+    /** Using rent-a-room indicator */
+    usingRentARoomIndicator?: YesIndicator
+    /** Total receipts - whole pounds */
+    totalReceipts?: number
+  }
+
+  /** Furnished Holiday Lettings (FHL) section */
   furnishedHolidayLettings?: {
-    ukFHL?: boolean
-    eaaFHL?: boolean
+    /** UK FHL indicator */
+    ukFHLIndicator?: YesIndicator
+    /** EEA FHL indicator */
+    eeaFHLIndicator?: YesIndicator
+    /** FHL income - whole pounds */
     income?: number
+    /** FHL expenses - whole pounds */
     expenses?: number
+    /** FHL profit/loss - whole pounds */
+    profitOrLoss?: number
   }
 }
 
 // =============================================================================
-// SA106 Foreign Income
+// SA106 Foreign Income Schedule
 // =============================================================================
 
-export interface SA106ForeignIncome {
-  /** Foreign dividends */
-  foreignDividends?: Array<{
-    countryCode: string
-    amountBeforeTax: number
-    taxPaid: number
-  }>
+/**
+ * SA106 Foreign schedule
+ * Maps to /MTR/SA100/SA106
+ */
+export interface SA106Foreign {
+  /** Foreign earnings section */
+  foreignEarnings?: {
+    /** Foreign earnings before tax - whole pounds */
+    amountBeforeTax?: number
+    /** Tax taken off - whole pounds */
+    taxTakenOff?: number
+    /** Foreign tax for which tax credit claimed - whole pounds */
+    foreignTaxCreditClaimed?: number
+  }
 
-  /** Foreign interest */
-  foreignInterest?: Array<{
-    countryCode: string
-    amountBeforeTax: number
-    taxPaid: number
-  }>
+  /** Foreign dividends section */
+  foreignDividends?: {
+    /** Total dividend income - whole pounds */
+    totalDividends?: number
+    /** Foreign tax for which credit claimed - whole pounds */
+    foreignTaxCreditClaimed?: number
+  }
 
-  /** Foreign property */
+  /** Foreign property section */
   foreignProperty?: {
-    income: number
-    expenses: number
-    countryCode: string
-    taxPaid?: number
+    /** Total income from overseas property - whole pounds */
+    income?: number
+    /** Allowable expenses - whole pounds */
+    expenses?: number
+    /** Net profit - whole pounds */
+    netProfit?: number
+    /** Foreign tax paid - whole pounds */
+    foreignTaxPaid?: number
   }
 
-  /** Foreign pensions */
-  foreignPensions?: Array<{
-    countryCode: string
-    amount: number
-    taxPaid?: number
-  }>
+  /** Foreign pensions section */
+  foreignPensions?: {
+    /** Total pension income - whole pounds */
+    totalPensions?: number
+    /** Tax taken off - whole pounds */
+    taxTakenOff?: number
+    /** Foreign tax for which credit claimed - whole pounds */
+    foreignTaxCreditClaimed?: number
+  }
 
-  /** Foreign tax credit relief */
-  foreignTaxCreditRelief?: number
+  /** Foreign savings section */
+  foreignSavings?: {
+    /** Interest and other savings - whole pounds */
+    interestAndSavings?: number
+    /** Foreign tax paid - whole pounds */
+    foreignTaxPaid?: number
+  }
+
+  /** Foreign tax credit relief section */
+  foreignTaxCreditRelief?: {
+    /** Relief claimed - whole pounds */
+    reliefClaimed?: number
+  }
+
+  /** Remittance basis section */
+  remittanceBasis?: {
+    /** Using remittance basis indicator */
+    usingRemittanceBasisIndicator?: YesIndicator
+    /** Remittance basis charge due - whole pounds */
+    remittanceBasisCharge?: number
+  }
 }
 
 // =============================================================================
-// SA108 Capital Gains
+// SA108 Capital Gains Schedule
 // =============================================================================
 
+/**
+ * SA108 Capital Gains schedule
+ * Maps to /MTR/SA100/SA108
+ */
 export interface SA108CapitalGains {
-  /** Listed shares and securities */
-  listedSharesGains?: {
-    disposalProceeds: number
-    allowableCosts: number
-    gain?: number
-    loss?: number
+  /** Summary section */
+  summary?: {
+    /** Number of disposals in year */
+    numberOfDisposals?: number
+    /** Total disposal proceeds - whole pounds */
+    totalDisposalProceeds?: number
   }
 
-  /** Unlisted shares */
-  unlistedSharesGains?: {
-    disposalProceeds: number
-    allowableCosts: number
-    gain?: number
-    loss?: number
+  /** Listed shares and securities section */
+  listedSharesAndSecurities?: {
+    /** Disposal proceeds (box 3) - whole pounds */
+    disposalProceeds?: number
+    /** Allowable costs (box 4) - whole pounds */
+    allowableCosts?: number
+    /** Gains in year (box 5) - whole pounds */
+    gainsInYear?: number
+    /** Losses in year (box 6) - whole pounds */
+    lossesInYear?: number
   }
 
-  /** Other property, assets and gains */
-  otherGains?: {
-    disposalProceeds: number
-    allowableCosts: number
-    gain?: number
-    loss?: number
+  /** Unlisted shares section */
+  unlistedShares?: {
+    /** Disposal proceeds - whole pounds */
+    disposalProceeds?: number
+    /** Allowable costs - whole pounds */
+    allowableCosts?: number
+    /** Gains in year - whole pounds */
+    gainsInYear?: number
+    /** Losses in year - whole pounds */
+    lossesInYear?: number
   }
 
-  /** Residential property */
-  residentialPropertyGains?: Array<{
-    address: string
-    disposalDate: string
-    disposalProceeds: number
-    allowableCosts: number
-    privateResidenceRelief?: number
-    lettingsRelief?: number
-    gain?: number
-  }>
+  /** Other property, assets and gains section */
+  otherPropertyAndAssets?: {
+    /** Disposal proceeds - whole pounds */
+    disposalProceeds?: number
+    /** Allowable costs - whole pounds */
+    allowableCosts?: number
+    /** Gains in year - whole pounds */
+    gainsInYear?: number
+    /** Losses in year - whole pounds */
+    lossesInYear?: number
+  }
 
-  /** Carried forward losses */
-  lossesCarriedForward?: number
+  /** UK residential property section */
+  ukResidentialProperty?: {
+    /** Number of properties */
+    numberOfProperties?: number
+    /** Total gains - whole pounds */
+    totalGains?: number
+    /** Total losses - whole pounds */
+    totalLosses?: number
+    /** CGT already paid - whole pounds */
+    cgtAlreadyPaid?: number
+    /** Details for each property disposal */
+    properties?: Array<{
+      address: string
+      disposalDate: string
+      disposalProceeds: number
+      allowableCosts: number
+      privateResidenceRelief?: number
+      lettingsRelief?: number
+      gain?: number
+    }>
+  }
 
-  /** Losses used this year */
-  lossesUsed?: number
+  /** Losses section */
+  losses?: {
+    /** Losses brought forward (box 15) - whole pounds */
+    lossesBroughtForward?: number
+    /** Losses used this year (box 16) - whole pounds */
+    lossesUsedThisYear?: number
+    /** Losses available for carry forward - whole pounds */
+    lossesCarryForward?: number
+  }
 
-  /** Annual exempt amount */
-  annualExemptAmountUsed?: number
+  /** Annual exempt amount section */
+  annualExemptAmount?: {
+    /** Amount claimed - whole pounds (£3,000 for 2024-25) */
+    amountClaimed?: number
+  }
 
-  /** Entrepreneurs' relief / Business Asset Disposal Relief */
+  /** Business Asset Disposal Relief (formerly Entrepreneurs' Relief) */
   businessAssetDisposalRelief?: {
-    gains: number
-    reliefClaimed: number
+    /** Gains qualifying for relief - whole pounds */
+    qualifyingGains?: number
+    /** Relief claimed - whole pounds */
+    reliefClaimed?: number
+    /** Lifetime limit used before - whole pounds */
+    lifetimeLimitUsed?: number
+  }
+
+  /** Investors' Relief */
+  investorsRelief?: {
+    /** Gains qualifying - whole pounds */
+    qualifyingGains?: number
+    /** Relief claimed - whole pounds */
+    reliefClaimed?: number
+  }
+
+  /** Total gains and losses */
+  totals?: {
+    /** Total gains after losses and reliefs (box 25) - whole pounds */
+    totalGains?: number
+    /** Taxable gains at 10% rate - whole pounds */
+    gainsAt10Percent?: number
+    /** Taxable gains at 18% rate - whole pounds */
+    gainsAt18Percent?: number
+    /** Taxable gains at 20% rate - whole pounds */
+    gainsAt20Percent?: number
+    /** Taxable gains at 24% rate (residential property) - whole pounds */
+    gainsAt24Percent?: number
+    /** Total tax due - whole pounds */
+    totalTaxDue?: number
   }
 }
 
 // =============================================================================
-// SA100 Tax Reliefs
+// SA100 Tax Reliefs Section
 // =============================================================================
 
+/**
+ * Maps to /MTR/SA100/Reliefs
+ * Tax reliefs and deductions
+ */
 export interface SA100Reliefs {
-  /** Pension contributions */
+  /** Pension contributions section */
   pensionContributions?: {
-    personal?: number // Basic rate relief at source
-    retirementAnnuity?: number // Gross amount
+    /** Personal pension payments (box 1) - whole pounds */
+    personalPensions?: number
+    /** Retirement annuity contract payments (box 2) - whole pounds */
+    retirementAnnuity?: number
+    /** Payments to employer's scheme (box 3) - whole pounds */
     employerScheme?: number
   }
 
-  /** Gift Aid donations */
+  /** Gift Aid section */
   giftAid?: {
-    paymentsThisYear: number
+    /** Gift Aid payments this year (box 5) - whole pounds */
+    paymentsThisYear?: number
+    /** One-off payments in box 5 (box 6) - whole pounds */
+    oneOffPayments?: number
+    /** Payments treated as previous year (box 7) - whole pounds */
     treatAsPreviousYear?: number
+    /** Payments brought forward (box 8) - whole pounds */
     broughtForward?: number
+    /** Value of shares/securities given (box 9) - whole pounds */
+    sharesSecuritiesGiven?: number
+    /** Value of land/property given (box 10) - whole pounds */
+    landPropertyGiven?: number
   }
 
-  /** Enterprise Investment Scheme */
+  /** Enterprise Investment Scheme section */
   eis?: {
-    amountInvested: number
-    reliefClaimed: number
+    /** Amount invested for relief (box 11) - whole pounds */
+    amountInvested?: number
   }
 
-  /** Seed Enterprise Investment Scheme */
+  /** Seed Enterprise Investment Scheme section */
   seis?: {
-    amountInvested: number
-    reliefClaimed: number
+    /** Amount invested for relief (box 12) - whole pounds */
+    amountInvested?: number
   }
 
-  /** Venture Capital Trust */
+  /** Venture Capital Trust section */
   vct?: {
-    amountInvested: number
-    reliefClaimed: number
+    /** Amount invested (box 13) - whole pounds */
+    amountInvested?: number
   }
 
-  /** Marriage Allowance */
-  marriageAllowance?: {
-    transferring?: boolean // Transferring 10% of personal allowance to spouse
-    receiving?: boolean // Receiving transfer from spouse
-    spouseNINO?: string
+  /** Social Investment Tax Relief section */
+  sitr?: {
+    /** Amount invested (box 14) - whole pounds */
+    amountInvested?: number
   }
 
-  /** Other reliefs */
-  other?: {
-    maintenancePayments?: number
-    loanInterestRelief?: number
-    postCessationTradeRelief?: number
-    qualifyingLoanInterest?: number
+  /** Community Investment Tax Relief section */
+  citr?: {
+    /** Relief claimed (box 15) - whole pounds */
+    reliefClaimed?: number
+  }
+
+  /** Maintenance payments section */
+  maintenancePayments?: {
+    /** Payments made (box 16) - whole pounds */
+    paymentsMade?: number
+    /** Recipient's date of birth */
+    recipientDateOfBirth?: string
+  }
+
+  /** Qualifying loan interest section */
+  qualifyingLoanInterest?: {
+    /** Interest paid (box 17) - whole pounds */
+    interestPaid?: number
+  }
+
+  /** Post-cessation trade relief section */
+  postCessationRelief?: {
+    /** Relief claimed (box 18) - whole pounds */
+    reliefClaimed?: number
   }
 }
 
 // =============================================================================
-// SA100 Declaration
+// SA110 Tax Calculation Summary
 // =============================================================================
 
-export interface SA100Declaration {
-  /** Declarant type */
-  declarantType: 'taxpayer' | 'agent' | 'nominee'
-
-  /** Name of person signing */
-  name: string
-
-  /** Capacity (if agent) */
-  capacity?: string
-
-  /** Declaration date */
-  date: string // YYYY-MM-DD
-
-  /** Agent details (if applicable) */
-  agentDetails?: {
-    agentRef?: string
-    businessName?: string
-    address?: {
-      line1: string
-      line2?: string
-      postcode: string
-    }
-    telephone?: string
-  }
-
-  /** Consent for HMRC to deal with agent */
-  appointAgent?: boolean
+/**
+ * SA110 Tax Calculation Summary
+ * Maps to /MTR/SA110
+ * MANDATORY section - auto-generated if not provided
+ */
+export interface SA110TaxCalculation {
+  /** Total tax etc due (mandatory) - whole pounds */
+  totalTaxEtcDue?: number
+  /** Student loan repayment due */
+  studentLoanRepaymentDue?: number
+  /** Postgraduate loan repayment due */
+  postgraduateLoanRepaymentDue?: number
+  /** Class 4 NICs due */
+  class4NICsDue?: number
+  /** Class 2 NICs due */
+  class2NICsDue?: number
+  /** Capital gains tax due */
+  capitalGainsTaxDue?: number
+  /** Pension charges due */
+  pensionChargesDue?: number
 }
 
 // =============================================================================
