@@ -18,7 +18,7 @@ import type { WizardData } from '@/types/wizard'
 import type {
   TaxpayerIdentification,
   SA100Return,
-  SA100PersonalDetails,
+  SA100YourPersonalDetails,
   SA100Declaration,
   SA101AdditionalInfo,
   SA102Employment,
@@ -125,7 +125,7 @@ function convertPersonalDetails(
   taxpayer: TaxpayerIdentification,
   firstName: string,
   lastName: string
-): SA100PersonalDetails {
+): SA100YourPersonalDetails {
   const personalInfo = wizardData.personalInfo || {}
 
   // Parse address into lines
