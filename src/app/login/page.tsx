@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Turnstile } from '@/components/ui/turnstile';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -15,6 +16,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<{ reset: () => void }>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -22,6 +25,36 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Verify Turnstile token if site key is configured
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !turnstileToken) {
+      setError('Please complete the security check');
+      setLoading(false);
+      return;
+    }
+
+    // Verify token server-side if we have one
+    if (turnstileToken) {
+      try {
+        const verifyResponse = await fetch('/api/turnstile/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: turnstileToken }),
+        });
+        const verifyResult = await verifyResponse.json();
+        if (!verifyResult.success) {
+          setError('Security verification failed. Please try again.');
+          turnstileRef.current?.reset();
+          setTurnstileToken(null);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        setError('Security verification failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -105,6 +138,16 @@ export default function LoginPage() {
                 required
                 disabled={loading}
                 className="h-11"
+              />
+            </div>
+
+            {/* Cloudflare Turnstile */}
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                onSuccess={setTurnstileToken}
+                onError={() => setTurnstileToken(null)}
+                onExpire={() => setTurnstileToken(null)}
               />
             </div>
 
