@@ -110,6 +110,17 @@ export async function POST(request: NextRequest) {
         },
       });
     } catch (err) {
+      // Log full error for debugging
+      console.error('=== CREATE TEST BUSINESS ERROR ===');
+      console.error('Full error:', err);
+      if (err && typeof err === 'object' && 'code' in err) {
+        const hmrcErr = err as { code: string; statusCode: number; errors?: Array<{ code: string; message: string }> };
+        console.error('HMRC Error Code:', hmrcErr.code);
+        console.error('HMRC Status Code:', hmrcErr.statusCode);
+        console.error('HMRC Errors array:', JSON.stringify(hmrcErr.errors, null, 2));
+      }
+      console.error('=================================');
+
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
 
       // Check if business already exists (common scenario)
