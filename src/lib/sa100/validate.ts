@@ -15,7 +15,15 @@
 
 import { VALIDATION_PATTERNS } from './schema-reference'
 import { calculateIRmark, verifyIRmark } from './irmark'
-import type { SA100Return, ValidationError } from './xml-builder'
+import type { SA100Return } from './types'
+
+// Validation error type
+export interface ValidationError {
+  code: string
+  message: string
+  field?: string
+  severity: 'error' | 'warning'
+}
 
 // =============================================================================
 // Main Validation Functions
