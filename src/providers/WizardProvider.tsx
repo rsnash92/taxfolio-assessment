@@ -283,10 +283,12 @@ export function WizardProvider({
 
         const result = await response.json();
         if (!result.success) {
-          console.warn('[WizardProvider] Failed to save to database:', result.error);
+          console.error('[WizardProvider] Failed to save to database:', result.error, result.details);
+        } else {
+          console.log('[WizardProvider] Progress saved successfully');
         }
       } catch (error) {
-        console.warn('[WizardProvider] Failed to save to database:', error);
+        console.error('[WizardProvider] Failed to save to database:', error);
       }
     } else {
       // Save to localStorage only for unauthenticated users

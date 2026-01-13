@@ -101,11 +101,35 @@ export async function POST(request: Request) {
 
     console.log('[Wizard Progress API] Saving progress for user:', user.id, 'tax year:', effectiveTaxYear, 'step:', currentStep);
 
-    // Upsert wizard progress (insert or update) - now keyed by user_id AND tax_year
-    const { error } = await supabase
+    // Check if record exists for this user + tax year
+    const { data: existing } = await supabase
       .from('wizard_progress')
-      .upsert(
-        {
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('tax_year', effectiveTaxYear)
+      .single();
+
+    let error;
+
+    if (existing) {
+      // Update existing record
+      const result = await supabase
+        .from('wizard_progress')
+        .update({
+          wizard_data: wizardData,
+          current_step: currentStep,
+          current_business_id: currentBusinessId,
+          current_property_id: currentPropertyId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+        .eq('tax_year', effectiveTaxYear);
+      error = result.error;
+    } else {
+      // Insert new record
+      const result = await supabase
+        .from('wizard_progress')
+        .insert({
           user_id: user.id,
           tax_year: effectiveTaxYear,
           wizard_data: wizardData,
@@ -113,16 +137,14 @@ export async function POST(request: Request) {
           current_business_id: currentBusinessId,
           current_property_id: currentPropertyId,
           updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'user_id,tax_year',
-        }
-      );
+        });
+      error = result.error;
+    }
 
     if (error) {
       console.error('[Wizard Progress API] Failed to save progress:', error);
       return NextResponse.json(
-        { success: false, error: 'Failed to save progress' },
+        { success: false, error: 'Failed to save progress', details: error.message },
         { status: 500 }
       );
     }
