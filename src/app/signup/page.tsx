@@ -158,15 +158,14 @@ export default function SignUpPage() {
               <Image
                 src="/taxfolio-white.png"
                 alt="TaxFolio"
-                width={140}
-                height={35}
-                className="h-9 w-auto"
+                width={120}
+                height={30}
+                className="h-7 w-auto"
               />
             </div>
 
             <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
-              Simple and Speedy Tax Returns with{' '}
-              <span className="text-[#00c4d4]">TaxFolio</span>
+              Simple and Speedy Tax Returns
             </h1>
 
             <p className="text-gray-300 mb-6">
