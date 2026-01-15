@@ -5,7 +5,7 @@ import {
   submitToTransactionEngine,
   pollUntilComplete,
 } from '@/lib/sa100/transaction-engine'
-import type { GatewayCredentials, TaxpayerIdentification } from '@/lib/sa100/types'
+import type { GatewayCredentials, TaxpayerIdentification, SA100Return } from '@/lib/sa100/types'
 
 interface SubmitRequest {
   gatewayUserId: string
@@ -14,6 +14,133 @@ interface SubmitRequest {
 
 interface RouteContext {
   params: Promise<{ id: string }>
+}
+
+/**
+ * Convert wizard data structure to SA100Return format expected by XML builder
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentification): SA100Return {
+  const personalInfo = wizardData.personalInfo || {}
+
+  // Build yourPersonalDetails from wizard personalInfo
+  const yourPersonalDetails: SA100Return['yourPersonalDetails'] = {
+    // Date of birth - required by HMRC, use placeholder if not provided
+    dateOfBirth: personalInfo.dateOfBirth || '1990-01-01',
+    nationalInsuranceNumber: taxpayer.nino,
+    // Taxpayer status - S=Scottish, C=Welsh, U=rest of UK (default)
+    taxpayerStatus: personalInfo.taxpayerStatus || 'U',
+  }
+
+  // Add new address if changed
+  if (personalInfo.addressChanged && personalInfo.newAddress) {
+    yourPersonalDetails.newAddress = {
+      addressLine1: personalInfo.newAddress || '',
+      postcode: personalInfo.newPostcode || '',
+      effectiveFrom: personalInfo.moveDate,
+    }
+  }
+
+  // Build schedule indicators based on income sources
+  const incomeSources = wizardData.incomeSources || []
+  const hasEmployment = incomeSources.some((s: { type: string }) => s.type === 'employment')
+  const hasSelfEmployment = incomeSources.some((s: { type: string }) => s.type === 'self-employment')
+  const hasRental = incomeSources.some((s: { type: string }) => s.type === 'rental')
+  const hasCapitalGains = incomeSources.some((s: { type: string }) => s.type === 'capital-gains')
+
+  const yourTaxReturn: SA100Return['yourTaxReturn'] = {}
+
+  if (hasEmployment) {
+    yourTaxReturn.employmentSchedule = 'yes'
+    yourTaxReturn.numberOfEmploymentSchedules = Object.keys(wizardData.employmentData || {}).length
+  }
+
+  if (hasSelfEmployment) {
+    // Use short schedule for simpler businesses
+    yourTaxReturn.shortSelfEmploymentSchedule = 'yes'
+    yourTaxReturn.numberOfShortSelfEmploymentSchedules = Object.keys(wizardData.selfEmploymentData || {}).length
+  }
+
+  if (hasRental) {
+    yourTaxReturn.ukPropertySchedule = 'yes'
+  }
+
+  if (hasCapitalGains) {
+    yourTaxReturn.capitalGainsSchedule = 'yes'
+  }
+
+  // Build finishing/declaration section
+  const finishing: SA100Return['finishing'] = {
+    returnSigner: 'Individual',
+  }
+
+  // Build the SA100Return
+  const sa100Return: SA100Return = {
+    taxYear: wizardData.taxYear || '2024-25',
+    yourPersonalDetails,
+    yourTaxReturn,
+    finishing,
+  }
+
+  // Add employment data if present
+  if (hasEmployment && wizardData.employmentData) {
+    sa100Return.sa102 = Object.values(wizardData.employmentData).map((emp: any) => ({
+      employerDetails: {
+        employerName: emp.employerName || '',
+        payeReference: emp.employerPAYERef,
+      },
+      payFromEmployment: Math.round((emp.payReceived || 0) / 100), // Convert pence to pounds
+      ukTaxDeducted: Math.round((emp.taxDeducted || 0) / 100),
+    }))
+  }
+
+  // Add self-employment data if present
+  if (hasSelfEmployment && wizardData.selfEmploymentData) {
+    sa100Return.sa103S = Object.values(wizardData.selfEmploymentData).map((se: any) => {
+      const turnover = Math.round((se.income?.total || 0) / 100)
+      const expenses = Math.round((se.expenses?.total || 0) / 100)
+      const netProfitOrLoss = turnover - expenses
+
+      return {
+        businessDetails: {
+          businessName: se.businessName || 'Business',
+          descriptionOfBusiness: se.businessDescription || 'General trading',
+          businessAddress: se.businessAddress ? {
+            addressLine1: se.businessAddress.line1 || '',
+            postcode: se.businessAddress.postcode || '',
+          } : undefined,
+          businessStartDate: se.startDate,
+        },
+        accountingPeriod: {
+          startDate: se.accountingPeriodStart || `${wizardData.taxYear?.split('-')[0]}-04-06`,
+          endDate: se.accountingPeriodEnd || `20${wizardData.taxYear?.split('-')[1]}-04-05`,
+        },
+        income: {
+          turnover,
+        },
+        totalAllowableExpenses: expenses,
+        netProfitOrLoss,
+        totalTaxableProfits: Math.max(0, netProfitOrLoss),
+      }
+    })
+  }
+
+  // Add UK interest if present
+  if (wizardData.interestData?.untaxedUKInterest || wizardData.interestData?.taxedUKInterest) {
+    sa100Return.ukInterestEtc = {
+      untaxedUKInterestAmount: Math.round((wizardData.interestData.untaxedUKInterest || 0) / 100),
+      taxedUKInterestAmount: Math.round((wizardData.interestData.taxedUKInterest || 0) / 100),
+    }
+  }
+
+  // Add UK dividends if present
+  if (wizardData.dividendsData?.ukDividends) {
+    sa100Return.ukDividends = {
+      ukDividendsAmount: Math.round((wizardData.dividendsData.ukDividends || 0) / 100),
+    }
+  }
+
+  return sa100Return
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -120,6 +247,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       nino,
     }
 
+    // Convert wizard data to SA100 format expected by XML builder
+    const sa100Data = convertWizardDataToSA100(returnData, taxpayer)
+
     // Check if sandbox mode
     const isSandbox = process.env.HMRC_SANDBOX_MODE === 'true'
 
@@ -128,7 +258,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const xmlResult = buildSubmissionXML({
         credentials,
         taxpayer,
-        returnData,
+        returnData: sa100Data,
       })
 
       // Store the XML for debugging
@@ -171,7 +301,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const xmlResult = buildSubmissionXML({
       credentials,
       taxpayer,
-      returnData,
+      returnData: sa100Data,
     })
 
     // Check for validation errors
