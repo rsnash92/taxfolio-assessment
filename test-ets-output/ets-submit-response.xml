@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
+    <EnvelopeVersion>2.0</EnvelopeVersion>
+    <Header>
+        <MessageDetails>
+            <Class>HMRC-SA-SA100</Class>
+            <Qualifier>acknowledgement</Qualifier>
+            <Function>submit</Function>
+            <TransactionID></TransactionID>
+            <CorrelationID>E11E1A4CF3344FE498B104C26DDF615D</CorrelationID>
+            <ResponseEndPoint PollInterval="10">https://test-transaction-engine.tax.service.gov.uk/poll</ResponseEndPoint>
+            <GatewayTimestamp>2026-01-15T10:25:53.989</GatewayTimestamp>
+        </MessageDetails>
+        <SenderDetails/>
+    </Header>
+    <GovTalkDetails>
+        <Keys/>
+    </GovTalkDetails>
+    <Body/>
+</GovTalkMessage>

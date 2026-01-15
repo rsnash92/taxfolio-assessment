@@ -60,18 +60,19 @@ export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
   // Build the MTR content (contains SA100)
   const mtrXml = buildMTRContent(returnData)
 
-  // Build the IR envelope (without IRmark)
+  // Build the IR envelope with a placeholder IRmark
   const irEnvelopeXml = buildIREnvelope(taxpayer, returnData, senderType, mtrXml)
 
-  // Insert IRmark (calculates and inserts the hash)
-  const irEnvelopeWithMark = insertIRmark(irEnvelopeXml)
+  // Build the complete GovTalk envelope first (with placeholder IRmark)
+  const govTalkXmlWithPlaceholder = buildGovTalkEnvelope(credentials, taxpayer, irEnvelopeXml)
+
+  // Now calculate IRmark on the MTR as it appears in the final structure
+  // and insert it
+  const govTalkXml = insertIRmark(govTalkXmlWithPlaceholder)
 
   // Extract the calculated IRmark for return
-  const irMarkMatch = irEnvelopeWithMark.match(/<IRmark[^>]*>([^<]+)<\/IRmark>/)
+  const irMarkMatch = govTalkXml.match(/<IRmark[^>]*>([^<]+)<\/IRmark>/)
   const irMark = irMarkMatch ? irMarkMatch[1] : ''
-
-  // Build the complete GovTalk envelope
-  const govTalkXml = buildGovTalkEnvelope(credentials, taxpayer, irEnvelopeWithMark)
 
   return {
     xml: govTalkXml,
@@ -119,7 +120,7 @@ function buildGovTalkEnvelope(
     </TargetDetails>
     <ChannelRouting>
       <Channel>
-        <URI>${escapeXml(channelInfo.vendorId)}</URI>
+        <URI>${escapeXml(channelInfo.uri)}</URI>
         <Product>${escapeXml(channelInfo.product)}</Product>
         <Version>${escapeXml(channelInfo.version)}</Version>
       </Channel>
@@ -658,10 +659,11 @@ ${bizElements.map((e) => '  ' + e).join('\n')}
 
   // BusinessIncome
   const incomeElements: string[] = []
-  if (data.income.turnover !== undefined) {
+  if (data.income.turnover !== undefined && data.income.turnover > 0) {
     incomeElements.push(`<Turnover>${formatMoney(data.income.turnover)}</Turnover>`)
   }
-  if (data.income.otherBusinessIncome !== undefined) {
+  // OtherBusinessIncome uses MTR_SAnonNegativeNonZeroMonetaryType - must be > 0, omit if zero
+  if (data.income.otherBusinessIncome !== undefined && data.income.otherBusinessIncome > 0) {
     incomeElements.push(`<OtherBusinessIncome>${formatMoney(data.income.otherBusinessIncome)}</OtherBusinessIncome>`)
   }
 
@@ -672,19 +674,34 @@ ${incomeElements.map((e) => '  ' + e).join('\n')}
   }
 
   // AllowableBusinessExpenses
-  if (data.totalAllowableExpenses !== undefined) {
+  if (data.totalAllowableExpenses !== undefined && data.totalAllowableExpenses > 0) {
     elements.push(`<AllowableBusinessExpenses>
   <TotalAllowableExpenses>${formatMoney(data.totalAllowableExpenses)}</TotalAllowableExpenses>
 </AllowableBusinessExpenses>`)
   }
 
-  // NetProfitOrLoss
-  if (data.netProfitOrLoss !== undefined) {
+  // NetProfitOrLoss (SSE21/SSE22) - REQUIRED when (Turnover + OtherIncome - Expenses) != 0
+  // This is the basic P&L calculation: Turnover - Expenses
+  if (data.netProfitOrLoss !== undefined && data.netProfitOrLoss !== 0) {
     elements.push(`<NetProfitOrLoss>${formatMoney(data.netProfitOrLoss)}</NetProfitOrLoss>`)
   }
 
-  // ProfitsLossesNICsAndCIS
-  if (data.totalTaxableProfits !== undefined) {
+  // TaxableProfits section (contains NetBusinessProfitForTax = SSE28)
+  // SSE28 = Net profit after adjustments (if positive)
+  // Required when there's a taxable profit
+  if (data.netProfitOrLoss !== undefined && data.netProfitOrLoss > 0) {
+    const taxableProfitElements: string[] = []
+    taxableProfitElements.push(`<NetBusinessProfitForTax>${formatMoney(data.netProfitOrLoss)}</NetBusinessProfitForTax>`)
+    // LossBroughtForward (SSE29) - optional, only if > 0
+    // AnyOtherBusinessIncome (SSE30) - optional, only if > 0
+    elements.push(`<TaxableProfits>
+${taxableProfitElements.map((e) => '  ' + e).join('\n')}
+</TaxableProfits>`)
+  }
+
+  // ProfitsLossesNICsAndCIS (contains TotalTaxableBusinessProfits = SSE31)
+  // SSE31 = SSE28 + SSE30 - SSE29
+  if (data.totalTaxableProfits !== undefined && data.totalTaxableProfits > 0) {
     elements.push(`<ProfitsLossesNICsAndCIS>
   <TotalTaxableBusinessProfits>${formatMoney(data.totalTaxableProfits)}</TotalTaxableBusinessProfits>
 </ProfitsLossesNICsAndCIS>`)
@@ -943,12 +960,38 @@ ${elements.map((e) => '  ' + e).join('\n')}
 
 function buildSA110(returnData: SA100Return): string {
   // SA110 is mandatory and contains the self-assessment tax calculation
-  // TotalTaxEtcDue is required, defaults to 0.00 if not provided
-  const totalTaxDue = returnData.sa110?.totalTaxEtcDue ?? 0
+  const sa110 = returnData.sa110 || {}
+  const elements: string[] = []
+
+  // TotalTaxEtcDue is required
+  elements.push(`<TotalTaxEtcDue>${formatMoney(sa110.totalTaxEtcDue ?? 0)}</TotalTaxEtcDue>`)
+
+  // Student loan repayments
+  if (sa110.studentLoanRepaymentDue !== undefined && sa110.studentLoanRepaymentDue > 0) {
+    elements.push(`<StudentLoanRepaymentDue>${formatMoney(sa110.studentLoanRepaymentDue)}</StudentLoanRepaymentDue>`)
+  }
+  if (sa110.postgraduateLoanRepaymentDue !== undefined && sa110.postgraduateLoanRepaymentDue > 0) {
+    elements.push(`<PostgraduateLoanRepaymentDue>${formatMoney(sa110.postgraduateLoanRepaymentDue)}</PostgraduateLoanRepaymentDue>`)
+  }
+
+  // Class 4 NICs (CAL4)
+  if (sa110.class4NICsDue !== undefined && sa110.class4NICsDue > 0) {
+    elements.push(`<Class4NICsDue>${formatMoney(sa110.class4NICsDue)}</Class4NICsDue>`)
+  }
+
+  // Class 2 NICs (CAL4.1)
+  if (sa110.class2NICsDue !== undefined && sa110.class2NICsDue > 0) {
+    elements.push(`<Class2NICsDue>${formatMoney(sa110.class2NICsDue)}</Class2NICsDue>`)
+  }
+
+  // Capital Gains Tax
+  if (sa110.capitalGainsTaxDue !== undefined && sa110.capitalGainsTaxDue > 0) {
+    elements.push(`<CapitalGainsTaxDue>${formatMoney(sa110.capitalGainsTaxDue)}</CapitalGainsTaxDue>`)
+  }
 
   return `<SA110>
   <SelfAssessment>
-    <TotalTaxEtcDue>${formatMoney(totalTaxDue)}</TotalTaxEtcDue>
+${elements.map((e) => '    ' + e).join('\n')}
   </SelfAssessment>
   <UnderpaidTax/>
 </SA110>`

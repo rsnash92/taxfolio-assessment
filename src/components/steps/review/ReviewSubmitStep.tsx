@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useWizard } from '@/providers/WizardProvider';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { GatewayCredentialsModal } from '@/components/submission/gateway-credentials-modal';
 import {
   CheckCircle2,
@@ -13,9 +14,16 @@ import {
   FileCheck,
   ExternalLink,
   Copy,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+
+// Validate UTR format (10 digits)
+function isValidUTR(utr: string): boolean {
+  const utrClean = utr.replace(/\s/g, '');
+  return /^\d{10}$/.test(utrClean);
+}
 
 export function ReviewSubmitStep() {
   const { data, updateData, goNext } = useWizard();
@@ -24,6 +32,26 @@ export function ReviewSubmitStep() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedIrmark, setCopiedIrmark] = useState(false);
+  const [utrInput, setUtrInput] = useState(data.personalInfo?.utr || '');
+  const [utrError, setUtrError] = useState<string | null>(null);
+
+  // Check if UTR is missing or invalid
+  const hasValidUTR = data.personalInfo?.utr && isValidUTR(data.personalInfo.utr);
+
+  const handleSaveUTR = async () => {
+    const cleanUtr = utrInput.replace(/\s/g, '');
+    if (!isValidUTR(cleanUtr)) {
+      setUtrError('Please enter a valid 10-digit UTR number');
+      return;
+    }
+    setUtrError(null);
+    await updateData({
+      personalInfo: {
+        ...data.personalInfo,
+        utr: cleanUtr,
+      },
+    });
+  };
 
   const handleSubmitClick = () => {
     if (!declarationAccepted) {
@@ -309,6 +337,67 @@ export function ReviewSubmitStep() {
         </div>
       </div>
 
+      {/* UTR Required Section */}
+      {!hasValidUTR && (
+        <div className="bg-white border-2 border-amber-200 rounded-xl p-6 mb-8">
+          <div className="flex items-start gap-3 mb-4">
+            <FileText className="h-5 w-5 text-amber-500 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-gray-900">
+                Unique Taxpayer Reference (UTR) Required
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Your 10-digit UTR is required to submit to HMRC. You can find it on previous
+                tax returns or letters from HMRC about Self Assessment.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <Input
+                type="text"
+                placeholder="e.g. 1234567890"
+                value={utrInput}
+                onChange={(e) => {
+                  setUtrInput(e.target.value);
+                  setUtrError(null);
+                }}
+                className={cn(
+                  'font-mono',
+                  utrError && 'border-red-300 focus:ring-red-500'
+                )}
+                maxLength={12}
+              />
+              {utrError && (
+                <p className="text-sm text-red-600 mt-1">{utrError}</p>
+              )}
+            </div>
+            <Button
+              onClick={handleSaveUTR}
+              variant="outline"
+              className="w-full"
+            >
+              Save UTR
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* UTR Confirmed - show if valid */}
+      {hasValidUTR && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-8">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <div>
+              <span className="text-sm font-medium text-green-800">UTR Confirmed</span>
+              <span className="text-sm text-green-700 ml-2 font-mono">
+                {data.personalInfo?.utr}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Declaration */}
       <div className="bg-white border-2 border-gray-200 rounded-xl p-6 mb-8">
         <h3 className="font-medium text-gray-900 mb-4">Declaration</h3>
@@ -357,10 +446,10 @@ export function ReviewSubmitStep() {
       {/* Submit Button */}
       <Button
         onClick={handleSubmitClick}
-        disabled={!declarationAccepted || isSubmitting}
+        disabled={!declarationAccepted || isSubmitting || !hasValidUTR}
         className={cn(
           'w-full py-6 text-lg font-medium',
-          declarationAccepted
+          declarationAccepted && hasValidUTR
             ? 'bg-gradient-to-r from-[#0f172a] to-[#1e293b] hover:from-[#1e293b] hover:to-[#334155]'
             : 'bg-gray-300 cursor-not-allowed'
         )}
@@ -368,6 +457,10 @@ export function ReviewSubmitStep() {
         {isSubmitting ? (
           <>
             <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Submitting to HMRC...
+          </>
+        ) : !hasValidUTR ? (
+          <>
+            <AlertTriangle className="h-5 w-5 mr-2" /> Enter UTR to Submit
           </>
         ) : (
           <>

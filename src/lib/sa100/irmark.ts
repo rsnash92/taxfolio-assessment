@@ -4,144 +4,271 @@
  * The IRmark is a digital signature that authenticates the content of an
  * SA100 submission. HMRC uses it to verify the return hasn't been tampered with.
  *
- * Algorithm:
- * 1. Extract the IRenvelope content (excluding the IRmark element itself)
- * 2. Canonicalize using Exclusive XML Canonicalization
- * 3. Compute SHA-1 hash
- * 4. Base64 encode the result
+ * Algorithm (based on HMRC's "IRmark Generation Step By Step Guide v2.0"):
+ * 1. Extract the <Body> element (including Body tags)
+ * 2. INHERIT namespace declarations from <GovTalkMessage> onto <Body>
+ * 3. Remove <IRmark> element (preserving surrounding whitespace)
+ * 4. Apply W3C Canonical XML (C14N) - http://www.w3.org/TR/2001/REC-xml-c14n-20010315
+ * 5. Compute SHA-1 hash (160 bits / 20 bytes)
+ * 6. Base64 encode → 28 character string
  *
- * Reference: HMRC RIM Artefacts documentation
+ * Reference: HMRC IRmark Step-by-Step Guide v2.0
  */
 
 import { createHash } from 'crypto'
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom'
 import { IRMARK_CONFIG } from './schema-reference'
 
 /**
  * Calculate the IRmark for an XML document
  *
- * @param xmlContent - The complete IRenvelope XML content
- * @returns Base64-encoded SHA-1 hash
+ * @param xmlContent - The complete GovTalk XML content
+ * @returns Base64-encoded SHA-1 hash (28 characters)
  */
 export function calculateIRmark(xmlContent: string): string {
-  // 1. Extract the content to hash (IRenvelope body, excluding IRmark)
-  const contentToHash = extractHashableContent(xmlContent)
+  // Step 1: Parse the full GovTalkMessage XML
+  const doc = new DOMParser().parseFromString(xmlContent, 'text/xml')
+  const govTalkMessage = doc.documentElement
 
-  // 2. Canonicalize the XML
-  const canonicalized = canonicalizeXml(contentToHash)
+  // Step 2: Extract namespace declarations from GovTalkMessage root
+  const inheritedNamespaces = extractNamespaces(govTalkMessage)
 
-  // 3. Compute SHA-1 hash
+  // Step 3: Find and extract Body element
+  let bodyElement = findBodyElement(doc)
+  if (!bodyElement) {
+    throw new Error('Body element not found in XML')
+  }
+
+  // Step 4: Clone body and add inherited namespaces
+  const bodyClone = bodyElement.cloneNode(true) as Element
+
+  // Add inherited namespaces to Body element for IRmark calculation
+  for (const [prefix, uri] of Object.entries(inheritedNamespaces)) {
+    const attrName = prefix === '' ? 'xmlns' : `xmlns:${prefix}`
+    if (!bodyClone.hasAttribute(attrName)) {
+      bodyClone.setAttribute(attrName, uri)
+    }
+  }
+
+  // Step 5: Remove IRmark element (preserving whitespace around it)
+  removeIRmarkElement(bodyClone)
+
+  // Step 6: Serialize to string
+  const serializer = new XMLSerializer()
+  const bodyXml = serializer.serializeToString(bodyClone)
+
+  // Step 7: Apply C14N canonicalization
+  const canonicalized = canonicalizeC14N(bodyXml)
+
+  // Step 8: SHA-1 hash
   const hash = createHash(IRMARK_CONFIG.algorithm).update(canonicalized, 'utf8').digest()
 
-  // 4. Base64 encode
+  // Step 9: Base64 encode (should be exactly 28 characters)
   return hash.toString('base64')
 }
 
 /**
- * Extract the content that should be hashed for IRmark calculation.
- *
- * The IRmark is calculated over the MTR element (the actual return data),
- * not including the IRheader.
- *
- * @param xmlContent - Full IRenvelope XML
- * @returns The content to be hashed
+ * Extract all namespace declarations from an element
  */
-function extractHashableContent(xmlContent: string): string {
-  // Find the MTR element - this is what gets hashed
-  // The IRmark covers the business content, not the header
+function extractNamespaces(element: Element): Record<string, string> {
+  const namespaces: Record<string, string> = {}
 
-  // Match <MTR ...> to </MTR> (including all attributes and content)
-  const mtrMatch = xmlContent.match(/<MTR[^>]*>[\s\S]*<\/MTR>/i)
-
-  if (mtrMatch) {
-    return mtrMatch[0]
+  const attrs = element.attributes
+  for (let i = 0; i < attrs.length; i++) {
+    const attr = attrs[i]
+    if (attr.name === 'xmlns') {
+      namespaces[''] = attr.value
+    } else if (attr.name.startsWith('xmlns:')) {
+      const prefix = attr.name.substring(6)
+      namespaces[prefix] = attr.value
+    }
   }
 
-  // Fallback: If no MTR element found, try to extract IRenvelope body
-  // excluding the IRmark element
-  let content = xmlContent
-
-  // Remove any existing IRmark element
-  content = content.replace(/<IRmark[^>]*>[^<]*<\/IRmark>/gi, '')
-
-  // Remove any self-closing IRmark
-  content = content.replace(/<IRmark[^/]*\/>/gi, '')
-
-  return content
+  return namespaces
 }
 
 /**
- * Canonicalize XML using a simplified Exclusive XML Canonicalization (exc-c14n)
- *
- * This is a simplified implementation that handles the most common cases.
- * For production, consider using a proper XML canonicalization library.
- *
- * Canonicalization rules:
- * - Normalize line endings to LF
- * - Remove XML declaration
- * - Remove DOCTYPE declarations
- * - Normalize whitespace in start/end tags
- * - Sort attributes alphabetically
- * - Normalize attribute values (single quotes to double)
- * - Remove redundant namespace declarations
+ * Find Body element in document (with or without namespace prefix)
  */
-function canonicalizeXml(xml: string): string {
-  let result = xml
+function findBodyElement(doc: Document): Element | null {
+  // Try without namespace
+  const bodyElements = doc.getElementsByTagName('Body')
+  if (bodyElements.length > 0) {
+    return bodyElements[0] as Element
+  }
 
-  // 1. Normalize line endings to LF
-  result = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-
-  // 2. Remove XML declaration
-  result = result.replace(/<\?xml[^?]*\?>/gi, '')
-
-  // 3. Remove DOCTYPE declarations
-  result = result.replace(/<!DOCTYPE[^>]*>/gi, '')
-
-  // 4. Remove leading/trailing whitespace
-  result = result.trim()
-
-  // 5. Normalize whitespace between elements (but preserve significant whitespace)
-  // This is a simplified approach - remove whitespace between > and <
-  result = result.replace(/>\s+</g, '><')
-
-  // 6. Sort attributes alphabetically within each element
-  result = sortAttributesInXml(result)
-
-  // 7. Normalize empty elements to long form
-  // <element/> becomes <element></element>
-  result = result.replace(/<([A-Za-z][A-Za-z0-9:_-]*)((?:\s+[^>]*)?)\/>/g, '<$1$2></$1>')
-
-  return result
-}
-
-/**
- * Sort attributes alphabetically within XML elements
- */
-function sortAttributesInXml(xml: string): string {
-  // Match opening tags with attributes
-  return xml.replace(/<([A-Za-z][A-Za-z0-9:_-]*)((?:\s+[A-Za-z:_][A-Za-z0-9:._-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'))?)+)\s*(\/?)>/g,
-    (match, tagName, attributes, selfClose) => {
-      // Parse attributes
-      const attrRegex = /([A-Za-z:_][A-Za-z0-9:._-]*)\s*=\s*("[^"]*"|'[^']*')/g
-      const attrs: Array<{ name: string; value: string }> = []
-
-      let attrMatch
-      while ((attrMatch = attrRegex.exec(attributes)) !== null) {
-        let value = attrMatch[2]
-        // Normalize to double quotes
-        if (value.startsWith("'") && value.endsWith("'")) {
-          value = '"' + value.slice(1, -1) + '"'
-        }
-        attrs.push({ name: attrMatch[1], value })
-      }
-
-      // Sort attributes by name
-      attrs.sort((a, b) => a.name.localeCompare(b.name))
-
-      // Rebuild the tag
-      const sortedAttrs = attrs.map(a => ` ${a.name}=${a.value}`).join('')
-      return `<${tagName}${sortedAttrs}${selfClose ? ' /' : ''}>`
-    }
+  // Try with GovTalk namespace
+  const bodyElementsNS = doc.getElementsByTagNameNS(
+    'http://www.govtalk.gov.uk/CM/envelope',
+    'Body'
   )
+  if (bodyElementsNS.length > 0) {
+    return bodyElementsNS[0] as Element
+  }
+
+  // Try with hd: prefix (common in HMRC docs)
+  const hdBodyElements = doc.getElementsByTagName('hd:Body')
+  if (hdBodyElements.length > 0) {
+    return hdBodyElements[0] as Element
+  }
+
+  return null
+}
+
+/**
+ * Remove IRmark element from Body while preserving whitespace
+ * HMRC requirement: "any data around the IRmark opening and closing tags
+ * e.g. white space, line-endings, tabs etc must be preserved"
+ */
+function removeIRmarkElement(element: Element): void {
+  // Find IRmark elements recursively
+  const irmarkElements: Element[] = []
+
+  function findIRmark(node: Element) {
+    for (let i = 0; i < node.childNodes.length; i++) {
+      const child = node.childNodes[i]
+      if (child.nodeType === 1) {
+        // Element node
+        const el = child as Element
+        const localName = el.localName || el.nodeName.split(':').pop()
+        if (localName === 'IRmark') {
+          irmarkElements.push(el)
+        } else {
+          findIRmark(el)
+        }
+      }
+    }
+  }
+
+  findIRmark(element)
+
+  // Remove each IRmark element
+  for (const irmark of irmarkElements) {
+    const parent = irmark.parentNode
+    if (parent) {
+      parent.removeChild(irmark)
+    }
+  }
+}
+
+/**
+ * Apply W3C Canonical XML (C14N) - Inclusive without comments
+ * Algorithm: http://www.w3.org/TR/2001/REC-xml-c14n-20010315
+ *
+ * Key transformations:
+ * - UTF-8 encoding
+ * - Line breaks normalized to LF (0x0A)
+ * - Empty elements as <element></element> not <element/>
+ * - Attributes sorted by namespace URI then local name
+ * - Namespace declarations sorted
+ * - No XML declaration
+ */
+function canonicalizeC14N(xml: string): string {
+  const doc = new DOMParser().parseFromString(xml, 'text/xml')
+
+  if (!doc.documentElement) {
+    throw new Error('Failed to parse XML for canonicalization')
+  }
+
+  return canonicalizeNode(doc.documentElement)
+}
+
+/**
+ * Recursively canonicalize a node and its children
+ */
+function canonicalizeNode(node: Element): string {
+  const parts: string[] = []
+
+  // Start tag
+  const tagName = node.nodeName
+  parts.push(`<${tagName}`)
+
+  // Collect and sort namespace declarations and attributes
+  const nsDecls: Array<{ name: string; value: string }> = []
+  const attrs: Array<{ name: string; value: string; nsUri: string; localName: string }> = []
+
+  for (let i = 0; i < node.attributes.length; i++) {
+    const attr = node.attributes[i]
+    if (attr.name === 'xmlns' || attr.name.startsWith('xmlns:')) {
+      nsDecls.push({ name: attr.name, value: attr.value })
+    } else {
+      const nsUri = attr.namespaceURI || ''
+      const localName = attr.localName || attr.name
+      attrs.push({ name: attr.name, value: attr.value, nsUri, localName })
+    }
+  }
+
+  // Sort namespace declarations: default namespace first, then by prefix
+  nsDecls.sort((a, b) => {
+    if (a.name === 'xmlns') return -1
+    if (b.name === 'xmlns') return 1
+    return a.name.localeCompare(b.name)
+  })
+
+  // Sort attributes by namespace URI, then by local name
+  attrs.sort((a, b) => {
+    if (a.nsUri !== b.nsUri) return a.nsUri.localeCompare(b.nsUri)
+    return a.localName.localeCompare(b.localName)
+  })
+
+  // Output namespace declarations
+  for (const ns of nsDecls) {
+    parts.push(` ${ns.name}="${escapeAttrValue(ns.value)}"`)
+  }
+
+  // Output attributes
+  for (const attr of attrs) {
+    parts.push(` ${attr.name}="${escapeAttrValue(attr.value)}"`)
+  }
+
+  parts.push('>')
+
+  // Process child nodes
+  for (let i = 0; i < node.childNodes.length; i++) {
+    const child = node.childNodes[i]
+
+    switch (child.nodeType) {
+      case 1: // Element
+        parts.push(canonicalizeNode(child as Element))
+        break
+      case 3: // Text
+        parts.push(escapeTextContent(child.textContent || ''))
+        break
+      case 4: // CDATA - convert to text
+        parts.push(escapeTextContent(child.textContent || ''))
+        break
+      // Ignore comments, processing instructions for C14N without comments
+    }
+  }
+
+  // End tag (never use self-closing in C14N)
+  parts.push(`</${tagName}>`)
+
+  return parts.join('')
+}
+
+/**
+ * Escape attribute value for C14N
+ */
+function escapeAttrValue(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;')
+    .replace(/\t/g, '&#x9;')
+    .replace(/\n/g, '&#xA;')
+    .replace(/\r/g, '&#xD;')
+}
+
+/**
+ * Escape text content for C14N
+ */
+function escapeTextContent(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\r/g, '&#xD;')
 }
 
 /**

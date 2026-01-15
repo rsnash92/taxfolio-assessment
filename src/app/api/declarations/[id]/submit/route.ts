@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildSubmissionXML } from '@/lib/sa100/xml-builder'
+import {
+  submitToTransactionEngine,
+  pollUntilComplete,
+} from '@/lib/sa100/transaction-engine'
 import type { GatewayCredentials, TaxpayerIdentification } from '@/lib/sa100/types'
 
 interface SubmitRequest {
@@ -196,28 +200,95 @@ export async function POST(request: NextRequest, context: RouteContext) {
       })
       .eq('id', submission.id)
 
-    // TODO: Submit to HMRC Transaction Engine
-    // const transactionEngineUrl = process.env.HMRC_TRANSACTION_ENGINE_URL
-    // const response = await fetch(transactionEngineUrl, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/xml' },
-    //   body: xmlResult.xml,
-    // })
+    // Submit to HMRC Transaction Engine
+    console.log('Submitting to HMRC Transaction Engine...')
+    const submitResult = await submitToTransactionEngine(xmlResult.xml)
 
-    // For now, return an error indicating production mode isn't fully implemented
+    if (!submitResult.success) {
+      console.error('HMRC submission failed:', submitResult.error)
+      await supabase
+        .from('sa100_submissions')
+        .update({
+          status: 'failed',
+          error_code: submitResult.error?.code || 'SUBMISSION_ERROR',
+          error_message: submitResult.error?.message || 'Submission failed',
+          response_xml: submitResult.rawResponse,
+        })
+        .eq('id', submission.id)
+
+      return NextResponse.json(
+        {
+          error: submitResult.error?.message || 'HMRC submission failed',
+          errorCode: submitResult.error?.code,
+        },
+        { status: 400 }
+      )
+    }
+
+    // Update with correlation ID
     await supabase
       .from('sa100_submissions')
       .update({
-        status: 'failed',
-        error_code: 'NOT_IMPLEMENTED',
-        error_message: 'Production submission to Transaction Engine not yet implemented',
+        correlation_id: submitResult.correlationId,
+        status: 'polling',
       })
       .eq('id', submission.id)
 
-    return NextResponse.json(
-      { error: 'Production submission not yet implemented. Please use sandbox mode for testing.' },
-      { status: 501 }
-    )
+    // Poll for result (HMRC processes async)
+    console.log(`Polling for result, correlation ID: ${submitResult.correlationId}`)
+    const pollResult = await pollUntilComplete(submitResult.correlationId!, {
+      pollUrl: submitResult.pollUrl,
+      pollIntervalMs: (submitResult.pollInterval || 5) * 1000,
+      maxAttempts: 30,
+    })
+
+    if (pollResult.status === 'accepted') {
+      // Success!
+      await supabase
+        .from('sa100_submissions')
+        .update({
+          status: 'submitted',
+          submitted_at: pollResult.acceptedTime || new Date().toISOString(),
+          hmrc_message: pollResult.hmrcMessage,
+          response_xml: pollResult.rawResponse,
+        })
+        .eq('id', submission.id)
+
+      // Update declaration status
+      await supabase.from('declarations').update({ status: 'submitted' }).eq('id', declarationId)
+
+      return NextResponse.json({
+        success: true,
+        submissionId: submission.id,
+        correlationId: submitResult.correlationId,
+        irmark: xmlResult.irMark,
+        hmrcMessage: pollResult.hmrcMessage,
+        acceptedTime: pollResult.acceptedTime,
+      })
+    } else {
+      // Rejected
+      const errorMessage = pollResult.errors?.map((e) => e.message).join('; ') || 'Submission rejected by HMRC'
+      const errorCode = pollResult.errors?.[0]?.code || 'REJECTED'
+
+      await supabase
+        .from('sa100_submissions')
+        .update({
+          status: 'failed',
+          error_code: errorCode,
+          error_message: errorMessage,
+          response_xml: pollResult.rawResponse,
+        })
+        .eq('id', submission.id)
+
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          errorCode,
+          errors: pollResult.errors,
+        },
+        { status: 400 }
+      )
+    }
   } catch (error) {
     console.error('Submission error:', error)
     return NextResponse.json(
