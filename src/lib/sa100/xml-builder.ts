@@ -248,8 +248,13 @@ function buildMTRContent(returnData: SA100Return): string {
     sections.push(buildSA108(returnData.sa108))
   }
 
-  // SA110 Tax Calculation Summary (MANDATORY - always include)
-  sections.push(buildSA110(returnData))
+  // SA110 Tax Calculation Summary
+  // Only include if we have explicit tax calculation data from the wizard.
+  // If not provided, HMRC will calculate the tax themselves.
+  // Including incorrect values causes CAL2 validation errors.
+  if (returnData.sa110?.totalTaxEtcDue !== undefined) {
+    sections.push(buildSA110(returnData))
+  }
 
   // Declaration (MANDATORY - always include)
   const declarationType = returnData.finishing.returnSigner === 'Agent' ? 'AgentDeclaration' : 'IndividualDeclaration'
