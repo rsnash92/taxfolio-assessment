@@ -88,9 +88,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Get taxpayer identification from return data
+    // The wizard stores data in personalInfo.utr and personalInfo.nino
     const returnData = declaration.return_data
-    const utr = returnData?.utr as string | undefined
-    const nino = returnData?.yourPersonalDetails?.nationalInsuranceNumber as string | undefined
+    const utr = (returnData?.personalInfo?.utr || returnData?.utr) as string | undefined
+    const nino = (returnData?.personalInfo?.nino || returnData?.yourPersonalDetails?.nationalInsuranceNumber) as string | undefined
 
     if (!utr || !nino) {
       await supabase
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .eq('id', submission.id)
 
       return NextResponse.json(
-        { error: 'UTR or NINO not configured in your tax return' },
+        { error: 'UTR or NINO not configured in your tax return. Please ensure you have entered both your UTR and National Insurance number.' },
         { status: 400 }
       )
     }
