@@ -141,63 +141,18 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
   }
 
   // Calculate SA110 tax summary
-  if (wizardData.taxCalculation) {
+  // NOTE: For SA100 submissions, HMRC performs their own tax calculation.
+  // We only include SA110 if the wizard explicitly calculated it.
+  // Including incorrect calculations causes HMRC validation errors (CAL2 mismatch).
+  if (wizardData.taxCalculation?.totalTaxDue !== undefined) {
     sa100Return.sa110 = {
       totalTaxEtcDue: Math.round((wizardData.taxCalculation.totalTaxDue || 0) / 100),
     }
+    console.log('[Submit Route] Using wizard tax calculation:', sa100Return.sa110.totalTaxEtcDue)
   } else {
-    // Calculate basic tax for employment-only returns
-    // This is a simplified calculation - real calculation would be more complex
-    let totalIncome = 0
-    let totalTaxDeducted = 0
-
-    // Sum employment income and tax
-    if (sa100Return.sa102) {
-      for (const emp of sa100Return.sa102) {
-        totalIncome += emp.payFromEmployment || 0
-        totalTaxDeducted += emp.ukTaxDeducted || 0
-      }
-    }
-
-    // Add self-employment profits
-    if (sa100Return.sa103S) {
-      for (const se of sa100Return.sa103S) {
-        totalIncome += se.totalTaxableProfits || 0
-      }
-    }
-
-    // Simple tax calculation (2024-25 rates)
-    // Personal allowance: £12,570
-    // Basic rate (20%): £12,571 - £50,270
-    // Higher rate (40%): £50,271 - £125,140
-    const personalAllowance = 12570
-    const basicRateLimit = 50270
-
-    const taxableIncome = Math.max(0, totalIncome - personalAllowance)
-    let taxDue = 0
-
-    if (taxableIncome <= (basicRateLimit - personalAllowance)) {
-      taxDue = taxableIncome * 0.20
-    } else {
-      const basicRateTax = (basicRateLimit - personalAllowance) * 0.20
-      const higherRateTax = (taxableIncome - (basicRateLimit - personalAllowance)) * 0.40
-      taxDue = basicRateTax + higherRateTax
-    }
-
-    // Net tax due after deductions
-    const netTaxDue = Math.round((taxDue - totalTaxDeducted) * 100) / 100
-
-    sa100Return.sa110 = {
-      totalTaxEtcDue: netTaxDue,
-    }
-
-    console.log('[Submit Route] Tax calculation:', {
-      totalIncome,
-      taxableIncome,
-      taxDue: Math.round(taxDue * 100) / 100,
-      totalTaxDeducted,
-      netTaxDue,
-    })
+    // Don't include SA110 - let HMRC calculate it
+    // Our simplified calculation doesn't match HMRC's exact rules
+    console.log('[Submit Route] No tax calculation provided - HMRC will calculate')
   }
 
   return sa100Return
