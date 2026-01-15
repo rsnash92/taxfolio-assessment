@@ -180,9 +180,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { gatewayUserId, gatewayPassword } = body
 
     // Validate credentials format
-    if (!gatewayUserId || !/^\d{12}$/.test(gatewayUserId)) {
+    // HMRC Sender ID: alphanumeric, typically 4-12 characters (e.g., SA0239)
+    if (!gatewayUserId || !/^[A-Za-z0-9]{4,12}$/.test(gatewayUserId)) {
       return NextResponse.json(
-        { error: 'Invalid Government Gateway User ID - must be 12 digits' },
+        { error: 'Invalid HMRC Sender ID - must be 4-12 alphanumeric characters' },
         { status: 400 }
       )
     }

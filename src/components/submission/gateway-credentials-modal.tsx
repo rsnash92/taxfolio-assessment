@@ -36,8 +36,9 @@ export function GatewayCredentialsModal({
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const validateUserId = (value: string): boolean => {
-    // Government Gateway User ID is exactly 12 digits
-    return /^\d{12}$/.test(value)
+    // HMRC Sender ID: alphanumeric, typically 6-12 characters (e.g., SA0239)
+    // Or Government Gateway User ID: exactly 12 digits
+    return /^[A-Za-z0-9]{4,12}$/.test(value)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,7 +46,7 @@ export function GatewayCredentialsModal({
     setValidationError(null)
 
     if (!validateUserId(userId)) {
-      setValidationError("User ID must be exactly 12 digits")
+      setValidationError("User ID must be 4-12 alphanumeric characters")
       return
     }
 
@@ -83,25 +84,23 @@ export function GatewayCredentialsModal({
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           {/* User ID */}
           <div className="space-y-2">
-            <Label htmlFor="userId">Government Gateway User ID</Label>
+            <Label htmlFor="userId">HMRC Sender ID</Label>
             <Input
               id="userId"
               type="text"
-              inputMode="numeric"
-              pattern="\d*"
               maxLength={12}
-              placeholder="123456789012"
+              placeholder="SA0239"
               value={userId}
               onChange={(e) => {
-                // Only allow digits
-                const value = e.target.value.replace(/\D/g, "")
+                // Allow alphanumeric characters
+                const value = e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
                 setUserId(value)
               }}
               disabled={isSubmitting}
               autoComplete="off"
             />
             <p className="text-xs text-muted-foreground">
-              Your 12-digit User ID (numbers only)
+              Your HMRC Sender ID (e.g., SA0239)
             </p>
           </div>
 
