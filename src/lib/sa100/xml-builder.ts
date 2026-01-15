@@ -54,8 +54,17 @@ export interface ValidationError {
 export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
   const { credentials, taxpayer, returnData, senderType = 'Individual' } = options
 
+  console.log('[XML Builder] Building XML with:', {
+    senderId: credentials.userId,
+    utr: taxpayer.utr,
+    nino: taxpayer.nino,
+    taxYear: returnData.taxYear,
+    senderType,
+  })
+
   // Validate the data first
   const validationErrors = validateReturnData(returnData)
+  console.log('[XML Builder] Validation errors:', validationErrors.length > 0 ? validationErrors : 'none')
 
   // Build the MTR content (contains SA100)
   const mtrXml = buildMTRContent(returnData)
@@ -73,6 +82,17 @@ export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
   // Extract the calculated IRmark for return
   const irMarkMatch = govTalkXml.match(/<IRmark[^>]*>([^<]+)<\/IRmark>/)
   const irMark = irMarkMatch ? irMarkMatch[1] : ''
+
+  // Log the header portion of the XML (contains auth info, mask password)
+  const headerEnd = govTalkXml.indexOf('</Header>')
+  if (headerEnd > 0) {
+    const headerXml = govTalkXml.substring(0, headerEnd + 9)
+    // Mask password in log
+    const maskedHeader = headerXml.replace(/<Value>([^<]+)<\/Value>/, '<Value>***MASKED***</Value>')
+    console.log('[XML Builder] Generated XML header:\n', maskedHeader)
+  }
+  console.log('[XML Builder] IRmark:', irMark)
+  console.log('[XML Builder] Total XML length:', govTalkXml.length)
 
   return {
     xml: govTalkXml,

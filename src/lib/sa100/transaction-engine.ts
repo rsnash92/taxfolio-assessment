@@ -58,6 +58,24 @@ export interface PollResult {
 export async function submitToTransactionEngine(xml: string): Promise<SubmissionResult> {
   const endpoint = `${TRANSACTION_ENGINE_URL}/submission`
 
+  console.log('[Transaction Engine] Submitting to:', endpoint)
+  console.log('[Transaction Engine] XML length:', xml.length)
+
+  // Log key parts of the XML for debugging (mask password)
+  const senderIdMatch = xml.match(/<SenderID>([^<]+)<\/SenderID>/)
+  const utrMatch = xml.match(/<UTR>([^<]+)<\/UTR>/)
+  const ninoMatch = xml.match(/<NINO>([^<]+)<\/NINO>/)
+  const classMatch = xml.match(/<Class>([^<]+)<\/Class>/)
+  const functionMatch = xml.match(/<Function>([^<]+)<\/Function>/)
+
+  console.log('[Transaction Engine] Request details:', {
+    class: classMatch?.[1],
+    function: functionMatch?.[1],
+    senderId: senderIdMatch?.[1],
+    utr: utrMatch?.[1],
+    nino: ninoMatch?.[1],
+  })
+
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -67,7 +85,9 @@ export async function submitToTransactionEngine(xml: string): Promise<Submission
       body: xml,
     })
 
+    console.log('[Transaction Engine] Response status:', response.status)
     const responseText = await response.text()
+    console.log('[Transaction Engine] Response:', responseText.substring(0, 2000))
 
     // Parse the response XML
     const doc = new DOMParser().parseFromString(responseText, 'text/xml')

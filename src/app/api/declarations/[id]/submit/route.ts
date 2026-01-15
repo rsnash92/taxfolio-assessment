@@ -248,8 +248,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
       nino,
     }
 
+    console.log('[Submit Route] Credentials:', {
+      userId: gatewayUserId,
+      userIdLength: gatewayUserId.length,
+      passwordLength: gatewayPassword.length,
+      passwordFirst2: gatewayPassword.substring(0, 2),
+      passwordLast2: gatewayPassword.substring(gatewayPassword.length - 2),
+    })
+    console.log('[Submit Route] Taxpayer:', { utr, nino })
+
     // Convert wizard data to SA100 format expected by XML builder
     const sa100Data = convertWizardDataToSA100(returnData, taxpayer)
+    console.log('[Submit Route] SA100 data:', JSON.stringify(sa100Data, null, 2))
 
     // Check if sandbox mode
     const isSandbox = process.env.HMRC_SANDBOX_MODE === 'true'
