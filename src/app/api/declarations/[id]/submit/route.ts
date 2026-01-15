@@ -96,58 +96,33 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
 
   // Add self-employment data if present
   if (hasSelfEmployment && wizardData.selfEmploymentData) {
-    // For test UTR, use hardcoded values that HMRC expects
-    const isTestUTR = taxpayer.utr === '1000000239'
+    sa100Return.sa103S = Object.values(wizardData.selfEmploymentData).map((se: any) => {
+      const turnover = Math.round((se.income?.total || 0) / 100)
+      const expenses = Math.round((se.expenses?.total || 0) / 100)
+      const netProfitOrLoss = turnover - expenses
 
-    if (isTestUTR) {
-      // For test UTR, use minimal self-employment values to avoid HMRC auto-calculating NICs
-      // HMRC expects £35.00 total tax - any profit triggers automatic Class 4 NICs
-      console.log('[Submit Route] Using HMRC test UTR hardcoded self-employment values')
-      sa100Return.sa103S = [{
+      return {
         businessDetails: {
-          businessName: 'Test Business',
-          descriptionOfBusiness: 'Consulting services',
+          businessName: se.businessName || 'Business',
+          descriptionOfBusiness: se.businessDescription || 'General trading',
+          businessAddress: se.businessAddress ? {
+            addressLine1: se.businessAddress.line1 || '',
+            postcode: se.businessAddress.postcode || '',
+          } : undefined,
+          businessStartDate: se.startDate,
         },
         accountingPeriod: {
-          startDate: '2024-04-06',
-          endDate: '2025-04-05',
+          startDate: se.accountingPeriodStart || `${wizardData.taxYear?.split('-')[0]}-04-06`,
+          endDate: se.accountingPeriodEnd || `20${wizardData.taxYear?.split('-')[1]}-04-05`,
         },
         income: {
-          turnover: 175,
+          turnover,
         },
-        totalAllowableExpenses: 0,
-        netProfitOrLoss: 175,
-        totalTaxableProfits: 175,
-      }]
-    } else {
-      sa100Return.sa103S = Object.values(wizardData.selfEmploymentData).map((se: any) => {
-        const turnover = Math.round((se.income?.total || 0) / 100)
-        const expenses = Math.round((se.expenses?.total || 0) / 100)
-        const netProfitOrLoss = turnover - expenses
-
-        return {
-          businessDetails: {
-            businessName: se.businessName || 'Business',
-            descriptionOfBusiness: se.businessDescription || 'General trading',
-            businessAddress: se.businessAddress ? {
-              addressLine1: se.businessAddress.line1 || '',
-              postcode: se.businessAddress.postcode || '',
-            } : undefined,
-            businessStartDate: se.startDate,
-          },
-          accountingPeriod: {
-            startDate: se.accountingPeriodStart || `${wizardData.taxYear?.split('-')[0]}-04-06`,
-            endDate: se.accountingPeriodEnd || `20${wizardData.taxYear?.split('-')[1]}-04-05`,
-          },
-          income: {
-            turnover,
-          },
-          totalAllowableExpenses: expenses,
-          netProfitOrLoss,
-          totalTaxableProfits: Math.max(0, netProfitOrLoss),
-        }
-      })
-    }
+        totalAllowableExpenses: expenses,
+        netProfitOrLoss,
+        totalTaxableProfits: Math.max(0, netProfitOrLoss),
+      }
+    })
   }
 
   // Add UK interest if present
@@ -166,19 +141,7 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
   }
 
   // Calculate SA110 tax summary
-  // HMRC's test environment (ETS) has hardcoded expected values for test UTRs
-  // For test UTR 1000000239, they expect specific values regardless of actual income
-  const isTestUTR = taxpayer.utr === '1000000239'
-
-  if (isTestUTR) {
-    // Use the hardcoded values that HMRC's test system expects
-    // HMRC test environment expects £35.00 for CAL2 (total tax overpaid)
-    // This is a fixed test value - actual calculations don't matter for test UTR
-    console.log('[Submit Route] Using HMRC test UTR hardcoded values')
-    sa100Return.sa110 = {
-      totalTaxEtcDue: 35.00,
-    }
-  } else if (wizardData.taxCalculation) {
+  if (wizardData.taxCalculation) {
     sa100Return.sa110 = {
       totalTaxEtcDue: Math.round((wizardData.taxCalculation.totalTaxDue || 0) / 100),
     }
