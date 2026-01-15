@@ -7,9 +7,9 @@
             <Qualifier>acknowledgement</Qualifier>
             <Function>submit</Function>
             <TransactionID></TransactionID>
-            <CorrelationID>E11E1A4CF3344FE498B104C26DDF615D</CorrelationID>
+            <CorrelationID>5B3F3365B0F244C5B148E98D0522FAF0</CorrelationID>
             <ResponseEndPoint PollInterval="10">https://test-transaction-engine.tax.service.gov.uk/poll</ResponseEndPoint>
-            <GatewayTimestamp>2026-01-15T10:25:53.989</GatewayTimestamp>
+            <GatewayTimestamp>2026-01-15T13:20:24.128</GatewayTimestamp>
         </MessageDetails>
         <SenderDetails/>
     </Header>
