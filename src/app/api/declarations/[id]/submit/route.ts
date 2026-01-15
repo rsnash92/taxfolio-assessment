@@ -324,12 +324,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Check if sandbox mode
     const isSandbox = process.env.HMRC_SANDBOX_MODE === 'true'
 
+    // Detect if using test endpoint (ETS) - GatewayTest=1 is required for test submissions
+    const transactionEngineUrl = process.env.HMRC_TRANSACTION_ENGINE_URL || 'https://test-transaction-engine.tax.service.gov.uk'
+    const isTestSubmission = transactionEngineUrl.includes('test-transaction-engine')
+
     if (isSandbox) {
       // Build the XML even in sandbox mode to test the builder
       const xmlResult = buildSubmissionXML({
         credentials,
         taxpayer,
         returnData: sa100Data,
+        isTestSubmission,
       })
 
       // Store the XML for debugging
@@ -373,6 +378,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       credentials,
       taxpayer,
       returnData: sa100Data,
+      isTestSubmission,
     })
 
     // Check for validation errors

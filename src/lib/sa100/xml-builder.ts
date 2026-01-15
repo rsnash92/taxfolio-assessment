@@ -34,6 +34,8 @@ export interface BuildXMLOptions {
   senderType?: SenderType
   /** If true, validates but doesn't submit */
   dryRun?: boolean
+  /** If true, includes GatewayTest=1 for ETS testing */
+  isTestSubmission?: boolean
 }
 
 export interface BuildXMLResult {
@@ -52,7 +54,7 @@ export interface ValidationError {
  * Build complete GovTalk XML from wizard data
  */
 export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
-  const { credentials, taxpayer, returnData, senderType = 'Individual' } = options
+  const { credentials, taxpayer, returnData, senderType = 'Individual', isTestSubmission = false } = options
 
   console.log('[XML Builder] Building XML with:', {
     senderId: credentials.userId,
@@ -60,6 +62,7 @@ export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
     nino: taxpayer.nino,
     taxYear: returnData.taxYear,
     senderType,
+    isTestSubmission,
   })
 
   // Validate the data first
@@ -73,7 +76,7 @@ export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
   const irEnvelopeXml = buildIREnvelope(taxpayer, returnData, senderType, mtrXml)
 
   // Build the complete GovTalk envelope first (with placeholder IRmark)
-  const govTalkXmlWithPlaceholder = buildGovTalkEnvelope(credentials, taxpayer, irEnvelopeXml)
+  const govTalkXmlWithPlaceholder = buildGovTalkEnvelope(credentials, taxpayer, irEnvelopeXml, isTestSubmission)
 
   // Now calculate IRmark on the MTR as it appears in the final structure
   // and insert it
@@ -108,9 +111,14 @@ export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
 function buildGovTalkEnvelope(
   credentials: GatewayCredentials,
   taxpayer: TaxpayerIdentification,
-  irEnvelopeContent: string
+  irEnvelopeContent: string,
+  isTestSubmission: boolean = false
 ): string {
   const channelInfo = getChannelRoutingInfo()
+
+  // GatewayTest element: Per HMRC ETS documentation, set to 1 for test submissions
+  // This routes the submission through TPVS (Third Party Validation Service) for testing
+  const gatewayTestElement = isTestSubmission ? '\n      <GatewayTest>1</GatewayTest>' : ''
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <GovTalkMessage xmlns="${NAMESPACES.GOVTALK}">
@@ -119,7 +127,7 @@ function buildGovTalkEnvelope(
     <MessageDetails>
       <Class>${MESSAGE_CLASS}</Class>
       <Qualifier>request</Qualifier>
-      <Function>submit</Function>
+      <Function>submit</Function>${gatewayTestElement}
     </MessageDetails>
     <SenderDetails>
       <IDAuthentication>
