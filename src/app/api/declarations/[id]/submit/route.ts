@@ -5,6 +5,7 @@ import {
   submitToTransactionEngine,
   pollUntilComplete,
 } from '@/lib/sa100/transaction-engine'
+import { calculateTax, getTaxpayerStatus, TaxCalculationInput } from '@/lib/sa100/tax-calculator'
 import type { GatewayCredentials, TaxpayerIdentification, SA100Return } from '@/lib/sa100/types'
 
 interface SubmitRequest {
@@ -140,19 +141,57 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
     }
   }
 
-  // Calculate SA110 tax summary
-  // NOTE: For SA100 submissions, HMRC performs their own tax calculation.
-  // We only include SA110 if the wizard explicitly calculated it.
-  // Including incorrect calculations causes HMRC validation errors (CAL2 mismatch).
-  if (wizardData.taxCalculation?.totalTaxDue !== undefined) {
-    sa100Return.sa110 = {
-      totalTaxEtcDue: Math.round((wizardData.taxCalculation.totalTaxDue || 0) / 100),
+  // Calculate SA110 tax summary using HMRC-compliant calculator
+  // Gather income data for tax calculation
+  let totalEmploymentIncome = 0
+  let totalEmploymentTaxDeducted = 0
+  let totalSelfEmploymentProfits = 0
+
+  if (sa100Return.sa102) {
+    for (const emp of sa100Return.sa102) {
+      totalEmploymentIncome += emp.payFromEmployment || 0
+      totalEmploymentTaxDeducted += emp.ukTaxDeducted || 0
     }
-    console.log('[Submit Route] Using wizard tax calculation:', sa100Return.sa110.totalTaxEtcDue)
-  } else {
-    // Don't include SA110 - let HMRC calculate it
-    // Our simplified calculation doesn't match HMRC's exact rules
-    console.log('[Submit Route] No tax calculation provided - HMRC will calculate')
+  }
+
+  if (sa100Return.sa103S) {
+    for (const se of sa100Return.sa103S) {
+      totalSelfEmploymentProfits += se.totalTaxableProfits || 0
+    }
+  }
+
+  const taxInput: TaxCalculationInput = {
+    status: getTaxpayerStatus(yourPersonalDetails.taxpayerStatus),
+    employmentIncome: totalEmploymentIncome,
+    employmentTaxDeducted: totalEmploymentTaxDeducted,
+    selfEmploymentProfits: totalSelfEmploymentProfits,
+    untaxedInterest: sa100Return.ukInterestEtc?.untaxedUKInterestAmount,
+    taxedInterest: sa100Return.ukInterestEtc?.taxedUKInterestAmount,
+    ukDividends: sa100Return.ukDividends?.ukDividendsAmount,
+  }
+
+  console.log('[Submit Route] Tax calculation input:', taxInput)
+
+  const taxResult = calculateTax(taxInput)
+
+  console.log('[Submit Route] Tax calculation result:', {
+    totalIncome: taxResult.totalIncome,
+    taxableIncome: taxResult.totalTaxableIncome,
+    incomeTax: taxResult.totalIncomeTax,
+    taxDeducted: taxResult.taxDeductedAtSource,
+    class4NIC: taxResult.class4NIC,
+    class2NIC: taxResult.class2NIC,
+    taxDueOrRefund: taxResult.taxDueOrRefund,
+    sa110: taxResult.sa110,
+  })
+
+  // Set SA110 with calculated values
+  sa100Return.sa110 = {
+    totalTaxEtcDue: taxResult.sa110.totalTaxEtcDue,
+    class4NICsDue: taxResult.sa110.class4NICsDue,
+    class2NICsDue: taxResult.sa110.class2NICsDue,
+    studentLoanRepaymentDue: taxResult.sa110.studentLoanRepaymentDue,
+    postgraduateLoanRepaymentDue: taxResult.sa110.postgraduateLoanRepaymentDue,
   }
 
   return sa100Return
