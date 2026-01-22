@@ -166,11 +166,14 @@ export interface TaxCalculationInput {
   /** Other income */
   otherIncome?: number
 
-  /** Gift Aid donations (gross amount, i.e., amount donated / 0.8) */
+  /** Gift Aid donations (NET amount paid - will be grossed up by 1.25) */
   giftAidDonations?: number
 
-  /** Pension contributions (relief at source) */
+  /** Pension contributions (relief at source - NET amount) */
   pensionContributions?: number
+
+  /** Retirement annuity contract payments (REL2 - deducted from total income) */
+  retirementAnnuityDeduction?: number
 
   /** Student loan plan type (1, 2, 4, or undefined if none) */
   studentLoanPlan?: 1 | 2 | 4
@@ -186,6 +189,33 @@ export interface TaxCalculationInput {
 
   /** Marriage Allowance - transferring to spouse */
   marriageAllowanceTransferred?: boolean
+
+  /** CAL7: Underpaid tax from earlier years included in tax code (added to tax due) */
+  underpaidTaxFromEarlierYears?: number
+
+  /** CAL8: Underpaid tax being coded out for next year (deducted from tax due) */
+  underpaidTaxCodedForNextYear?: number
+
+  /** Tax deducted from taxed interest (for tax already paid calculation) */
+  taxedInterestTaxDeducted?: number
+
+  /** Class 2 NIC registered (treated as paid, not included in tax due) */
+  class2NICRegistered?: boolean
+
+  /** Primary Class 1 NIC contributions paid (reduces Class 4 liability) */
+  primaryClass1NIC?: number
+
+  /** Student loan already deducted through PAYE (reduces amount due on SA) */
+  studentLoanDeductedThroughPAYE?: number
+
+  /** Postgraduate loan already deducted through PAYE (reduces amount due on SA) */
+  postgraduateLoanDeductedThroughPAYE?: number
+
+  /** Loss relief deduction (REL17) - deducted from total income */
+  lossReliefDeduction?: number
+
+  /** Finance costs for Landlord Loan Interest Relief (UK43) - 20% relief, capped at tax liability */
+  financeCostsForLLIR?: number
 }
 
 export interface TaxCalculationResult {
@@ -215,6 +245,8 @@ export interface TaxCalculationResult {
   // Adjustments
   giftAidExtension: number
   marriageAllowanceAdjustment: number
+  lossReliefDeduction: number
+  landlordLoanInterestRelief: number
 
   // Tax already paid
   taxDeductedAtSource: number
@@ -228,6 +260,10 @@ export interface TaxCalculationResult {
   studentLoanRepayment: number
   postgraduateLoanRepayment: number
 
+  // Tax adjustments
+  underpaidTaxFromEarlierYears: number // CAL7: Added to tax due
+  underpaidTaxCodedForNextYear: number // CAL8: Deducted from tax due
+
   // Final position
   totalTaxAndNICDue: number
   totalTaxPaid: number
@@ -235,7 +271,8 @@ export interface TaxCalculationResult {
 
   // For SA110
   sa110: {
-    totalTaxEtcDue: number // CAL1/CAL2 - rounded to nearest pound
+    totalTaxEtcDue: number // CAL1 - tax due (positive or 0), rounded to nearest pound
+    taxOverpaid?: number // CAL2 - tax overpaid/refund (positive amount when refund due)
     class4NICsDue?: number // CAL4
     class2NICsDue?: number // CAL4.1
     studentLoanRepaymentDue?: number // CAL3
@@ -273,8 +310,14 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // Dividend income (Stage 3)
   const totalDividendIncome = (input.ukDividends || 0) + (input.foreignDividends || 0)
 
-  // Total income
-  const totalIncome = totalNonSavingsIncome + totalSavingsIncome + totalDividendIncome
+  // Total income (before loss relief)
+  const grossTotalIncome = totalNonSavingsIncome + totalSavingsIncome + totalDividendIncome
+
+  // Loss relief deduction (REL17) - deducted from total income
+  // Applied against non-savings income first
+  const lossReliefDeduction = input.lossReliefDeduction || 0
+  const nonSavingsAfterLossRelief = Math.max(0, totalNonSavingsIncome - lossReliefDeduction)
+  const totalIncome = nonSavingsAfterLossRelief + totalSavingsIncome + totalDividendIncome
 
   // ==========================================================================
   // Stage 4 & 14: Calculate Personal Allowance
@@ -288,20 +331,23 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     personalAllowance += params.allowances.BPA
   }
 
-  // Marriage Allowance received
-  if (input.marriageAllowanceReceived) {
-    personalAllowance += params.allowances.T_P_A
-  }
+  // Marriage Allowance - IMPORTANT: The receiver does NOT get extra PA.
+  // Instead, they receive a TAX REDUCTION of 20% of £1,260 = £252.
+  // This is applied AFTER calculating income tax (see Marriage Allowance adjustment below).
+  // So we don't modify PA here for the receiver.
 
-  // Marriage Allowance transferred
+  // Marriage Allowance transferred (giving away allowance to spouse)
+  // The transferor DOES lose £1,260 from their PA
   if (input.marriageAllowanceTransferred) {
     personalAllowance -= params.allowances.T_P_A
   }
 
   // Calculate adjusted net income for PA tapering
-  // (simplified - full version includes more deductions)
+  // Deductions include: pension contributions, Gift Aid, retirement annuity
   const giftAidGrossedUp = (input.giftAidDonations || 0) * 1.25
-  const adjustedNetIncome = totalIncome - (input.pensionContributions || 0) - giftAidGrossedUp
+  const retirementAnnuityDeduction = input.retirementAnnuityDeduction || 0
+  const adjustedNetIncome =
+    totalIncome - (input.pensionContributions || 0) - giftAidGrossedUp - retirementAnnuityDeduction
 
   // Taper personal allowance if adjusted net income > £100,000
   if (adjustedNetIncome > params.allowances.PA_taper_limit) {
@@ -312,35 +358,49 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   const effectivePersonalAllowance = personalAllowance - personalAllowanceReduction
 
   // ==========================================================================
-  // Stage 5: Subtract Allowances from Income
+  // Stage 5: Subtract Allowances and Deductions from Income
   // ==========================================================================
 
+  // Retirement annuity is deducted from non-savings income (after loss relief)
+  const nonSavingsAfterDeductions = Math.max(0, nonSavingsAfterLossRelief - retirementAnnuityDeduction)
+
   // Personal allowance is applied against non-savings first, then savings, then dividends
+  // Standard allocation (no optimization)
   let remainingAllowance = effectivePersonalAllowance
 
   // Apply to non-savings income
-  const nonSavingsAfterAllowance = Math.max(0, totalNonSavingsIncome - remainingAllowance)
-  remainingAllowance = Math.max(0, remainingAllowance - totalNonSavingsIncome)
+  const paUsedOnNonSavings = Math.min(remainingAllowance, nonSavingsAfterDeductions)
+  const taxableNonSavingsIncome = nonSavingsAfterDeductions - paUsedOnNonSavings
+  remainingAllowance -= paUsedOnNonSavings
+
+  // Track how much property income ends up in taxable income (for LLIR calculation)
+  const propertyIncome = input.propertyIncome || 0
+  const propertyAfterLossRelief = Math.max(0, propertyIncome - lossReliefDeduction)
+  const paAllocatedToProperty = nonSavingsAfterDeductions > 0
+    ? Math.min(propertyAfterLossRelief, paUsedOnNonSavings * (propertyAfterLossRelief / nonSavingsAfterDeductions))
+    : 0
+  const taxablePropertyIncome = Math.max(0, propertyAfterLossRelief - paAllocatedToProperty)
 
   // Apply to savings income
-  const savingsAfterAllowance = Math.max(0, totalSavingsIncome - remainingAllowance)
-  remainingAllowance = Math.max(0, remainingAllowance - totalSavingsIncome)
+  const paUsedOnSavings = Math.min(remainingAllowance, totalSavingsIncome)
+  const taxableSavingsIncome = totalSavingsIncome - paUsedOnSavings
+  remainingAllowance -= paUsedOnSavings
 
   // Apply to dividend income
-  const dividendsAfterAllowance = Math.max(0, totalDividendIncome - remainingAllowance)
+  const paUsedOnDividends = Math.min(remainingAllowance, totalDividendIncome)
+  const taxableDividendIncome = totalDividendIncome - paUsedOnDividends
 
-  const taxableNonSavingsIncome = nonSavingsAfterAllowance
-  const taxableSavingsIncome = savingsAfterAllowance
-  const taxableDividendIncome = dividendsAfterAllowance
   const totalTaxableIncome = taxableNonSavingsIncome + taxableSavingsIncome + taxableDividendIncome
 
   // ==========================================================================
   // Stage 6 & 8: Calculate Tax on Non-Savings Income
   // ==========================================================================
 
-  // Gift Aid extends the basic rate band
+  // Gift Aid and Pension Contributions (Relief at Source) extend the basic rate band
+  // Gift Aid is grossed up (× 1.25), pension contributions use the NET amount for band extension
   const giftAidExtension = giftAidGrossedUp
-  const extendedBasicRateBand = params.bands.BR_band + giftAidExtension
+  const pensionExtension = input.pensionContributions || 0 // NET contribution extends bands
+  const extendedBasicRateBand = params.bands.BR_band + giftAidExtension + pensionExtension
 
   let taxOnNonSavings = 0
   let incomeAllocatedToBasicRate = 0
@@ -354,7 +414,11 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     // England, Wales, NI rates
     const rates = params.rates
     const basicRateBand = extendedBasicRateBand
-    const higherRateBand = params.bands.HR_band
+    // HR_band is the WIDTH of the higher rate band (£87,440), not a threshold
+    // Higher rate runs from basicRateBand to basicRateBand + HR_band
+    // AHR_band (£125,140) is the threshold where additional rate starts
+    const higherRateBandWidth = params.bands.HR_band
+    const additionalRateThreshold = params.bands.AHR_band
 
     if (taxableNonSavingsIncome > 0) {
       // Basic rate
@@ -362,19 +426,19 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
       incomeAllocatedToBasicRate = basicRateAmount
       taxOnNonSavings += basicRateAmount * rates.BR_rate
 
-      // Higher rate
+      // Higher rate (income from basicRateBand to additionalRateThreshold)
       if (taxableNonSavingsIncome > basicRateBand) {
         const higherRateAmount = Math.min(
           taxableNonSavingsIncome - basicRateBand,
-          higherRateBand - basicRateBand
+          higherRateBandWidth // Max £87,440 in higher rate band
         )
         incomeAllocatedToHigherRate = higherRateAmount
         taxOnNonSavings += higherRateAmount * rates.HR_rate
       }
 
-      // Additional rate
-      if (taxableNonSavingsIncome > higherRateBand) {
-        const additionalRateAmount = taxableNonSavingsIncome - higherRateBand
+      // Additional rate (income above £125,140)
+      if (taxableNonSavingsIncome > additionalRateThreshold) {
+        const additionalRateAmount = taxableNonSavingsIncome - additionalRateThreshold
         incomeAllocatedToAdditionalRate = additionalRateAmount
         taxOnNonSavings += additionalRateAmount * rates.AHR_rate
       }
@@ -491,36 +555,95 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   let totalIncomeTax = taxOnNonSavings + taxOnSavings + taxOnDividends
 
   // Marriage Allowance adjustment
+  // The receiver gets a TAX REDUCTION of 20% of the transferred amount (£1,260)
+  // This equals £252 for 2024-25
   let marriageAllowanceAdjustment = 0
   if (input.marriageAllowanceReceived) {
-    // Receiving 10% of transferred allowance as tax reduction
-    marriageAllowanceAdjustment = params.allowances.T_P_A * 0.1 // £126
+    // Receiving 20% of transferred allowance as tax reduction (basic rate)
+    marriageAllowanceAdjustment = params.allowances.T_P_A * params.rates.BR_rate // £1,260 × 20% = £252
     totalIncomeTax = Math.max(0, totalIncomeTax - marriageAllowanceAdjustment)
+  }
+
+  // Landlord Loan Interest Relief (LLIR)
+  // For residential property landlords, finance costs (e.g., mortgage interest) are not
+  // deductible from rental income. Instead, a tax reduction of 20% of finance costs is given.
+  // LLIR is restricted to the LOWER of:
+  // 1. 20% of finance costs
+  // 2. The tax ATTRIBUTABLE to property income
+  let landlordLoanInterestRelief = 0
+  if (input.financeCostsForLLIR && input.financeCostsForLLIR > 0 && taxablePropertyIncome > 0) {
+    const financeCostsRelief = input.financeCostsForLLIR * params.rates.BR_rate // 20%
+
+    // Calculate tax attributable to property income
+    let taxOnProperty = 0
+    if (input.status === 'S') {
+      taxOnProperty = calculateScottishTax(taxablePropertyIncome, extendedBasicRateBand, params)
+    } else {
+      const propertyInBasicBand = Math.min(taxablePropertyIncome, extendedBasicRateBand)
+      const propertyInHigherBand = Math.max(0, taxablePropertyIncome - extendedBasicRateBand)
+      taxOnProperty = propertyInBasicBand * params.rates.BR_rate +
+                      propertyInHigherBand * params.rates.HR_rate
+    }
+
+    landlordLoanInterestRelief = Math.min(financeCostsRelief, taxOnProperty, totalIncomeTax)
+    totalIncomeTax = totalIncomeTax - landlordLoanInterestRelief
   }
 
   // ==========================================================================
   // Stage 11: Tax Already Paid
   // ==========================================================================
 
-  const taxDeductedAtSource = input.employmentTaxDeducted || 0
+  // Include PAYE from employment plus any tax already deducted from taxed interest
+  const taxDeductedAtSource =
+    (input.employmentTaxDeducted || 0) + (input.taxedInterestTaxDeducted || 0)
 
   // ==========================================================================
   // Stage 16: Class 4 NIC (Self-Employment)
   // ==========================================================================
+  //
+  // When a taxpayer has BOTH employment (paying Class 1 NIC) AND self-employment
+  // (paying Class 4 NIC), the Class 4 NIC is reduced because they've already paid
+  // NIC on some of their income through Class 1.
+  //
+  // The rule is: If Class 1 NIC has been paid on earnings above the threshold,
+  // the Class 4 rate is reduced from 6% to 2% on the overlapping income.
+  //
+  // Example (Test Case 22):
+  // - Self-employment profit: £21,875
+  // - Class 1 NIC earnings: £37,700 (well above the £12,570 threshold)
+  // - Since ALL the self-employment profit falls within income already covered by Class 1:
+  // - Class 4 = (£21,875 - £12,570) × 2% = £186.10
 
   let class4NIC = 0
 
   if (input.selfEmploymentProfits > 0) {
     const profits = input.selfEmploymentProfits
-    const lowerLimit = params.bands.NIC_LEL
-    const upperLimit = params.bands.NIC_UEL
+    const lowerLimit = params.bands.NIC_LEL // £12,570
+    const upperLimit = params.bands.NIC_UEL // £50,270
+
+    // Class 1 NIC earnings that have already been subject to NIC
+    const class1NICEarnings = input.primaryClass1NIC || 0
+    const class1AboveThreshold = Math.max(0, class1NICEarnings - lowerLimit)
 
     if (profits > lowerLimit) {
-      // NIC on profits between lower and upper limit
-      const profitsInMainBand = Math.min(profits, upperLimit) - lowerLimit
-      class4NIC += profitsInMainBand * params.rates.NIC_rate
+      // Calculate profits in the main band (between lower and upper limits)
+      const profitsAboveThreshold = Math.min(profits, upperLimit) - lowerLimit
 
-      // NIC on profits above upper limit
+      if (class1AboveThreshold >= profitsAboveThreshold) {
+        // All self-employment profit is within range already covered by Class 1
+        // Charge at reduced rate (2% instead of 6%)
+        class4NIC = profitsAboveThreshold * params.rates.NIC_supp_rate
+      } else if (class1AboveThreshold > 0) {
+        // Partial overlap - charge 2% on overlap, 6% on remainder
+        const overlapAmount = class1AboveThreshold
+        const nonOverlapAmount = profitsAboveThreshold - class1AboveThreshold
+        class4NIC = (overlapAmount * params.rates.NIC_supp_rate) + (nonOverlapAmount * params.rates.NIC_rate)
+      } else {
+        // No Class 1 paid - standard 6% rate
+        class4NIC = profitsAboveThreshold * params.rates.NIC_rate
+      }
+
+      // NIC on profits above upper limit (always at 2% supplementary rate)
       if (profits > upperLimit) {
         const profitsAboveUpper = profits - upperLimit
         class4NIC += profitsAboveUpper * params.rates.NIC_supp_rate
@@ -534,9 +657,16 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
 
   let class2NIC = 0
 
+  // Class 2 NIC is paid if registered and profits are at or above the threshold
+  // If class2NICRegistered is true, treat as already paid (£0 due on SA)
   if (input.selfEmploymentProfits >= params.class2.lowerProfitsThreshold) {
-    // Class 2 is mandatory if profits are at or above LPT
-    class2NIC = params.class2.annualLimit
+    if (input.class2NICRegistered) {
+      // Already registered and treated as paid - not included in SA tax due
+      class2NIC = 0
+    } else {
+      // Class 2 is mandatory if profits are at or above LPT
+      class2NIC = params.class2.annualLimit
+    }
   }
 
   const totalNIC = class4NIC + class2NIC
@@ -544,8 +674,15 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // ==========================================================================
   // Stage 27: Student Loan Repayment
   // ==========================================================================
+  // Student loan calculation logic:
+  // - If employer deducted loan via PAYE: use earned income (to match employer calc)
+  // - If no PAYE deduction AND has employment income: exclude dividends from total
+  // - If no PAYE deduction AND no employment (self-emp only): use full total income
 
   let studentLoanRepayment = 0
+  const employmentIncome = input.employmentIncome || 0
+  const selfEmploymentProfits = input.selfEmploymentProfits || 0
+  const earnedIncome = employmentIncome + selfEmploymentProfits
 
   if (input.studentLoanPlan) {
     let threshold = 0
@@ -561,29 +698,86 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
         break
     }
 
-    const relevantIncome = totalIncome
+    const alreadyDeducted = input.studentLoanDeductedThroughPAYE || 0
+    let relevantIncome: number
+
+    if (alreadyDeducted > 0) {
+      // PAYE already deducted loan - use earned income to match employer calculation
+      relevantIncome = earnedIncome
+    } else if (employmentIncome > 0) {
+      // Has employment but no PAYE SL deduction - exclude dividends
+      relevantIncome = totalIncome - totalDividendIncome
+    } else {
+      // Self-employment only - use full total income including dividends
+      relevantIncome = totalIncome
+    }
+
     if (relevantIncome > threshold) {
-      studentLoanRepayment = (relevantIncome - threshold) * params.rates.Sloan_rate
+      const totalLoanDue = (relevantIncome - threshold) * params.rates.Sloan_rate
+      studentLoanRepayment = Math.max(0, totalLoanDue - alreadyDeducted)
     }
   }
 
-  // Postgraduate Loan
+  // Postgraduate Loan - same logic as student loan
   let postgraduateLoanRepayment = 0
 
   if (input.hasPostgraduateLoan) {
     const threshold = params.bands.PGL_limit
-    const relevantIncome = totalIncome
+    const alreadyDeducted = input.postgraduateLoanDeductedThroughPAYE || 0
+    let relevantIncome: number
+
+    if (alreadyDeducted > 0) {
+      relevantIncome = earnedIncome
+    } else if (employmentIncome > 0) {
+      relevantIncome = totalIncome - totalDividendIncome
+    } else {
+      relevantIncome = totalIncome
+    }
+
     if (relevantIncome > threshold) {
-      postgraduateLoanRepayment = (relevantIncome - threshold) * params.rates.PGL_rate
+      const totalLoanDue = (relevantIncome - threshold) * params.rates.PGL_rate
+      postgraduateLoanRepayment = Math.max(0, totalLoanDue - alreadyDeducted)
     }
   }
+
+  // ==========================================================================
+  // Tax Adjustments (CAL7/CAL8)
+  // ==========================================================================
+  //
+  // CAL7 (underpaidTaxFromEarlierYears):
+  //   This is underpaid tax from earlier years that HMRC collected through your
+  //   tax code. It gets ADDED to your current year tax liability.
+  //
+  // CAL8 (underpaidTaxCodedForNextYear):
+  //   This is underpaid tax for the current year that will be collected through
+  //   next year's tax code. It gets ADDED to deductions (reduces what you pay now).
+  //
+  // Example (Test Case 18):
+  //   Income Tax charged: £11,072.61
+  //   Plus CAL7 (underpaid tax): £245.00
+  //   Total tax due: £11,317.61
+  //   Minus PAYE deducted: £7,680.80
+  //   Minus CAL8 (coded for next year): £400.00
+  //   Total deductions: £8,080.80
+  //   Final tax due: £11,317.61 - £8,080.80 = £3,236.81
+
+  const underpaidTaxFromEarlierYears = input.underpaidTaxFromEarlierYears || 0
+  const underpaidTaxCodedForNextYear = input.underpaidTaxCodedForNextYear || 0
 
   // ==========================================================================
   // Stage 12: Calculate Tax Due/Refund
   // ==========================================================================
 
-  const totalTaxAndNICDue = totalIncomeTax + totalNIC + studentLoanRepayment + postgraduateLoanRepayment
-  const totalTaxPaid = taxDeductedAtSource
+  // Total tax/NIC/loans due (before CAL7/CAL8 adjustments)
+  const totalTaxAndNICDueBeforeAdjustments = totalIncomeTax + totalNIC + studentLoanRepayment + postgraduateLoanRepayment
+
+  // Add CAL7 - underpaid tax from earlier years
+  const totalTaxAndNICDue = totalTaxAndNICDueBeforeAdjustments + underpaidTaxFromEarlierYears
+
+  // Total deductions: tax already paid + CAL8 (to be coded out next year)
+  const totalTaxPaid = taxDeductedAtSource + underpaidTaxCodedForNextYear
+
+  // Final tax due or refund
   const taxDueOrRefund = totalTaxAndNICDue - totalTaxPaid
 
   // ==========================================================================
@@ -591,7 +785,9 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // ==========================================================================
 
   const sa110: TaxCalculationResult['sa110'] = {
-    totalTaxEtcDue: Math.round(taxDueOrRefund),
+    // CAL1: Total tax due (positive) or CAL2: Tax overpaid (negative shows as refund)
+    totalTaxEtcDue: taxDueOrRefund >= 0 ? Math.round(taxDueOrRefund) : 0,
+    taxOverpaid: taxDueOrRefund < 0 ? Math.round(-taxDueOrRefund) : undefined,
   }
 
   // Only include Class 4 NIC if > 0
@@ -641,6 +837,8 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     // Adjustments
     giftAidExtension,
     marriageAllowanceAdjustment,
+    lossReliefDeduction,
+    landlordLoanInterestRelief,
 
     // Tax paid
     taxDeductedAtSource,
@@ -653,6 +851,10 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     // Student loans
     studentLoanRepayment,
     postgraduateLoanRepayment,
+
+    // Tax adjustments
+    underpaidTaxFromEarlierYears,
+    underpaidTaxCodedForNextYear,
 
     // Final position
     totalTaxAndNICDue,
@@ -678,13 +880,22 @@ function calculateScottishTax(
   let tax = 0
   let remaining = taxableIncome
 
+  // For Scottish tax, pension contributions and Gift Aid extend the basic rate band.
+  // This means more income is taxed at the lower rates (19%, 20%, 21%) instead of
+  // the higher rates (42%, 45%, 48%).
+  //
+  // The extension is added to the SBR_band (basic rate band) which pushes all
+  // subsequent bands up by the same amount.
+  const basicRateExtension = extendedBasicRateBand - params.bands.BR_band
+
   // Scottish has more bands - calculate cumulatively
+  // The basic rate band is extended, which shifts higher bands up
   const scottishBands = [
-    { limit: bands.SSR_band, rate: rates.SSR_rate }, // 19%
-    { limit: bands.SBR_band, rate: rates.SBR_rate }, // 20%
-    { limit: bands.SIR_band, rate: rates.SIR_rate }, // 21%
-    { limit: bands.SHR_band, rate: rates.SHR_rate }, // 42%
-    { limit: bands.SAR_band, rate: rates.SAR_rate }, // 45%
+    { limit: bands.SSR_band, rate: rates.SSR_rate }, // 19% - £2,306
+    { limit: bands.SBR_band + basicRateExtension, rate: rates.SBR_rate }, // 20% - extended
+    { limit: bands.SSR_band + bands.SBR_band + bands.SIR_band + basicRateExtension, rate: rates.SIR_rate }, // 21%
+    { limit: bands.SSR_band + bands.SBR_band + bands.SIR_band + bands.SHR_band + basicRateExtension, rate: rates.SHR_rate }, // 42%
+    { limit: bands.SSR_band + bands.SBR_band + bands.SIR_band + bands.SHR_band + bands.SAR_band + basicRateExtension, rate: rates.SAR_rate }, // 45%
     { limit: Infinity, rate: rates.SAHR_rate }, // 48%
   ]
 
