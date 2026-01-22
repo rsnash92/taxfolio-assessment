@@ -120,6 +120,28 @@ export const TAX_PARAMETERS_2024_25 = {
     smallProfitsThreshold: 6725,
     lowerProfitsThreshold: 12570,
   },
+
+  // Capital Gains Tax (CGT) for 2024-25
+  cgt: {
+    // Annual Exempt Amount (AEA)
+    annualExemptAmount: 3000,
+
+    // Standard CGT rates (non-residential)
+    basicRate: 0.10, // 10% for gains within basic rate band
+    higherRate: 0.20, // 20% for gains above basic rate band
+
+    // Residential property rates
+    residentialBasicRate: 0.18, // 18% for residential property within basic rate band
+    residentialHigherRate: 0.24, // 24% for residential property above basic rate band
+
+    // Business Asset Disposal Relief (BADR) rate
+    badrRate: 0.10, // 10% rate on qualifying gains up to lifetime limit
+    badrLifetimeLimit: 1000000, // £1m lifetime limit
+
+    // Investors' Relief rate
+    investorsReliefRate: 0.10, // 10% rate on qualifying gains
+    investorsReliefLimit: 10000000, // £10m lifetime limit
+  },
 }
 
 // =============================================================================
@@ -216,6 +238,28 @@ export interface TaxCalculationInput {
 
   /** Finance costs for Landlord Loan Interest Relief (UK43) - 20% relief, capped at tax liability */
   financeCostsForLLIR?: number
+
+  // ==========================================================================
+  // Capital Gains (SA108)
+  // ==========================================================================
+
+  /** Total capital gains from non-residential assets (shares, other assets) */
+  capitalGainsNonResidential?: number
+
+  /** Total capital gains from UK residential property */
+  capitalGainsResidential?: number
+
+  /** Capital losses in year (to offset against gains) */
+  capitalLossesInYear?: number
+
+  /** Capital losses brought forward from previous years */
+  capitalLossesBroughtForward?: number
+
+  /** Gains qualifying for Business Asset Disposal Relief (BADR) */
+  badrQualifyingGains?: number
+
+  /** CGT already paid (e.g., on UK residential property disposals) */
+  cgtAlreadyPaid?: number
 }
 
 export interface TaxCalculationResult {
@@ -264,6 +308,18 @@ export interface TaxCalculationResult {
   underpaidTaxFromEarlierYears: number // CAL7: Added to tax due
   underpaidTaxCodedForNextYear: number // CAL8: Deducted from tax due
 
+  // Capital Gains Tax
+  totalCapitalGains: number // Total gains before AEA
+  capitalLossesUsed: number // Losses offset against gains
+  taxableCapitalGains: number // Gains after AEA deduction
+  cgtBasicRateAmount: number // Gains taxed at basic rate
+  cgtHigherRateAmount: number // Gains taxed at higher rate
+  cgtAtBasicRate: number // CGT at 10% (or 18% residential)
+  cgtAtHigherRate: number // CGT at 20% (or 24% residential)
+  totalCGT: number // Total CGT before any CGT already paid
+  cgtAlreadyPaid: number // CGT already paid (e.g., on residential)
+  netCGTDue: number // CGT due after deducting already paid
+
   // Final position
   totalTaxAndNICDue: number
   totalTaxPaid: number
@@ -277,6 +333,7 @@ export interface TaxCalculationResult {
     class2NICsDue?: number // CAL4.1
     studentLoanRepaymentDue?: number // CAL3
     postgraduateLoanRepaymentDue?: number // CAL3.1
+    capitalGainsTaxDue?: number // CGT due
   }
 }
 
@@ -322,24 +379,23 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // ==========================================================================
   // Stage 4 & 14: Calculate Personal Allowance
   // ==========================================================================
+  //
+  // IMPORTANT: The PA taper only reduces the standard Personal Allowance (£12,570).
+  // Blind Person's Allowance (BPA) is NOT subject to the taper and is always available.
+  //
+  // Order of application:
+  // 1. Start with standard PA (£12,570)
+  // 2. Subtract Marriage Allowance transferred OUT (if applicable)
+  // 3. Apply PA taper based on adjusted net income (only reduces standard PA, not BPA)
+  // 4. Add Blind Person's Allowance (not tapered)
 
-  let personalAllowance = params.allowances.P_A
+  let standardPA = params.allowances.P_A
   let personalAllowanceReduction = 0
-
-  // Adjust for Blind Person's Allowance
-  if (input.blindPersonsAllowance) {
-    personalAllowance += params.allowances.BPA
-  }
-
-  // Marriage Allowance - IMPORTANT: The receiver does NOT get extra PA.
-  // Instead, they receive a TAX REDUCTION of 20% of £1,260 = £252.
-  // This is applied AFTER calculating income tax (see Marriage Allowance adjustment below).
-  // So we don't modify PA here for the receiver.
 
   // Marriage Allowance transferred (giving away allowance to spouse)
   // The transferor DOES lose £1,260 from their PA
   if (input.marriageAllowanceTransferred) {
-    personalAllowance -= params.allowances.T_P_A
+    standardPA -= params.allowances.T_P_A
   }
 
   // Calculate adjusted net income for PA tapering
@@ -349,13 +405,20 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   const adjustedNetIncome =
     totalIncome - (input.pensionContributions || 0) - giftAidGrossedUp - retirementAnnuityDeduction
 
-  // Taper personal allowance if adjusted net income > £100,000
+  // Taper ONLY the standard personal allowance if adjusted net income > £100,000
+  // BPA is NOT reduced by the taper
   if (adjustedNetIncome > params.allowances.PA_taper_limit) {
     const excess = adjustedNetIncome - params.allowances.PA_taper_limit
-    personalAllowanceReduction = Math.min(Math.floor(excess / 2), personalAllowance)
+    // Only taper the standard PA, not BPA
+    personalAllowanceReduction = Math.min(Math.floor(excess / 2), standardPA)
   }
 
-  const effectivePersonalAllowance = personalAllowance - personalAllowanceReduction
+  const effectiveStandardPA = standardPA - personalAllowanceReduction
+
+  // Add Blind Person's Allowance (not subject to taper)
+  const blindPersonsAllowance = input.blindPersonsAllowance ? params.allowances.BPA : 0
+  const personalAllowance = standardPA + blindPersonsAllowance
+  const effectivePersonalAllowance = effectiveStandardPA + blindPersonsAllowance
 
   // ==========================================================================
   // Stage 5: Subtract Allowances and Deductions from Income
@@ -448,6 +511,13 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // ==========================================================================
   // Stage 8: Calculate Tax on Savings Income
   // ==========================================================================
+  //
+  // Savings rates for 2024-25:
+  // - Personal Savings Allowance (PSA): £1,000 (basic rate), £500 (higher rate), £0 (additional rate)
+  // - Starting rate: 0% on first £5,000 if non-savings income < PA
+  // - Basic rate: 20%
+  // - Higher rate: 40%
+  // - Additional rate: 45% (above £125,140)
 
   let taxOnSavings = 0
   const rates = params.rates
@@ -455,19 +525,28 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   if (taxableSavingsIncome > 0) {
     // Determine which rate band we're in based on non-savings income
     const nonSavingsUsedBand = taxableNonSavingsIncome
+
+    // Calculate remaining bands
     const remainingBasicBand = Math.max(0, extendedBasicRateBand - nonSavingsUsedBand)
+
+    // Additional rate threshold is £125,140 (AHR_band)
+    const additionalRateThreshold = params.bands.AHR_band
     const remainingHigherBand = Math.max(
       0,
-      params.bands.HR_band - Math.max(nonSavingsUsedBand, extendedBasicRateBand)
+      additionalRateThreshold - Math.max(nonSavingsUsedBand, extendedBasicRateBand)
     )
 
     // Determine Personal Savings Allowance based on marginal rate
-    let personalSavingsAllowance = params.allowances.PSA_BR
+    // PSA is £1,000 for basic rate, £500 for higher rate, £0 for additional rate
+    // IMPORTANT: PSA is based on TOTAL taxable income, not just non-savings
+    // If total taxable income exceeds £125,140, PSA is £0 (additional rate taxpayer)
+    let personalSavingsAllowance = params.allowances.PSA_BR // £1,000
     if (nonSavingsUsedBand > extendedBasicRateBand) {
-      personalSavingsAllowance = params.allowances.PSA_HR
+      personalSavingsAllowance = params.allowances.PSA_HR // £500
     }
-    if (nonSavingsUsedBand > params.bands.HR_band) {
-      personalSavingsAllowance = params.allowances.PSA_AHR
+    // Additional rate PSA check: TOTAL taxable income above £125,140 threshold
+    if (totalTaxableIncome > additionalRateThreshold) {
+      personalSavingsAllowance = params.allowances.PSA_AHR // £0
     }
 
     // Apply PSA to savings income (tax at 0%)
@@ -486,21 +565,21 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
       // Starting rate is 0%, so no tax added
     }
 
-    // Basic rate savings
+    // Basic rate savings (20%)
     if (remainingSavings > 0 && remainingBasicBand > 0) {
       const savingsAtBasicRate = Math.min(remainingSavings, remainingBasicBand)
       taxOnSavings += savingsAtBasicRate * rates.SAVBR_rate
       remainingSavings -= savingsAtBasicRate
     }
 
-    // Higher rate savings
+    // Higher rate savings (40%) - between basic rate band and £125,140
     if (remainingSavings > 0 && remainingHigherBand > 0) {
       const savingsAtHigherRate = Math.min(remainingSavings, remainingHigherBand)
       taxOnSavings += savingsAtHigherRate * rates.SAVHR_rate
       remainingSavings -= savingsAtHigherRate
     }
 
-    // Additional rate savings
+    // Additional rate savings (45%) - above £125,140
     if (remainingSavings > 0) {
       taxOnSavings += remainingSavings * rates.SAVAHR_rate
     }
@@ -509,40 +588,70 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // ==========================================================================
   // Stage 8: Calculate Tax on Dividends
   // ==========================================================================
+  //
+  // Dividend rates for 2024-25:
+  // - Dividend Allowance: £500 at 0%
+  // - Basic rate: 8.75% (within basic rate band)
+  // - Higher rate: 33.75% (between basic rate band and £125,140)
+  // - Additional rate: 39.35% (above £125,140)
+  //
+  // The additional rate threshold is £125,140 (AHR_band), which is:
+  // Basic rate band (£37,700) + Higher rate band width (£87,440) = £125,140
 
   let taxOnDividends = 0
 
   if (taxableDividendIncome > 0) {
     // Determine which rate band we're in based on non-savings + savings income
     const incomeBeforeDividends = taxableNonSavingsIncome + taxableSavingsIncome
+
+    // Calculate remaining band space
     const remainingBasicBand = Math.max(0, extendedBasicRateBand - incomeBeforeDividends)
+
+    // Additional rate threshold (£125,140) - this is the absolute threshold
+    const additionalRateThreshold = params.bands.AHR_band
     const remainingHigherBand = Math.max(
       0,
-      params.bands.HR_band - Math.max(incomeBeforeDividends, extendedBasicRateBand)
+      additionalRateThreshold - Math.max(incomeBeforeDividends, extendedBasicRateBand)
     )
 
     let remainingDividends = taxableDividendIncome
 
-    // Dividend allowance (tax at 0%)
+    // Dividend allowance (tax at 0%) - but still uses up band space
     const dividendAllowance = params.allowances.DA
     const dividendsAtNilRate = Math.min(remainingDividends, dividendAllowance)
     remainingDividends -= dividendsAtNilRate
 
-    // Basic rate dividends
-    if (remainingDividends > 0 && remainingBasicBand > 0) {
-      const dividendsAtBasicRate = Math.min(remainingDividends, remainingBasicBand)
+    // Track remaining band space after DA (DA uses band space even at 0%)
+    let remainingBasicAfterDA = Math.max(0, remainingBasicBand - dividendsAtNilRate)
+    let remainingHigherAfterDA = remainingHigherBand
+
+    // If DA consumed part of basic band, adjust higher accordingly
+    if (remainingBasicBand > 0 && dividendsAtNilRate > 0) {
+      const daInBasic = Math.min(dividendsAtNilRate, remainingBasicBand)
+      remainingBasicAfterDA = Math.max(0, remainingBasicBand - daInBasic)
+      // DA beyond basic band uses higher band space
+      const daInHigher = dividendsAtNilRate - daInBasic
+      remainingHigherAfterDA = Math.max(0, remainingHigherBand - daInHigher)
+    } else if (remainingBasicBand <= 0) {
+      // All DA in higher band
+      remainingHigherAfterDA = Math.max(0, remainingHigherBand - dividendsAtNilRate)
+    }
+
+    // Basic rate dividends (8.75%)
+    if (remainingDividends > 0 && remainingBasicAfterDA > 0) {
+      const dividendsAtBasicRate = Math.min(remainingDividends, remainingBasicAfterDA)
       taxOnDividends += dividendsAtBasicRate * rates.DivBR_rate
       remainingDividends -= dividendsAtBasicRate
     }
 
-    // Higher rate dividends
-    if (remainingDividends > 0 && remainingHigherBand > 0) {
-      const dividendsAtHigherRate = Math.min(remainingDividends, remainingHigherBand)
+    // Higher rate dividends (33.75%) - between basic rate band and £125,140
+    if (remainingDividends > 0 && remainingHigherAfterDA > 0) {
+      const dividendsAtHigherRate = Math.min(remainingDividends, remainingHigherAfterDA)
       taxOnDividends += dividendsAtHigherRate * rates.DivHR_rate
       remainingDividends -= dividendsAtHigherRate
     }
 
-    // Additional rate dividends
+    // Additional rate dividends (39.35%) - above £125,140
     if (remainingDividends > 0) {
       taxOnDividends += remainingDividends * rates.DivAR_rate
     }
@@ -765,11 +874,132 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   const underpaidTaxCodedForNextYear = input.underpaidTaxCodedForNextYear || 0
 
   // ==========================================================================
+  // Capital Gains Tax (CGT) Calculation
+  // ==========================================================================
+  //
+  // CGT calculation order:
+  // 1. BADR gains: Always taxed at 10% (regardless of remaining basic rate band)
+  // 2. Other gains: Use remaining basic rate band for 10%/20% split (or 18%/24% for residential)
+  //
+  // AEA allocation:
+  // - AEA (£3,000) is applied to non-BADR gains FIRST (to maximize benefit)
+  // - This means BADR gains remain fully taxable but at the lower 10% rate
+  //
+  // For 2024-25:
+  // - Annual Exempt Amount (AEA): £3,000
+  // - BADR rate: 10% (always, up to £1m lifetime limit)
+  // - Basic rate (non-residential): 10%
+  // - Higher rate (non-residential): 20%
+  // - Basic rate (residential): 18%
+  // - Higher rate (residential): 24%
+  //
+  // Example (Test Case 43):
+  //   BADR gains: £20,000 → £20,000 × 10% = £2,000
+  //   Other gains: £30,000 - £3,000 AEA = £27,000 → £27,000 × 20% = £5,400
+  //   Total CGT: £7,400
+
+  const badrGains = input.badrQualifyingGains || 0
+  const totalNonResidentialGains = input.capitalGainsNonResidential || 0
+  const totalResidentialGains = input.capitalGainsResidential || 0
+  const capitalLossesInYear = input.capitalLossesInYear || 0
+  const capitalLossesBroughtForward = input.capitalLossesBroughtForward || 0
+  const cgtAlreadyPaid = input.cgtAlreadyPaid || 0
+
+  // Separate BADR gains from other gains
+  // Non-residential gains include BADR gains, so we need to subtract to get "other" gains
+  const otherNonResGains = Math.max(0, totalNonResidentialGains - badrGains)
+
+  // Total gains before any deductions
+  const totalCapitalGains = totalNonResidentialGains + totalResidentialGains
+
+  // Total non-BADR gains (for AEA allocation)
+  const totalNonBadrGains = otherNonResGains + totalResidentialGains
+
+  // Apply losses to non-BADR gains first
+  const nonBadrGainsAfterCurrentLosses = Math.max(0, totalNonBadrGains - capitalLossesInYear)
+
+  // Losses brought forward only used to reduce non-BADR gains to AEA level
+  const lossesToUseOnNonBadr = Math.min(
+    capitalLossesBroughtForward,
+    Math.max(0, nonBadrGainsAfterCurrentLosses - params.cgt.annualExemptAmount)
+  )
+  const capitalLossesUsed = capitalLossesInYear + lossesToUseOnNonBadr
+  const nonBadrGainsAfterLosses = Math.max(0, totalNonBadrGains - capitalLossesUsed)
+
+  // Apply AEA to non-BADR gains FIRST (to maximize benefit - BADR is taxed at 10% anyway)
+  const aeaUsedOnNonBadr = Math.min(params.cgt.annualExemptAmount, nonBadrGainsAfterLosses)
+  const taxableNonBadrGains = Math.max(0, nonBadrGainsAfterLosses - aeaUsedOnNonBadr)
+
+  // BADR gains are always fully taxable (AEA is applied to other gains first)
+  const taxableBadrGains = badrGains
+
+  // Total taxable gains
+  const gainsAfterAllLosses = nonBadrGainsAfterLosses + badrGains
+  const taxableCapitalGains = taxableNonBadrGains + taxableBadrGains
+
+  // Calculate remaining basic rate band after income
+  // CGT uses total taxable income for band calculation
+  const remainingBasicRateBandForCGT = Math.max(0, params.bands.BR_band - totalTaxableIncome)
+
+  // Split gains between basic and higher rate
+  let cgtBasicRateAmount = 0
+  let cgtHigherRateAmount = 0
+  let cgtAtBasicRate = 0
+  let cgtAtHigherRate = 0
+  let cgtOnBadr = 0
+
+  // 1. Calculate CGT on BADR gains (always 10%)
+  if (taxableBadrGains > 0) {
+    cgtOnBadr = taxableBadrGains * params.cgt.badrRate
+    // BADR gains are tracked separately but still count toward basic rate amounts for reporting
+    cgtBasicRateAmount += taxableBadrGains
+    cgtAtBasicRate += cgtOnBadr
+  }
+
+  // 2. Calculate CGT on other gains (use remaining basic rate band)
+  if (taxableNonBadrGains > 0) {
+    // Split non-BADR gains between other non-residential and residential
+    const otherNonResAfterLossesAndAea = Math.max(0, otherNonResGains - capitalLossesUsed - aeaUsedOnNonBadr)
+    const resAfterLossesAndAea = taxableNonBadrGains - Math.min(otherNonResAfterLossesAndAea, taxableNonBadrGains)
+    const taxableOtherNonRes = Math.min(otherNonResAfterLossesAndAea, taxableNonBadrGains)
+    const taxableRes = Math.max(0, taxableNonBadrGains - taxableOtherNonRes)
+
+    // Track remaining basic rate band (BADR gains don't use it)
+    let remainingBasic = remainingBasicRateBandForCGT
+
+    // Other non-residential gains use 10%/20% rates
+    if (taxableOtherNonRes > 0) {
+      const nonResAtBasic = Math.min(taxableOtherNonRes, remainingBasic)
+      const nonResAtHigher = Math.max(0, taxableOtherNonRes - remainingBasic)
+
+      cgtBasicRateAmount += nonResAtBasic
+      cgtHigherRateAmount += nonResAtHigher
+      cgtAtBasicRate += nonResAtBasic * params.cgt.basicRate
+      cgtAtHigherRate += nonResAtHigher * params.cgt.higherRate
+      remainingBasic = Math.max(0, remainingBasic - taxableOtherNonRes)
+    }
+
+    // Residential gains use 18%/24% rates
+    if (taxableRes > 0) {
+      const resAtBasic = Math.min(taxableRes, remainingBasic)
+      const resAtHigher = Math.max(0, taxableRes - remainingBasic)
+
+      cgtBasicRateAmount += resAtBasic
+      cgtHigherRateAmount += resAtHigher
+      cgtAtBasicRate += resAtBasic * params.cgt.residentialBasicRate
+      cgtAtHigherRate += resAtHigher * params.cgt.residentialHigherRate
+    }
+  }
+
+  const totalCGT = cgtAtBasicRate + cgtAtHigherRate
+  const netCGTDue = Math.max(0, totalCGT - cgtAlreadyPaid)
+
+  // ==========================================================================
   // Stage 12: Calculate Tax Due/Refund
   // ==========================================================================
 
-  // Total tax/NIC/loans due (before CAL7/CAL8 adjustments)
-  const totalTaxAndNICDueBeforeAdjustments = totalIncomeTax + totalNIC + studentLoanRepayment + postgraduateLoanRepayment
+  // Total tax/NIC/loans/CGT due (before CAL7/CAL8 adjustments)
+  const totalTaxAndNICDueBeforeAdjustments = totalIncomeTax + totalNIC + studentLoanRepayment + postgraduateLoanRepayment + netCGTDue
 
   // Add CAL7 - underpaid tax from earlier years
   const totalTaxAndNICDue = totalTaxAndNICDueBeforeAdjustments + underpaidTaxFromEarlierYears
@@ -808,6 +1038,11 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // Only include postgraduate loan if > 0
   if (postgraduateLoanRepayment > 0) {
     sa110.postgraduateLoanRepaymentDue = Math.round(postgraduateLoanRepayment)
+  }
+
+  // Only include CGT if > 0
+  if (netCGTDue > 0) {
+    sa110.capitalGainsTaxDue = Math.round(netCGTDue)
   }
 
   return {
@@ -855,6 +1090,18 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     // Tax adjustments
     underpaidTaxFromEarlierYears,
     underpaidTaxCodedForNextYear,
+
+    // Capital Gains Tax
+    totalCapitalGains,
+    capitalLossesUsed,
+    taxableCapitalGains,
+    cgtBasicRateAmount,
+    cgtHigherRateAmount,
+    cgtAtBasicRate,
+    cgtAtHigherRate,
+    totalCGT,
+    cgtAlreadyPaid,
+    netCGTDue,
 
     // Final position
     totalTaxAndNICDue,
