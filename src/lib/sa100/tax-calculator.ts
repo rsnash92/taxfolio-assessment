@@ -142,6 +142,13 @@ export const TAX_PARAMETERS_2024_25 = {
     investorsReliefRate: 0.10, // 10% rate on qualifying gains
     investorsReliefLimit: 10000000, // £10m lifetime limit
   },
+
+  // High Income Child Benefit Charge (HICBC) for 2024-25
+  hicbc: {
+    lowerThreshold: 60000, // Charge begins at £60,000 ANI
+    upperThreshold: 80000, // Full clawback at £80,000 ANI
+    incrementStep: 200, // 1% charge per £200 over lower threshold
+  },
 }
 
 // =============================================================================
@@ -191,8 +198,11 @@ export interface TaxCalculationInput {
   /** Gift Aid donations (NET amount paid - will be grossed up by 1.25) */
   giftAidDonations?: number
 
-  /** Pension contributions (relief at source - NET amount) */
+  /** Pension contributions (relief at source - NET amount, extends basic rate band) */
   pensionContributions?: number
+
+  /** Pension contributions (net pay arrangement - already deducted from gross salary, does NOT extend basic rate band) */
+  pensionContributionsNetPay?: number
 
   /** Retirement annuity contract payments (REL2 - deducted from total income) */
   retirementAnnuityDeduction?: number
@@ -260,6 +270,13 @@ export interface TaxCalculationInput {
 
   /** CGT already paid (e.g., on UK residential property disposals) */
   cgtAlreadyPaid?: number
+
+  // ==========================================================================
+  // High Income Child Benefit Charge (HICBC)
+  // ==========================================================================
+
+  /** Child benefit received in the tax year (for HICBC calculation) */
+  childBenefitReceived?: number
 }
 
 export interface TaxCalculationResult {
@@ -320,6 +337,10 @@ export interface TaxCalculationResult {
   cgtAlreadyPaid: number // CGT already paid (e.g., on residential)
   netCGTDue: number // CGT due after deducting already paid
 
+  // High Income Child Benefit Charge (HICBC)
+  adjustedNetIncome: number // ANI used for PA taper and HICBC
+  hicbcCharge: number // HICBC amount due
+
   // Final position
   totalTaxAndNICDue: number
   totalTaxPaid: number
@@ -334,6 +355,7 @@ export interface TaxCalculationResult {
     studentLoanRepaymentDue?: number // CAL3
     postgraduateLoanRepaymentDue?: number // CAL3.1
     capitalGainsTaxDue?: number // CGT due
+    hicbcChargeDue?: number // High Income Child Benefit Charge
   }
 }
 
@@ -399,11 +421,14 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   }
 
   // Calculate adjusted net income for PA tapering
-  // Deductions include: pension contributions, Gift Aid, retirement annuity
+  // Deductions include: pension contributions (both RAS and net pay), Gift Aid, retirement annuity
   const giftAidGrossedUp = (input.giftAidDonations || 0) * 1.25
   const retirementAnnuityDeduction = input.retirementAnnuityDeduction || 0
+  const pensionContributionsRAS = input.pensionContributions || 0 // Relief at source
+  const pensionContributionsNetPay = input.pensionContributionsNetPay || 0 // Net pay arrangement
+  const totalPensionContributions = pensionContributionsRAS + pensionContributionsNetPay
   const adjustedNetIncome =
-    totalIncome - (input.pensionContributions || 0) - giftAidGrossedUp - retirementAnnuityDeduction
+    totalIncome - totalPensionContributions - giftAidGrossedUp - retirementAnnuityDeduction
 
   // Taper ONLY the standard personal allowance if adjusted net income > £100,000
   // BPA is NOT reduced by the taper
@@ -424,8 +449,13 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // Stage 5: Subtract Allowances and Deductions from Income
   // ==========================================================================
 
-  // Retirement annuity is deducted from non-savings income (after loss relief)
-  const nonSavingsAfterDeductions = Math.max(0, nonSavingsAfterLossRelief - retirementAnnuityDeduction)
+  // Only net pay pension contributions and retirement annuity are deducted from non-savings income
+  // RAS (Relief at Source) pensions do NOT reduce taxable income - they extend the basic rate band instead
+  // This is because RAS contributions are already paid from post-tax (net) income
+  const nonSavingsAfterDeductions = Math.max(
+    0,
+    nonSavingsAfterLossRelief - retirementAnnuityDeduction - pensionContributionsNetPay
+  )
 
   // Personal allowance is applied against non-savings first, then savings, then dividends
   // Standard allocation (no optimization)
@@ -460,9 +490,10 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // ==========================================================================
 
   // Gift Aid and Pension Contributions (Relief at Source) extend the basic rate band
-  // Gift Aid is grossed up (× 1.25), pension contributions use the NET amount for band extension
+  // Gift Aid is grossed up (× 1.25), RAS pension contributions use the NET amount for band extension
+  // NOTE: Net pay arrangement pensions do NOT extend the band (relief already given at source)
   const giftAidExtension = giftAidGrossedUp
-  const pensionExtension = input.pensionContributions || 0 // NET contribution extends bands
+  const pensionExtension = pensionContributionsRAS // Only RAS contributions extend bands
   const extendedBasicRateBand = params.bands.BR_band + giftAidExtension + pensionExtension
 
   let taxOnNonSavings = 0
@@ -995,11 +1026,44 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   const netCGTDue = Math.max(0, totalCGT - cgtAlreadyPaid)
 
   // ==========================================================================
+  // High Income Child Benefit Charge (HICBC)
+  // ==========================================================================
+  //
+  // HICBC is a charge on taxpayers with Adjusted Net Income (ANI) over £60,000
+  // who receive Child Benefit. The charge is:
+  // - 0% if ANI <= £60,000
+  // - 1% per £200 over £60,000 (up to 100%)
+  // - 100% if ANI >= £80,000
+  //
+  // HICBC is added AFTER income tax calculation as a separate charge.
+  //
+  // Example (Test Case 194):
+  //   ANI = £177,866 (well above £80,000)
+  //   Child benefit received = £1,197.00
+  //   HICBC = 100% × £1,197 = £1,197.00
+
+  let hicbcCharge = 0
+  const childBenefitReceived = input.childBenefitReceived || 0
+
+  if (childBenefitReceived > 0 && adjustedNetIncome > params.hicbc.lowerThreshold) {
+    if (adjustedNetIncome >= params.hicbc.upperThreshold) {
+      // Full clawback - 100% of child benefit
+      hicbcCharge = childBenefitReceived
+    } else {
+      // Partial clawback: 1% per £200 over £60,000
+      // Calculate percentage (capped at 100)
+      const excessOverThreshold = adjustedNetIncome - params.hicbc.lowerThreshold
+      const percentageCharge = Math.min(100, Math.floor(excessOverThreshold / params.hicbc.incrementStep))
+      hicbcCharge = childBenefitReceived * (percentageCharge / 100)
+    }
+  }
+
+  // ==========================================================================
   // Stage 12: Calculate Tax Due/Refund
   // ==========================================================================
 
-  // Total tax/NIC/loans/CGT due (before CAL7/CAL8 adjustments)
-  const totalTaxAndNICDueBeforeAdjustments = totalIncomeTax + totalNIC + studentLoanRepayment + postgraduateLoanRepayment + netCGTDue
+  // Total tax/NIC/loans/CGT/HICBC due (before CAL7/CAL8 adjustments)
+  const totalTaxAndNICDueBeforeAdjustments = totalIncomeTax + totalNIC + studentLoanRepayment + postgraduateLoanRepayment + netCGTDue + hicbcCharge
 
   // Add CAL7 - underpaid tax from earlier years
   const totalTaxAndNICDue = totalTaxAndNICDueBeforeAdjustments + underpaidTaxFromEarlierYears
@@ -1043,6 +1107,11 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // Only include CGT if > 0
   if (netCGTDue > 0) {
     sa110.capitalGainsTaxDue = Math.round(netCGTDue)
+  }
+
+  // Only include HICBC if > 0
+  if (hicbcCharge > 0) {
+    sa110.hicbcChargeDue = Math.round(hicbcCharge)
   }
 
   return {
@@ -1102,6 +1171,10 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     totalCGT,
     cgtAlreadyPaid,
     netCGTDue,
+
+    // High Income Child Benefit Charge
+    adjustedNetIncome,
+    hicbcCharge,
 
     // Final position
     totalTaxAndNICDue,
