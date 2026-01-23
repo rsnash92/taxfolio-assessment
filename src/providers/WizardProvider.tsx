@@ -24,7 +24,7 @@ import {
   getNextStep,
   getPreviousStep,
 } from '@/lib/wizard/steps';
-import { calculateTaxLiability } from '@/lib/wizard/calculations';
+import { calculateTaxForWizard } from '@/lib/wizard/tax-mapping';
 import {
   fetchIntroData,
   applyIntroDataToWizard,
@@ -361,21 +361,26 @@ export function WizardProvider({
   }, [data, currentStep, isLoading, isSwitchingYear, saveProgress]);
 
   // Calculate tax when relevant data changes or after initial load
+  // Debounced to 250ms to reduce churn during rapid typing
   useEffect(() => {
     // Don't calculate while still loading
     if (isLoading) return;
 
-    // Use functional update to ensure we have the latest data
-    setData((prev) => {
-      const calculation = calculateTaxLiability(prev);
+    const timeout = setTimeout(() => {
+      // Use functional update to ensure we have the latest data
+      setData((prev) => {
+        const calculation = calculateTaxForWizard(prev);
 
-      // Only update if the calculation has actually changed
-      if (JSON.stringify(calculation) === JSON.stringify(prev.taxCalculation)) {
-        return prev; // No change
-      }
+        // Only update if the calculation has actually changed
+        if (JSON.stringify(calculation) === JSON.stringify(prev.taxCalculation)) {
+          return prev; // No change
+        }
 
-      return { ...prev, taxCalculation: calculation };
-    });
+        return { ...prev, taxCalculation: calculation };
+      });
+    }, 250);
+
+    return () => clearTimeout(timeout);
   }, [
     isLoading, // Recalculate after loading completes
     data.taxYear, // Recalculate when tax year changes (different rates apply)
@@ -397,7 +402,7 @@ export function WizardProvider({
 
   // Expose calculateTax for manual trigger if needed
   const calculateTax = useCallback(() => {
-    const calculation = calculateTaxLiability(data);
+    const calculation = calculateTaxForWizard(data);
     setData((prev) => ({ ...prev, taxCalculation: calculation }));
   }, [data]);
 

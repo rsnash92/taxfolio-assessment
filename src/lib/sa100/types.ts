@@ -235,6 +235,9 @@ export interface SA100Return {
   /** Marriage Allowance */
   marriage?: SA100Marriage
 
+  /** High Income Child Benefit Charge (HICBC) section */
+  highIncomeChildBenefitCharge?: SA100HighIncomeChildBenefitCharge
+
   /** Finishing section - declaration - MANDATORY */
   finishing: SA100Finishing
 
@@ -353,16 +356,20 @@ export interface SA100YourTaxReturn {
 
 /**
  * Maps to /MTR/SA100/StudentLoanRepayments
+ * Schema element order: IncomeContingentStudentLoanNotification, StudentLoanRepaymentDeductedAmount,
+ * PostgraduateLoanRepaymentDeductedAmount, PlanType, PostgraduateLoanPlanType
  */
 export interface SA100StudentLoan {
-  /** Income Contingent Student Loan notification received (box 1) */
+  /** Income Contingent Student Loan notification received (box 1) - indicates loan exists */
   incomeContingentStudentLoanNotification?: YesIndicator
-  /** Postgraduate Loan notification received (box 2) */
-  postgraduateLoanNotification?: YesIndicator
   /** Student loan repayment deducted by employer (box 3) - whole pounds */
   studentLoanRepaymentDeductedAmount?: number
   /** Postgraduate loan repayment deducted by employer (box 4) - whole pounds */
   postgraduateLoanRepaymentDeductedAmount?: number
+  /** Student Loan Plan Type: "01" (Plan 1), "02" (Plan 2), "04" (Plan 4) */
+  planType?: '01' | '02' | '04'
+  /** Postgraduate Loan Plan Type: "03" - indicates postgrad loan exists */
+  postgraduateLoanPlanType?: '03'
 }
 
 /**
@@ -473,6 +480,19 @@ export interface SA100Marriage {
   spouseName?: string
   /** Date of marriage or civil partnership */
   dateOfMarriage?: string
+}
+
+/**
+ * Maps to /MTR/SA100/HighIncomeChildBenefitCharge
+ * HICBC section for taxpayers with ANI over £60,000 who receive child benefit
+ */
+export interface SA100HighIncomeChildBenefitCharge {
+  /** Amount of child benefit received in tax year (CBC1) - whole pounds */
+  amountReceived: number
+  /** Number of children (CBC2) - required if amount received > 0 */
+  numberOfChildren?: number
+  /** Date stopped receiving all child benefit payments (CBC3) - YYYY-MM-DD */
+  dateStoppedReceiving?: string
 }
 
 /**
@@ -733,9 +753,15 @@ export interface SA103SelfEmploymentShort {
     lossOffsetAgainstOtherIncome?: number
   }
 
+  /** Class 2 NIC voluntary payment indicator (box 36) */
+  class2NICVoluntary?: YesIndicator
+
+  /** Class 2 NIC amount (SSECL2) - required when class2NICVoluntary is 'yes' */
+  class2NICAmount?: number
+
   /** Class 4 NIC section */
   class4NIC?: {
-    /** Exempt indicator */
+    /** Exempt indicator (box 37) */
     exemptIndicator?: YesIndicator
     /** Adjustment to profits */
     adjustmentToProfits?: number
@@ -1036,6 +1062,8 @@ export interface SA108CapitalGains {
 
   /** Listed shares and securities section */
   listedSharesAndSecurities?: {
+    /** Number of disposals in this section (CGT24) */
+    numberOfDisposals?: number
     /** Disposal proceeds (box 3) - whole pounds */
     disposalProceeds?: number
     /** Allowable costs (box 4) - whole pounds */
@@ -1048,6 +1076,8 @@ export interface SA108CapitalGains {
 
   /** Unlisted shares section */
   unlistedShares?: {
+    /** Number of disposals in this section (CGT30) */
+    numberOfDisposals?: number
     /** Disposal proceeds - whole pounds */
     disposalProceeds?: number
     /** Allowable costs - whole pounds */
@@ -1060,6 +1090,8 @@ export interface SA108CapitalGains {
 
   /** Other property, assets and gains section */
   otherPropertyAndAssets?: {
+    /** Number of disposals in this section (CGT14) */
+    numberOfDisposals?: number
     /** Disposal proceeds - whole pounds */
     disposalProceeds?: number
     /** Allowable costs - whole pounds */
@@ -1068,6 +1100,9 @@ export interface SA108CapitalGains {
     gainsInYear?: number
     /** Losses in year - whole pounds */
     lossesInYear?: number
+    /** Other disposals where BADR is being claimed (CGT17.4) - whole pounds
+     *  This indicates the portion of gainsInYear that qualifies for BADR */
+    badrDisposals?: number
   }
 
   /** UK residential property section */
@@ -1094,12 +1129,14 @@ export interface SA108CapitalGains {
 
   /** Losses section */
   losses?: {
-    /** Losses brought forward (box 15) - whole pounds */
+    /** Losses brought forward and used in the return year (CGT45) - whole pounds */
     lossesBroughtForward?: number
+    /** Income losses of the return year set against gains (CGT46) - whole pounds */
+    incomeLossesUsedAgainstGains?: number
+    /** Losses to be carried forward (CGT47) - whole pounds */
+    lossesCarryForward?: number
     /** Losses used this year (box 16) - whole pounds */
     lossesUsedThisYear?: number
-    /** Losses available for carry forward - whole pounds */
-    lossesCarryForward?: number
   }
 
   /** Annual exempt amount section */

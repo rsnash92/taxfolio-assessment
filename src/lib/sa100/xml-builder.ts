@@ -300,6 +300,11 @@ function buildSA100Content(returnData: SA100Return): string {
     sections.push(buildMarriageAllowance(returnData.marriage))
   }
 
+  // High Income Child Benefit Charge (HICBC)
+  if (returnData.highIncomeChildBenefitCharge) {
+    sections.push(buildHighIncomeChildBenefitCharge(returnData.highIncomeChildBenefitCharge))
+  }
+
   // FinishingYourTaxReturn - MANDATORY (note: not just "Finishing")
   sections.push(buildFinishingYourTaxReturn(returnData.finishing))
 
@@ -407,20 +412,41 @@ ${indicators.map((i) => '  ' + i).join('\n')}
 // Main SA100 Sections
 // =============================================================================
 
+/**
+ * Build StudentLoanRepayments section
+ * Schema element order (xsd:sequence):
+ * 1. IncomeContingentStudentLoanNotification (optional)
+ * 2. StudentLoanRepaymentDeductedAmount (optional)
+ * 3. PostgraduateLoanRepaymentDeductedAmount (optional)
+ * 4. PlanType (optional) - "01", "02", or "04"
+ * 5. PostgraduateLoanPlanType (optional) - "03"
+ */
 function buildStudentLoanRepayments(data: NonNullable<SA100Return['studentLoanRepayments']>): string {
   const elements: string[] = []
 
+  // 1. IncomeContingentStudentLoanNotification - indicates student loan exists
   if (data.incomeContingentStudentLoanNotification) {
     elements.push('<IncomeContingentStudentLoanNotification>yes</IncomeContingentStudentLoanNotification>')
   }
-  if (data.postgraduateLoanNotification) {
-    elements.push('<PostgraduateLoanNotification>yes</PostgraduateLoanNotification>')
-  }
+
+  // 2. StudentLoanRepaymentDeductedAmount - PAYE deducted amount
   if (data.studentLoanRepaymentDeductedAmount !== undefined) {
     elements.push(`<StudentLoanRepaymentDeductedAmount>${formatMoney(data.studentLoanRepaymentDeductedAmount)}</StudentLoanRepaymentDeductedAmount>`)
   }
+
+  // 3. PostgraduateLoanRepaymentDeductedAmount - PAYE deducted amount
   if (data.postgraduateLoanRepaymentDeductedAmount !== undefined) {
     elements.push(`<PostgraduateLoanRepaymentDeductedAmount>${formatMoney(data.postgraduateLoanRepaymentDeductedAmount)}</PostgraduateLoanRepaymentDeductedAmount>`)
+  }
+
+  // 4. PlanType - Student loan plan type (01=Plan 1, 02=Plan 2, 04=Plan 4)
+  if (data.planType) {
+    elements.push(`<PlanType>${data.planType}</PlanType>`)
+  }
+
+  // 5. PostgraduateLoanPlanType - Postgrad loan indicator (03)
+  if (data.postgraduateLoanPlanType) {
+    elements.push(`<PostgraduateLoanPlanType>${data.postgraduateLoanPlanType}</PostgraduateLoanPlanType>`)
   }
 
   return `<StudentLoanRepayments>
@@ -553,6 +579,32 @@ function buildMarriageAllowance(data: NonNullable<SA100Return['marriage']>): str
   return `<MarriageAllowance>
 ${elements.map((e) => '  ' + e).join('\n')}
 </MarriageAllowance>`
+}
+
+/**
+ * Build HighIncomeChildBenefitCharge section (HICBC)
+ * Schema element: /MTR/SA100/HighIncomeChildBenefitCharge
+ * Required fields: AmountReceived (CBC1), NumberOfChildren (CBC2)
+ */
+function buildHighIncomeChildBenefitCharge(data: NonNullable<SA100Return['highIncomeChildBenefitCharge']>): string {
+  const elements: string[] = []
+
+  // AmountReceived (CBC1) - required
+  elements.push(`<AmountReceived>${formatMoney(data.amountReceived)}</AmountReceived>`)
+
+  // NumberOfChildren (CBC2) - required if AmountReceived > 0
+  if (data.numberOfChildren !== undefined && data.numberOfChildren > 0) {
+    elements.push(`<NumberOfChildren>${data.numberOfChildren}</NumberOfChildren>`)
+  }
+
+  // DateStoppedReceivingAllChildBenefitPayments (CBC3) - optional
+  if (data.dateStoppedReceiving) {
+    elements.push(`<DateStoppedReceivingAllChildBenefitPayments>${data.dateStoppedReceiving}</DateStoppedReceivingAllChildBenefitPayments>`)
+  }
+
+  return `<HighIncomeChildBenefitCharge>
+${elements.map((e) => '  ' + e).join('\n')}
+</HighIncomeChildBenefitCharge>`
 }
 
 /**
@@ -732,11 +784,33 @@ ${taxableProfitElements.map((e) => '  ' + e).join('\n')}
 </TaxableProfits>`)
   }
 
-  // ProfitsLossesNICsAndCIS (contains TotalTaxableBusinessProfits = SSE31)
-  // SSE31 = SSE28 + SSE30 - SSE29
+  // ProfitsLossesNICsAndCIS section
+  // Contains: TotalTaxableBusinessProfits (SSE31), PayClass2NICvoluntarily (SSE36), Class4NICexempt (SSE37)
+  const nicElements: string[] = []
+
+  // TotalTaxableBusinessProfits (SSE31) = SSE28 + SSE30 - SSE29
   if (data.totalTaxableProfits !== undefined && data.totalTaxableProfits > 0) {
+    nicElements.push(`<TotalTaxableBusinessProfits>${formatMoney(data.totalTaxableProfits)}</TotalTaxableBusinessProfits>`)
+  }
+
+  // PayClass2NICvoluntarily (SSE36) - voluntary Class 2 NIC
+  if (data.class2NICVoluntary === 'yes') {
+    nicElements.push('<PayClass2NICvoluntarily>yes</PayClass2NICvoluntarily>')
+  }
+
+  // Class2NICamount (SSECL2) - Class 2 NIC amount, required when SSE36 is 'yes'
+  if (data.class2NICAmount !== undefined && data.class2NICAmount > 0) {
+    nicElements.push(`<Class2NICamount>${formatMoney(data.class2NICAmount)}</Class2NICamount>`)
+  }
+
+  // Class4NICexempt (SSE37) - Class 4 NIC exemption flag
+  if (data.class4NIC?.exemptIndicator === 'yes') {
+    nicElements.push('<Class4NICexempt>yes</Class4NICexempt>')
+  }
+
+  if (nicElements.length > 0) {
     elements.push(`<ProfitsLossesNICsAndCIS>
-  <TotalTaxableBusinessProfits>${formatMoney(data.totalTaxableProfits)}</TotalTaxableBusinessProfits>
+${nicElements.map((e) => '  ' + e).join('\n')}
 </ProfitsLossesNICsAndCIS>`)
   }
 
@@ -901,9 +975,58 @@ ${elements.map((e) => '  ' + e).join('\n')}
 function buildSA108(data: NonNullable<SA100Return['sa108']>): string {
   const sections: string[] = []
 
+  // SA108 sections must be in XSD order:
+  // 1. ResidentialPropertyAndCarriedInterest (not implemented yet)
+  // 2. Cryptoassets (not implemented yet)
+  // 3. OtherPropertyAssetsAndGains
+  // 4. ListedSharesAndSecurities
+  // 5. UnlistedSharesAndSecurities
+  // 6. LossesAndAdjustments
+  // 7. NRCGTonUKpropertyOrLandAndIndirectDisposals (not implemented yet)
+  // 8. EISandQAHC (not implemented yet)
+  // 9. EstimateOrValuation (not implemented yet)
+  // 10. AnyOtherInformationSpace
+
+  // OtherPropertyAssetsAndGains section (for crypto, general assets, etc.)
+  // HMRC requires CGT14 (NumberOfDisposals) when CGT15 (DisposalProceeds) or CGT17 (GainsInYear) are present
+  if (data.otherPropertyAndAssets) {
+    const otherElements: string[] = []
+    // NumberOfDisposals (CGT14) - use section-specific count, fallback to summary
+    const otherDisposals = data.otherPropertyAndAssets.numberOfDisposals ?? data.summary?.numberOfDisposals
+    if (otherDisposals !== undefined) {
+      otherElements.push(`<NumberOfDisposals>${otherDisposals}</NumberOfDisposals>`)
+    }
+    if (data.otherPropertyAndAssets.disposalProceeds !== undefined) {
+      otherElements.push(`<DisposalProceeds>${formatMoney(data.otherPropertyAndAssets.disposalProceeds)}</DisposalProceeds>`)
+    }
+    if (data.otherPropertyAndAssets.allowableCosts !== undefined) {
+      otherElements.push(`<AllowableCosts>${formatMoney(data.otherPropertyAndAssets.allowableCosts)}</AllowableCosts>`)
+    }
+    if (data.otherPropertyAndAssets.gainsInYear !== undefined) {
+      otherElements.push(`<GainsInTheYear>${formatMoney(data.otherPropertyAndAssets.gainsInYear)}</GainsInTheYear>`)
+    }
+    // CGT17.4 - Other disposals where BADR is being claimed (portion of GainsInTheYear qualifying for BADR)
+    if (data.otherPropertyAndAssets.badrDisposals !== undefined && data.otherPropertyAndAssets.badrDisposals > 0) {
+      otherElements.push(`<OtherDisposalsWhereBADRisBeingClaimed>${formatMoney(data.otherPropertyAndAssets.badrDisposals)}</OtherDisposalsWhereBADRisBeingClaimed>`)
+    }
+    if (data.otherPropertyAndAssets.lossesInYear !== undefined) {
+      otherElements.push(`<LossesInTheYear>${formatMoney(data.otherPropertyAndAssets.lossesInYear)}</LossesInTheYear>`)
+    }
+    if (otherElements.length > 0) {
+      sections.push(`<OtherPropertyAssetsAndGains>
+${otherElements.map((e) => '  ' + e).join('\n')}
+</OtherPropertyAssetsAndGains>`)
+    }
+  }
+
   // ListedSharesAndSecurities section
   if (data.listedSharesAndSecurities) {
     const shareElements: string[] = []
+    // NumberOfDisposals (CGT24) - use section-specific count, fallback to summary
+    const listedDisposals = data.listedSharesAndSecurities.numberOfDisposals ?? data.summary?.numberOfDisposals
+    if (listedDisposals !== undefined) {
+      shareElements.push(`<NumberOfDisposals>${listedDisposals}</NumberOfDisposals>`)
+    }
     if (data.listedSharesAndSecurities.disposalProceeds !== undefined) {
       shareElements.push(`<DisposalProceeds>${formatMoney(data.listedSharesAndSecurities.disposalProceeds)}</DisposalProceeds>`)
     }
@@ -924,6 +1047,11 @@ ${shareElements.map((e) => '  ' + e).join('\n')}
   // UnlistedSharesAndSecurities section
   if (data.unlistedShares) {
     const shareElements: string[] = []
+    // NumberOfDisposals (CGT30) - use section-specific count, fallback to summary
+    const unlistedDisposals = data.unlistedShares.numberOfDisposals ?? data.summary?.numberOfDisposals
+    if (unlistedDisposals !== undefined) {
+      shareElements.push(`<NumberOfDisposals>${unlistedDisposals}</NumberOfDisposals>`)
+    }
     if (data.unlistedShares.disposalProceeds !== undefined) {
       shareElements.push(`<DisposalProceeds>${formatMoney(data.unlistedShares.disposalProceeds)}</DisposalProceeds>`)
     }
@@ -942,20 +1070,50 @@ ${shareElements.map((e) => '  ' + e).join('\n')}
   }
 
   // LossesAndAdjustments section
-  if (data.losses || data.annualExemptAmount) {
+  // Contains: LossesBroughtForwardAndUsedInTheReturnYear (CGT45), IncomeLossesOfTheReturnYearSetAgainstGains (CGT46),
+  // LossesToBeCarriedForward (CGT47), GainsQualifyingForBusinessAssetDisposalRelief (CGT50),
+  // BADRandERclaimedToDate (CGT50.1)
+  if (data.losses || data.annualExemptAmount || data.businessAssetDisposalRelief) {
     const lossElements: string[] = []
-    if (data.losses?.lossesBroughtForward !== undefined) {
+
+    // CGT45 - Losses brought forward and used in the return year
+    if (data.losses?.lossesBroughtForward !== undefined && data.losses.lossesBroughtForward > 0) {
       lossElements.push(`<LossesBroughtForwardAndUsedInTheReturnYear>${formatMoney(data.losses.lossesBroughtForward)}</LossesBroughtForwardAndUsedInTheReturnYear>`)
     }
-    if (data.losses?.lossesCarryForward !== undefined) {
+
+    // CGT46 - Income losses of the return year set against gains
+    if (data.losses?.incomeLossesUsedAgainstGains !== undefined && data.losses.incomeLossesUsedAgainstGains > 0) {
+      lossElements.push(`<IncomeLossesOfTheReturnYearSetAgainstGains>${formatMoney(data.losses.incomeLossesUsedAgainstGains)}</IncomeLossesOfTheReturnYearSetAgainstGains>`)
+    }
+
+    // CGT47 - Losses to be carried forward
+    if (data.losses?.lossesCarryForward !== undefined && data.losses.lossesCarryForward > 0) {
       lossElements.push(`<LossesToBeCarriedForward>${formatMoney(data.losses.lossesCarryForward)}</LossesToBeCarriedForward>`)
     }
+
+    // CGT50 - Gains qualifying for Business Asset Disposal Relief (BADR)
+    if (data.businessAssetDisposalRelief?.qualifyingGains !== undefined && data.businessAssetDisposalRelief.qualifyingGains > 0) {
+      lossElements.push(`<GainsQualifyingForBusinessAssetDisposalRelief>${formatMoney(data.businessAssetDisposalRelief.qualifyingGains)}</GainsQualifyingForBusinessAssetDisposalRelief>`)
+    }
+
+    // CGT50.1 - BADR and ER claimed to date (lifetime limit used)
+    if (data.businessAssetDisposalRelief?.lifetimeLimitUsed !== undefined && data.businessAssetDisposalRelief.lifetimeLimitUsed > 0) {
+      lossElements.push(`<BADRandERclaimedToDate>${formatMoney(data.businessAssetDisposalRelief.lifetimeLimitUsed)}</BADRandERclaimedToDate>`)
+    }
+
     if (lossElements.length > 0) {
       sections.push(`<LossesAndAdjustments>
 ${lossElements.map((e) => '  ' + e).join('\n')}
 </LossesAndAdjustments>`)
     }
   }
+
+  // AnyOtherInformationSpace - Required when SA108 is present (error 6020)
+  // HMRC requires either an attachment OR the whitespace element to be present
+  // Pattern allowed: [A-Za-z0-9 &'\(\)\*,\-\./@£]* - no colons, semi-colons, newlines
+  // Build a simple summary that fits the pattern
+  const numDisposals = data.summary?.numberOfDisposals || 1
+  sections.push(`<AnyOtherInformationSpace>CGT computation - ${numDisposals} disposal(s)</AnyOtherInformationSpace>`)
 
   return `<SA108>
 ${sections.map((s) => '  ' + s).join('\n')}

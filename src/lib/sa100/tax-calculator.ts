@@ -268,6 +268,19 @@ export interface TaxCalculationInput {
   /** Gains qualifying for Business Asset Disposal Relief (BADR) */
   badrQualifyingGains?: number
 
+  // ==========================================================================
+  // National Insurance Exemptions
+  // ==========================================================================
+
+  /** Class 4 NIC exempt (e.g., state pension age, under 16, diver/diving supervisor) */
+  class4Exempt?: boolean
+
+  /** Number of weeks liable for Class 2 NIC (for partial year, 1-53) */
+  class2Weeks?: number
+
+  /** Direct Class 2 NIC amount (overrides weeks calculation, used when HMRC provides exact amount) */
+  class2Amount?: number
+
   /** CGT already paid (e.g., on UK residential property disposals) */
   cgtAlreadyPaid?: number
 
@@ -571,19 +584,39 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     // PSA is £1,000 for basic rate, £500 for higher rate, £0 for additional rate
     // IMPORTANT: PSA is based on TOTAL taxable income, not just non-savings
     // If total taxable income exceeds £125,140, PSA is £0 (additional rate taxpayer)
+    //
+    // For Scottish taxpayers, the higher rate threshold is different:
+    // Scottish higher rate (42%) starts at SSR_band + SBR_band + SIR_band + extension
+    // which is £2,306 + £11,685 + £17,101 + extension = £31,092 + extension
     let personalSavingsAllowance = params.allowances.PSA_BR // £1,000
-    if (nonSavingsUsedBand > extendedBasicRateBand) {
-      personalSavingsAllowance = params.allowances.PSA_HR // £500
+
+    if (input.status === 'S') {
+      // Scottish higher rate threshold (where 42% rate starts)
+      const scottishHigherRateThreshold =
+        params.bands.SSR_band + params.bands.SBR_band + params.bands.SIR_band + (extendedBasicRateBand - params.bands.BR_band)
+      if (nonSavingsUsedBand > scottishHigherRateThreshold) {
+        personalSavingsAllowance = params.allowances.PSA_HR // £500
+      }
+    } else {
+      // UK/Welsh higher rate threshold
+      if (nonSavingsUsedBand > extendedBasicRateBand) {
+        personalSavingsAllowance = params.allowances.PSA_HR // £500
+      }
     }
+
     // Additional rate PSA check: TOTAL taxable income above £125,140 threshold
     if (totalTaxableIncome > additionalRateThreshold) {
       personalSavingsAllowance = params.allowances.PSA_AHR // £0
     }
 
     // Apply PSA to savings income (tax at 0%)
+    // Note: PSA uses up band space - it's taxed at 0% but still occupies the band
     let remainingSavings = taxableSavingsIncome
     const savingsAtNilRate = Math.min(remainingSavings, personalSavingsAllowance)
     remainingSavings -= savingsAtNilRate
+
+    // Track remaining band space after PSA (PSA consumes band space even at 0%)
+    let remainingBasicAfterPSA = Math.max(0, remainingBasicBand - savingsAtNilRate)
 
     // Starting rate for savings (if non-savings income is below PA + SR_band)
     const startingRateAvailable = Math.max(
@@ -594,11 +627,13 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
       const savingsAtStartingRate = Math.min(remainingSavings, startingRateAvailable)
       remainingSavings -= savingsAtStartingRate
       // Starting rate is 0%, so no tax added
+      // Starting rate also consumes band space
+      remainingBasicAfterPSA = Math.max(0, remainingBasicAfterPSA - savingsAtStartingRate)
     }
 
     // Basic rate savings (20%)
-    if (remainingSavings > 0 && remainingBasicBand > 0) {
-      const savingsAtBasicRate = Math.min(remainingSavings, remainingBasicBand)
+    if (remainingSavings > 0 && remainingBasicAfterPSA > 0) {
+      const savingsAtBasicRate = Math.min(remainingSavings, remainingBasicAfterPSA)
       taxOnSavings += savingsAtBasicRate * rates.SAVBR_rate
       remainingSavings -= savingsAtBasicRate
     }
@@ -756,7 +791,13 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
 
   let class4NIC = 0
 
-  if (input.selfEmploymentProfits > 0) {
+  // Class 4 NIC exemption check - exempt if:
+  // - Under 16 at start of tax year
+  // - State pension age before start of tax year
+  // - Diver or diving supervisor
+  // - Trustee of a trust
+  // - Non-resident
+  if (input.selfEmploymentProfits > 0 && !input.class4Exempt) {
     const profits = input.selfEmploymentProfits
     const lowerLimit = params.bands.NIC_LEL // £12,570
     const upperLimit = params.bands.NIC_UEL // £50,270
@@ -794,17 +835,34 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // ==========================================================================
   // Class 2 NIC
   // ==========================================================================
+  //
+  // Class 2 NIC for self-employed:
+  // - Voluntary if profits below Small Profits Threshold (£6,725)
+  // - Mandatory if profits at or above Lower Profits Threshold (£12,570)
+  // - £3.45 per week for 2024-25
+  // - If class2NICRegistered is true, treat as already paid via direct debit
+  // - class2Amount allows direct entry (overrides weeks calculation)
+  // - class2Weeks allows partial year calculation (1-53 weeks)
 
   let class2NIC = 0
 
-  // Class 2 NIC is paid if registered and profits are at or above the threshold
-  // If class2NICRegistered is true, treat as already paid (£0 due on SA)
-  if (input.selfEmploymentProfits >= params.class2.lowerProfitsThreshold) {
+  // Check if Class 2 is applicable
+  const class2Applicable = input.selfEmploymentProfits >= params.class2.lowerProfitsThreshold ||
+                           (input.class2Weeks && input.class2Weeks > 0) ||
+                           (input.class2Amount !== undefined && input.class2Amount > 0)
+
+  if (class2Applicable) {
     if (input.class2NICRegistered) {
       // Already registered and treated as paid - not included in SA tax due
       class2NIC = 0
+    } else if (input.class2Amount !== undefined && input.class2Amount > 0) {
+      // Direct amount provided (from HMRC test data or CL2 field)
+      class2NIC = input.class2Amount
+    } else if (input.class2Weeks !== undefined && input.class2Weeks > 0) {
+      // Partial year - charge for specified number of weeks
+      class2NIC = input.class2Weeks * params.class2.weeklyAmount
     } else {
-      // Class 2 is mandatory if profits are at or above LPT
+      // Full year (53 weeks max)
       class2NIC = params.class2.annualLimit
     }
   }
@@ -819,10 +877,50 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // - If no PAYE deduction AND has employment income: exclude dividends from total
   // - If no PAYE deduction AND no employment (self-emp only): use full total income
 
-  let studentLoanRepayment = 0
-  const employmentIncome = input.employmentIncome || 0
-  const selfEmploymentProfits = input.selfEmploymentProfits || 0
-  const earnedIncome = employmentIncome + selfEmploymentProfits
+  // ==========================================================================
+  // Stage 27: Student Loan and Postgraduate Loan Repayments
+  // ==========================================================================
+  //
+  // Student loan calculation depends on whether employer has already deducted:
+  //
+  // A) When PAYE has deducted student loan (employer calculated):
+  //    - Employer calculates loan on EMPLOYMENT INCOME ONLY
+  //    - SA100 uses the same income base (employment only)
+  //    - Additional due = employer-calculated total - PAYE deducted
+  //
+  // B) When no PAYE deduction (self-employed, no employer deduction):
+  //    - Per HMRC spec c27, use total income (earned + unearned if > £2,000)
+  //    - Earned income: employment, self-employment, pensions, property, other
+  //    - Unearned income: savings, dividends (only if > £2,000 UIT)
+  //
+  // Student loan calculation:
+  // - SA calculation uses TOTAL income (earned + unearned if > £2,000 UIT)
+  // - This is different from employer PAYE calculation which only sees employment
+  // - SA110 reports the GROSS loan amount due based on total income
+  // - PAYE-deducted amounts are reported separately and subtracted in final balance
+
+  let studentLoanRepaymentGross = 0 // Total due based on SA calculation
+  let postgraduateLoanRepaymentGross = 0 // Total due based on SA calculation
+
+  const slEmploymentIncome = input.employmentIncome || 0
+  const slSelfEmploymentProfits = input.selfEmploymentProfits || 0
+  const slPensionIncome = (input.pensionIncome || 0) + (input.statePension || 0)
+  const slPropertyIncome = input.propertyIncome || 0
+  const slOtherEarnedIncome = input.otherIncome || 0
+
+  // Full earned income for self-assessment calculation
+  const earnedIncomeForSL = slEmploymentIncome + slSelfEmploymentProfits + slPensionIncome + slPropertyIncome + slOtherEarnedIncome
+
+  // Unearned income (savings, dividends)
+  const unearnedIncome = totalSavingsIncome + totalDividendIncome
+
+  // Unearned Income Threshold (SL_UIT = £2,000)
+  const SL_UIT = 2000
+
+  // Always use total income for SA calculation (earned + unearned if > UIT)
+  const relevantIncomeForSL = unearnedIncome > SL_UIT
+    ? earnedIncomeForSL + unearnedIncome
+    : earnedIncomeForSL
 
   if (input.studentLoanPlan) {
     let threshold = 0
@@ -838,47 +936,26 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
         break
     }
 
-    const alreadyDeducted = input.studentLoanDeductedThroughPAYE || 0
-    let relevantIncome: number
-
-    if (alreadyDeducted > 0) {
-      // PAYE already deducted loan - use earned income to match employer calculation
-      relevantIncome = earnedIncome
-    } else if (employmentIncome > 0) {
-      // Has employment but no PAYE SL deduction - exclude dividends
-      relevantIncome = totalIncome - totalDividendIncome
-    } else {
-      // Self-employment only - use full total income including dividends
-      relevantIncome = totalIncome
-    }
-
-    if (relevantIncome > threshold) {
-      const totalLoanDue = (relevantIncome - threshold) * params.rates.Sloan_rate
-      studentLoanRepayment = Math.max(0, totalLoanDue - alreadyDeducted)
+    if (relevantIncomeForSL > threshold) {
+      studentLoanRepaymentGross = (relevantIncomeForSL - threshold) * params.rates.Sloan_rate
     }
   }
 
-  // Postgraduate Loan - same logic as student loan
-  let postgraduateLoanRepayment = 0
-
+  // Postgraduate Loan - same income base
   if (input.hasPostgraduateLoan) {
     const threshold = params.bands.PGL_limit
-    const alreadyDeducted = input.postgraduateLoanDeductedThroughPAYE || 0
-    let relevantIncome: number
 
-    if (alreadyDeducted > 0) {
-      relevantIncome = earnedIncome
-    } else if (employmentIncome > 0) {
-      relevantIncome = totalIncome - totalDividendIncome
-    } else {
-      relevantIncome = totalIncome
-    }
-
-    if (relevantIncome > threshold) {
-      const totalLoanDue = (relevantIncome - threshold) * params.rates.PGL_rate
-      postgraduateLoanRepayment = Math.max(0, totalLoanDue - alreadyDeducted)
+    if (relevantIncomeForSL > threshold) {
+      postgraduateLoanRepaymentGross = (relevantIncomeForSL - threshold) * params.rates.PGL_rate
     }
   }
+
+  // Net amounts after PAYE deductions (for final tax due calculation)
+  const studentLoanDeductedPAYE = input.studentLoanDeductedThroughPAYE || 0
+  const postgraduateLoanDeductedPAYE = input.postgraduateLoanDeductedThroughPAYE || 0
+
+  const studentLoanRepayment = Math.max(0, studentLoanRepaymentGross - studentLoanDeductedPAYE)
+  const postgraduateLoanRepayment = Math.max(0, postgraduateLoanRepaymentGross - postgraduateLoanDeductedPAYE)
 
   // ==========================================================================
   // Tax Adjustments (CAL7/CAL8)
@@ -1094,14 +1171,15 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     sa110.class2NICsDue = Math.round(class2NIC)
   }
 
-  // Only include student loan if > 0
-  if (studentLoanRepayment > 0) {
-    sa110.studentLoanRepaymentDue = Math.round(studentLoanRepayment)
+  // SA110 reports GROSS loan amounts (before PAYE deductions)
+  // The PAYE-deducted amounts are reported separately in StudentLoanRepaymentDeductedAmount
+  if (studentLoanRepaymentGross > 0) {
+    sa110.studentLoanRepaymentDue = Math.round(studentLoanRepaymentGross)
   }
 
-  // Only include postgraduate loan if > 0
-  if (postgraduateLoanRepayment > 0) {
-    sa110.postgraduateLoanRepaymentDue = Math.round(postgraduateLoanRepayment)
+  // Postgraduate loan - also GROSS amount
+  if (postgraduateLoanRepaymentGross > 0) {
+    sa110.postgraduateLoanRepaymentDue = Math.round(postgraduateLoanRepaymentGross)
   }
 
   // Only include CGT if > 0
@@ -1209,10 +1287,11 @@ function calculateScottishTax(
   const basicRateExtension = extendedBasicRateBand - params.bands.BR_band
 
   // Scottish has more bands - calculate cumulatively
-  // The basic rate band is extended, which shifts higher bands up
+  // The basic rate band is extended, which shifts all higher bands up by the same amount
+  // IMPORTANT: All limits must be CUMULATIVE (from £0, not from previous band)
   const scottishBands = [
     { limit: bands.SSR_band, rate: rates.SSR_rate }, // 19% - £2,306
-    { limit: bands.SBR_band + basicRateExtension, rate: rates.SBR_rate }, // 20% - extended
+    { limit: bands.SSR_band + bands.SBR_band + basicRateExtension, rate: rates.SBR_rate }, // 20% - £2,306 + £11,685 + extension
     { limit: bands.SSR_band + bands.SBR_band + bands.SIR_band + basicRateExtension, rate: rates.SIR_rate }, // 21%
     { limit: bands.SSR_band + bands.SBR_band + bands.SIR_band + bands.SHR_band + basicRateExtension, rate: rates.SHR_rate }, // 42%
     { limit: bands.SSR_band + bands.SBR_band + bands.SIR_band + bands.SHR_band + bands.SAR_band + basicRateExtension, rate: rates.SAR_rate }, // 45%

@@ -1,3 +1,12 @@
+/**
+ * @deprecated This file is deprecated. Use calculateTaxForWizard from './tax-mapping' instead.
+ *
+ * The new tax-mapping module uses the HMRC-compliant calculator (src/lib/sa100/tax-calculator.ts)
+ * which ensures wizard estimates match final submission calculations exactly.
+ *
+ * Migration: Replace `calculateTaxLiability(data)` with `calculateTaxForWizard(data)`
+ */
+
 import { WizardData, TaxCalculation } from '@/types/wizard';
 import { getTaxYearConfig, TaxYearConfig } from './tax-years';
 
@@ -5,6 +14,9 @@ import { getTaxYearConfig, TaxYearConfig } from './tax-years';
 // The toPounds helper is a no-op since values are already in pounds
 const toPounds = (pounds: number): number => pounds;
 
+/**
+ * @deprecated Use calculateTaxForWizard from './tax-mapping' instead.
+ */
 export function calculateTaxLiability(data: WizardData): TaxCalculation {
   // Get tax year config - defaults to 2024-25 if not set
   const taxYear = getTaxYearConfig(data.taxYear || '2024-25');

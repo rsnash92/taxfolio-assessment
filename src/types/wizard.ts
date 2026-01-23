@@ -561,6 +561,7 @@ export interface PaymentData {
 }
 
 // Tax Calculation
+// Note: All values are stored in pence (multiply by 100) for display formatting
 export interface TaxCalculation {
   // Income
   totalIncome: number;
@@ -630,6 +631,12 @@ export interface TaxCalculation {
 
   // Or refund
   refundDue?: number;
+
+  // High Income Child Benefit Charge (optional, available from HMRC calculator)
+  hicbcCharge?: number;
+
+  // Adjusted Net Income (optional, used for PA taper and HICBC calculations)
+  adjustedNetIncome?: number;
 }
 
 // Submission Data
