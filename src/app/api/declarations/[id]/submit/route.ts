@@ -7,6 +7,9 @@ import {
 } from '@/lib/sa100/transaction-engine'
 import { calculateTax, getTaxpayerStatus, TaxCalculationInput } from '@/lib/sa100/tax-calculator'
 import type { GatewayCredentials, TaxpayerIdentification, SA100Return } from '@/lib/sa100/types'
+import { checkRateLimit, createRateLimitHeaders, RATE_LIMITS } from '@/lib/security/rate-limiter'
+import { logAuditEvent } from '@/lib/security/audit-log'
+import { getClientIp, getUserAgent, getRequestId } from '@/lib/utils/request'
 
 interface SubmitRequest {
   gatewayUserId: string
@@ -198,16 +201,59 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  // Extract request metadata for security logging
+  const clientIp = getClientIp(request) || 'unknown'
+  const userAgent = getUserAgent(request) || undefined
+  const requestId = getRequestId(request)
+
+  // Rate limiting - 5 submissions per hour per IP
+  const rateLimit = checkRateLimit(`submit:${clientIp}`, RATE_LIMITS.submission)
+  if (!rateLimit.success) {
+    logAuditEvent('RATE_LIMIT_EXCEEDED', {
+      clientIp,
+      userAgent,
+      requestId,
+      details: { endpoint: 'submit', limit: rateLimit.limit },
+    })
+
+    return NextResponse.json(
+      {
+        error: 'Rate limit exceeded',
+        message: 'Too many submission attempts. Please try again later.',
+        retryAfter: new Date(rateLimit.resetTime).toISOString(),
+      },
+      {
+        status: 429,
+        headers: createRateLimitHeaders(rateLimit),
+      }
+    )
+  }
+
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) {
+    logAuditEvent('ACCESS_DENIED', {
+      clientIp,
+      userAgent,
+      requestId,
+      details: { reason: 'Not authenticated' },
+    })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const { id: declarationId } = await context.params
+
+  // Log submission attempt
+  logAuditEvent('SUBMISSION_STARTED', {
+    clientIp,
+    userAgent,
+    requestId,
+    userId: user.id,
+    details: { declarationId },
+  })
 
   // Get the declaration
   const { data: declaration, error: declError } = await supabase
@@ -358,6 +404,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .update({ status: 'submitted' })
         .eq('id', declarationId)
 
+      logAuditEvent('SUBMISSION_SUCCESS', {
+        clientIp,
+        userAgent,
+        requestId,
+        userId: user.id,
+        details: { declarationId, correlationId: mockCorrelationId, sandbox: true },
+      })
+
       return NextResponse.json({
         success: true,
         submissionId: submission.id,
@@ -386,6 +440,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
           error_message: errors.map(e => `${e.field}: ${e.message}`).join('; '),
         })
         .eq('id', submission.id)
+
+      logAuditEvent('SUBMISSION_VALIDATION_FAILED', {
+        clientIp,
+        userAgent,
+        requestId,
+        userId: user.id,
+        details: { declarationId, errors: errors.map(e => e.message) },
+      })
 
       return NextResponse.json(
         { error: 'Validation errors: ' + errors.map(e => e.message).join(', ') },
@@ -417,6 +479,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
           response_xml: submitResult.rawResponse,
         })
         .eq('id', submission.id)
+
+      logAuditEvent('SUBMISSION_FAILED', {
+        clientIp,
+        userAgent,
+        requestId,
+        userId: user.id,
+        details: { declarationId, errorCode: submitResult.error?.code, errorMessage: submitResult.error?.message },
+      })
 
       return NextResponse.json(
         {
@@ -459,6 +529,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       // Update declaration status
       await supabase.from('declarations').update({ status: 'submitted' }).eq('id', declarationId)
 
+      logAuditEvent('SUBMISSION_SUCCESS', {
+        clientIp,
+        userAgent,
+        requestId,
+        userId: user.id,
+        details: { declarationId, correlationId: submitResult.correlationId },
+      })
+
       return NextResponse.json({
         success: true,
         submissionId: submission.id,
@@ -482,6 +560,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
         })
         .eq('id', submission.id)
 
+      logAuditEvent('SUBMISSION_FAILED', {
+        clientIp,
+        userAgent,
+        requestId,
+        userId: user.id,
+        details: { declarationId, errorCode, errorMessage },
+      })
+
       return NextResponse.json(
         {
           error: errorMessage,
@@ -493,6 +579,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
   } catch (error) {
     console.error('Submission error:', error)
+
+    logAuditEvent('SUBMISSION_FAILED', {
+      clientIp,
+      userAgent,
+      requestId,
+      details: { declarationId, error: error instanceof Error ? error.message : 'Unknown error' },
+    })
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Submission failed' },
       { status: 500 }
