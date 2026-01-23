@@ -27,7 +27,7 @@ console.log('\n--- Test 1: Basic rate taxpayer with residential property gain --
 const test1: TaxCalculationInput = {
   status: 'U',
   employmentIncome: 30000,
-  taxDeductedFromEmployment: 3486, // Approximate PAYE
+  employmentTaxDeducted: 3486, // Approximate PAYE
   capitalGainsResidential: 15000, // Sold buy-to-let
 }
 
@@ -65,7 +65,7 @@ console.log('\n--- Test 2: Higher rate taxpayer with residential property gain -
 const test2: TaxCalculationInput = {
   status: 'U',
   employmentIncome: 60000,
-  taxDeductedFromEmployment: 11500, // Approximate PAYE
+  employmentTaxDeducted: 11500, // Approximate PAYE
   capitalGainsResidential: 50000, // Sold second home
 }
 
@@ -105,7 +105,7 @@ console.log('\n--- Test 3: Gain split between basic and higher rate ---')
 const test3: TaxCalculationInput = {
   status: 'U',
   employmentIncome: 40000,
-  taxDeductedFromEmployment: 5486, // Approximate PAYE
+  employmentTaxDeducted: 5486, // Approximate PAYE
   capitalGainsResidential: 20000,
 }
 
@@ -149,7 +149,7 @@ console.log('\n--- Test 4: Mixed residential and non-residential gains ---')
 const test4: TaxCalculationInput = {
   status: 'U',
   employmentIncome: 40000,
-  taxDeductedFromEmployment: 5486,
+  employmentTaxDeducted: 5486,
   capitalGainsNonResidential: 10000, // Shares
   capitalGainsResidential: 15000, // Buy-to-let
 }
@@ -194,14 +194,14 @@ console.log('\n--- Test 5: Rate comparison - same gain, different asset types --
 const testNonRes: TaxCalculationInput = {
   status: 'U',
   employmentIncome: 60000,
-  taxDeductedFromEmployment: 11500,
+  employmentTaxDeducted: 11500,
   capitalGainsNonResidential: 30000, // Shares/crypto
 }
 
 const testRes: TaxCalculationInput = {
   status: 'U',
   employmentIncome: 60000,
-  taxDeductedFromEmployment: 11500,
+  employmentTaxDeducted: 11500,
   capitalGainsResidential: 30000, // Property
 }
 

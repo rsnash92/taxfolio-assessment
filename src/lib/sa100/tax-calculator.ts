@@ -163,13 +163,13 @@ export interface TaxCalculationInput {
   status: TaxpayerStatus
 
   /** Employment income (gross pay from all employments) */
-  employmentIncome: number
+  employmentIncome?: number
 
   /** Tax already deducted from employment (PAYE) */
-  employmentTaxDeducted: number
+  employmentTaxDeducted?: number
 
   /** Self-employment profits (net profit after expenses) */
-  selfEmploymentProfits: number
+  selfEmploymentProfits?: number
 
   /** Pension income */
   pensionIncome?: number
@@ -797,8 +797,9 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   // - Diver or diving supervisor
   // - Trustee of a trust
   // - Non-resident
-  if (input.selfEmploymentProfits > 0 && !input.class4Exempt) {
-    const profits = input.selfEmploymentProfits
+  const selfEmploymentProfits = input.selfEmploymentProfits || 0
+  if (selfEmploymentProfits > 0 && !input.class4Exempt) {
+    const profits = selfEmploymentProfits
     const lowerLimit = params.bands.NIC_LEL // £12,570
     const upperLimit = params.bands.NIC_UEL // £50,270
 
@@ -847,7 +848,7 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   let class2NIC = 0
 
   // Check if Class 2 is applicable
-  const class2Applicable = input.selfEmploymentProfits >= params.class2.lowerProfitsThreshold ||
+  const class2Applicable = selfEmploymentProfits >= params.class2.lowerProfitsThreshold ||
                            (input.class2Weeks && input.class2Weeks > 0) ||
                            (input.class2Amount !== undefined && input.class2Amount > 0)
 

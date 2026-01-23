@@ -602,7 +602,7 @@ function buildCase54Return(): SA100Return {
         },
         payFromEmployment: 25500,
         ukTaxDeducted: 3181,
-        tipsAndOtherPaymentsNotOnP60: 75,
+        tipsAndOtherPayments: 75,
         benefitsAndExpenses: {
           expensesPaymentsAndBenefits: 2250, // Expenses received
           companyCarsAndVans: 650, // Benefits (car allowance)
@@ -720,14 +720,14 @@ function buildCase159Return(): SA100Return {
     selfEmploymentProfits: 4153,
     // Interest (taxed + untaxed)
     taxedInterest: 321, // Gross amount
-    taxOnTaxedInterest: 80.25,
+    taxedInterestTaxDeducted: 80.25,
     untaxedInterest: 1625,
     // Dividends
     ukDividends: 128,
     // Capital gains
-    capitalGainsBadr: 12000, // BADR gains
-    capitalGainsOther: 25000, // Other gains before losses
-    capitalGainsLossesInYear: 9000, // Losses to offset
+    badrQualifyingGains: 12000, // BADR gains
+    capitalGainsNonResidential: 25000, // Other gains before losses
+    capitalLossesInYear: 9000, // Losses to offset
   }
 
   log('📊', 'Tax calculator input:', taxInput)
@@ -745,7 +745,7 @@ function buildCase159Return(): SA100Return {
     class2NIC: taxResult.class2NIC,
     class4NIC: taxResult.class4NIC,
     taxDeductedAtSource: taxResult.taxDeductedAtSource,
-    cgtDue: taxResult.cgtDue,
+    cgtDue: taxResult.totalCGT,
     taxDueOrRefund: taxResult.taxDueOrRefund,
   })
 
@@ -766,8 +766,8 @@ function buildCase159Return(): SA100Return {
     },
 
     yourTaxReturn: {
-      selfEmploymentShortSchedule: 'yes',
-      numberOfSelfEmploymentShortSchedules: 1,
+      shortSelfEmploymentSchedule: 'yes',
+      numberOfShortSelfEmploymentSchedules: 1,
       capitalGainsSchedule: 'yes',
     },
 
