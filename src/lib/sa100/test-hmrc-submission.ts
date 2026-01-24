@@ -1144,9 +1144,9 @@ async function runTestSubmission(testCase: TestCase = 'case130') {
       log('❌', '=== SUBMISSION REJECTED BY HMRC ===')
       if (pollResult.errors) {
         for (const err of pollResult.errors) {
-          log('❌', `[${err.code}] ${err.message}`)
-          if (err.location) {
-            log('  ', `Location: ${err.location}`)
+          log('❌', `[${err.code}] ${err.technicalMessage}`)
+          if (err.affectedField) {
+            log('  ', `Location: ${err.affectedField}`)
           }
         }
       }

@@ -547,7 +547,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       })
     } else {
       // Rejected
-      const errorMessage = pollResult.errors?.map((e) => e.message).join('; ') || 'Submission rejected by HMRC'
+      const errorMessage = pollResult.errors?.map((e) => e.technicalMessage).join('; ') || 'Submission rejected by HMRC'
       const errorCode = pollResult.errors?.[0]?.code || 'REJECTED'
 
       await supabase

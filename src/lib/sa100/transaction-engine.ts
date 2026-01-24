@@ -3,6 +3,11 @@
  *
  * Handles submission to HMRC's Transaction Engine for SA100 returns.
  * Uses GovTalk XML protocol with polling for async responses.
+ *
+ * Features:
+ * - Automatic retry with exponential backoff for transient failures
+ * - Configurable timeouts
+ * - Detailed error parsing with user-friendly messages
  */
 
 import { DOMParser } from '@xmldom/xmldom'
@@ -11,8 +16,10 @@ import type {
   TaxpayerIdentification,
   SubmissionResponse,
   PollResponse,
-  SubmissionError,
 } from './types'
+import { withRetry, HMRC_RETRY_OPTIONS, RetryableError } from '@/lib/utils/retry'
+import { withTimeout, TimeoutError, TIMEOUTS } from '@/lib/utils/timeout'
+import { getHMRCErrorInfo, HMRCErrorInfo } from './hmrc-error-codes'
 
 const TRANSACTION_ENGINE_URL =
   process.env.HMRC_TRANSACTION_ENGINE_URL || 'https://test-transaction-engine.tax.service.gov.uk'
@@ -33,9 +40,13 @@ export interface SubmissionResult {
   error?: {
     code: string
     message: string
+    userMessage: string
     location?: string
+    suggestedAction?: string
   }
+  errors?: HMRCErrorInfo[]
   rawResponse?: string
+  retryAttempts?: number
 }
 
 export interface PollResult {
@@ -44,18 +55,24 @@ export interface PollResult {
   irmarkReceipt?: string
   acceptedTime?: string
   hmrcMessage?: string
-  errors?: Array<{
-    code: string
-    message: string
-    location?: string
-  }>
+  errors?: HMRCErrorInfo[]
   rawResponse?: string
 }
 
 /**
  * Submit XML to HMRC Transaction Engine
+ *
+ * Features:
+ * - Automatic retry with exponential backoff for transient failures
+ * - 60 second timeout
+ * - Detailed error parsing
  */
-export async function submitToTransactionEngine(xml: string): Promise<SubmissionResult> {
+export async function submitToTransactionEngine(
+  xml: string,
+  options: {
+    onRetry?: (attempt: number, error: Error, nextDelayMs: number) => void
+  } = {}
+): Promise<SubmissionResult> {
   const endpoint = `${TRANSACTION_ENGINE_URL}/submission`
 
   console.log('[Transaction Engine] Submitting to:', endpoint)
@@ -76,17 +93,51 @@ export async function submitToTransactionEngine(xml: string): Promise<Submission
     nino: ninoMatch?.[1],
   })
 
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/xml',
-      },
-      body: xml,
-    })
+  let retryAttempts = 0
 
-    console.log('[Transaction Engine] Response status:', response.status)
-    const responseText = await response.text()
+  try {
+    const responseText = await withRetry(
+      async () => {
+        // Submit with timeout
+        const response = await withTimeout(
+          fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/xml',
+            },
+            body: xml,
+          }),
+          TIMEOUTS.hmrcSubmission,
+          'HMRC submission request timed out'
+        )
+
+        console.log('[Transaction Engine] Response status:', response.status)
+
+        // Check for retryable HTTP status codes
+        if ([502, 503, 504, 429].includes(response.status)) {
+          throw new RetryableError(
+            `HMRC returned ${response.status}: ${response.statusText}`,
+            response.status.toString(),
+            true
+          )
+        }
+
+        if (!response.ok) {
+          throw new Error(`HMRC returned ${response.status}: ${response.statusText}`)
+        }
+
+        return response.text()
+      },
+      {
+        ...HMRC_RETRY_OPTIONS,
+        onRetry: (attempt, error, nextDelay) => {
+          retryAttempts = attempt
+          console.log(`[Transaction Engine] Retry ${attempt}: ${error.message}, waiting ${nextDelay}ms`)
+          options.onRetry?.(attempt, error, nextDelay)
+        },
+      }
+    )
+
     console.log('[Transaction Engine] Response:', responseText.substring(0, 2000))
 
     // Parse the response XML
@@ -97,20 +148,28 @@ export async function submitToTransactionEngine(xml: string): Promise<Submission
     const correlationId = getElementText(doc, 'CorrelationID')
 
     if (qualifier === 'error') {
-      // Extract error details
-      const errorNumber = getElementText(doc, 'Number')
-      const errorText = getElementText(doc, 'Text')
-      const errorLocation = getElementText(doc, 'Location')
+      // Extract all errors
+      const errors = extractErrorsWithInfo(doc)
 
       return {
         success: false,
         correlationId,
-        error: {
-          code: errorNumber || 'UNKNOWN',
-          message: errorText || 'Unknown error from HMRC',
-          location: errorLocation,
-        },
+        errors,
+        error: errors[0]
+          ? {
+              code: errors[0].code,
+              message: errors[0].technicalMessage,
+              userMessage: errors[0].userMessage,
+              location: errors[0].affectedField,
+              suggestedAction: errors[0].suggestedAction,
+            }
+          : {
+              code: 'UNKNOWN',
+              message: 'Unknown error from HMRC',
+              userMessage: 'An unknown error occurred. Please try again.',
+            },
         rawResponse: responseText,
+        retryAttempts,
       }
     }
 
@@ -126,26 +185,50 @@ export async function submitToTransactionEngine(xml: string): Promise<Submission
         pollUrl: pollUrl || endpoint,
         pollInterval,
         rawResponse: responseText,
+        retryAttempts,
       }
     }
 
     // Unexpected qualifier
+    const errorInfo = getHMRCErrorInfo('9999', `Unexpected qualifier: ${qualifier}`)
     return {
       success: false,
       correlationId,
       error: {
         code: 'UNEXPECTED_RESPONSE',
         message: `Unexpected qualifier: ${qualifier}`,
+        userMessage: errorInfo.userMessage,
       },
       rawResponse: responseText,
+      retryAttempts,
     }
   } catch (error) {
+    // Handle timeout errors
+    if (error instanceof TimeoutError) {
+      const errorInfo = getHMRCErrorInfo('9001')
+      return {
+        success: false,
+        error: {
+          code: 'TIMEOUT',
+          message: error.message,
+          userMessage: "HMRC's service is taking too long to respond. Please try again.",
+          suggestedAction: 'Wait a few minutes and try again.',
+        },
+        retryAttempts,
+      }
+    }
+
+    // Handle other errors
+    const errorInfo = getHMRCErrorInfo('9999', error instanceof Error ? error.message : 'Unknown error')
     return {
       success: false,
       error: {
         code: 'NETWORK_ERROR',
         message: error instanceof Error ? error.message : 'Network error during submission',
+        userMessage: "We couldn't connect to HMRC. Please check your internet connection and try again.",
+        suggestedAction: 'Check your internet connection and try again.',
       },
+      retryAttempts,
     }
   }
 }
@@ -160,13 +243,17 @@ export async function pollForResult(correlationId: string, pollUrl?: string): Pr
   const pollXml = buildPollRequest(correlationId)
 
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/xml',
-      },
-      body: pollXml,
-    })
+    const response = await withTimeout(
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/xml',
+        },
+        body: pollXml,
+      }),
+      TIMEOUTS.hmrcPoll,
+      'HMRC poll request timed out'
+    )
 
     const responseText = await response.text()
 
@@ -208,7 +295,7 @@ export async function pollForResult(correlationId: string, pollUrl?: string): Pr
       // Check for error response
       const errorResponse = doc.getElementsByTagName('ErrorResponse')
       if (errorResponse.length > 0) {
-        const errors = extractErrors(doc)
+        const errors = extractErrorsWithInfo(doc)
         return {
           status: 'rejected',
           correlationId,
@@ -220,7 +307,7 @@ export async function pollForResult(correlationId: string, pollUrl?: string): Pr
 
     if (qualifier === 'error') {
       // Error response
-      const errors = extractErrors(doc)
+      const errors = extractErrorsWithInfo(doc)
       return {
         status: 'rejected',
         correlationId,
@@ -236,15 +323,22 @@ export async function pollForResult(correlationId: string, pollUrl?: string): Pr
       rawResponse: responseText,
     }
   } catch (error) {
+    // Handle timeout
+    if (error instanceof TimeoutError) {
+      return {
+        status: 'pending', // Treat timeout as pending, will retry
+        correlationId,
+      }
+    }
+
+    const errorInfo = getHMRCErrorInfo(
+      'NETWORK_ERROR',
+      error instanceof Error ? error.message : 'Network error during polling'
+    )
     return {
       status: 'rejected',
       correlationId,
-      errors: [
-        {
-          code: 'NETWORK_ERROR',
-          message: error instanceof Error ? error.message : 'Network error during polling',
-        },
-      ],
+      errors: [errorInfo],
     }
   }
 }
@@ -282,12 +376,7 @@ export async function pollUntilComplete(
   return {
     status: 'rejected',
     correlationId,
-    errors: [
-      {
-        code: 'TIMEOUT',
-        message: `Polling timed out after ${maxAttempts} attempts`,
-      },
-    ],
+    errors: [getHMRCErrorInfo('9001', `Polling timed out after ${maxAttempts} attempts`)],
   }
 }
 
@@ -365,6 +454,36 @@ function extractErrors(doc: Document): Array<{ code: string; message: string; lo
         location,
       })
     }
+  }
+
+  return errors
+}
+
+/**
+ * Extract errors with full user-friendly information
+ */
+function extractErrorsWithInfo(doc: Document): HMRCErrorInfo[] {
+  const errors: HMRCErrorInfo[] = []
+
+  const errorElements = doc.getElementsByTagName('Error')
+  for (let i = 0; i < errorElements.length; i++) {
+    const error = errorElements[i]
+    const number = getChildText(error, 'Number')
+    const text = getChildText(error, 'Text')
+    const location = getChildText(error, 'Location')
+
+    if (number || text) {
+      const errorInfo = getHMRCErrorInfo(number || 'UNKNOWN', text)
+      if (location) {
+        errorInfo.affectedField = location
+      }
+      errors.push(errorInfo)
+    }
+  }
+
+  // If no specific errors found, add a generic one
+  if (errors.length === 0) {
+    errors.push(getHMRCErrorInfo('9999'))
   }
 
   return errors
@@ -467,8 +586,8 @@ export async function pollStatus(correlationId: string): Promise<PollResponse> {
       correlationId,
       errors: result.errors?.map((e) => ({
         code: e.code,
-        message: e.message,
-        location: e.location,
+        message: e.technicalMessage,
+        location: e.affectedField,
         severity: 'error' as const,
       })),
     }

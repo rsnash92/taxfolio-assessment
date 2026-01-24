@@ -470,11 +470,31 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     nonSavingsAfterLossRelief - retirementAnnuityDeduction - pensionContributionsNetPay
   )
 
-  // Personal allowance is applied against non-savings first, then savings, then dividends
-  // Standard allocation (no optimization)
+  // ==========================================================================
+  // Personal Allowance Allocation with Beneficial Ordering
+  // ==========================================================================
+  //
+  // HMRC allocates Personal Allowance to minimize tax. When savings qualify for
+  // the 0% starting rate, PA should be allocated to dividends BEFORE savings.
+  //
+  // Why? Because:
+  // - Savings at starting rate = 0% tax (no benefit from PA)
+  // - Dividends at basic rate = 8.75% tax (PA saves tax)
+  //
+  // The savings starting rate (up to £5,000) is available when non-savings
+  // taxable income is below the starting rate band threshold.
+  //
+  // Algorithm:
+  // 1. Always apply PA to non-savings first (mandatory)
+  // 2. Calculate if savings starting rate will be available
+  // 3. If starting rate covers all savings AND there are dividends:
+  //    - Allocate remaining PA to dividends first (beneficial)
+  //    - Any leftover PA goes to savings
+  // 4. Otherwise: use standard order (non-savings → savings → dividends)
+
   let remainingAllowance = effectivePersonalAllowance
 
-  // Apply to non-savings income
+  // Step 1: Apply PA to non-savings income (always first)
   const paUsedOnNonSavings = Math.min(remainingAllowance, nonSavingsAfterDeductions)
   const taxableNonSavingsIncome = nonSavingsAfterDeductions - paUsedOnNonSavings
   remainingAllowance -= paUsedOnNonSavings
@@ -487,14 +507,55 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     : 0
   const taxablePropertyIncome = Math.max(0, propertyAfterLossRelief - paAllocatedToProperty)
 
-  // Apply to savings income
-  const paUsedOnSavings = Math.min(remainingAllowance, totalSavingsIncome)
-  const taxableSavingsIncome = totalSavingsIncome - paUsedOnSavings
-  remainingAllowance -= paUsedOnSavings
+  // Step 2: Calculate savings starting rate availability
+  // Starting rate band is £5,000, reduced by taxable non-savings income
+  // Note: Uses totalNonSavingsIncome (before loss relief) per HMRC spec
+  const savingsStartingRateBand = params.bands.SR_band // £5,000
+  const savingsStartingRateAvailable = Math.max(
+    0,
+    savingsStartingRateBand - Math.max(0, totalNonSavingsIncome - effectivePersonalAllowance)
+  )
 
-  // Apply to dividend income
-  const paUsedOnDividends = Math.min(remainingAllowance, totalDividendIncome)
-  const taxableDividendIncome = totalDividendIncome - paUsedOnDividends
+  // Step 3: Determine if beneficial ordering applies
+  // Use beneficial ordering when:
+  // - There is remaining PA after non-savings
+  // - Savings starting rate is available
+  // - All savings income would be covered by the starting rate
+  // - There are dividends to allocate PA to
+  const useBeneficialOrdering =
+    remainingAllowance > 0 &&
+    savingsStartingRateAvailable > 0 &&
+    totalSavingsIncome <= savingsStartingRateAvailable &&
+    totalDividendIncome > 0
+
+  let taxableSavingsIncome: number
+  let taxableDividendIncome: number
+  let paUsedOnSavings: number
+  let paUsedOnDividends: number
+
+  if (useBeneficialOrdering) {
+    // BENEFICIAL ORDERING: PA to dividends before savings
+    // Since savings will be taxed at 0% starting rate anyway, allocate PA to dividends
+
+    // Apply remaining PA to dividends first
+    paUsedOnDividends = Math.min(remainingAllowance, totalDividendIncome)
+    taxableDividendIncome = totalDividendIncome - paUsedOnDividends
+    remainingAllowance -= paUsedOnDividends
+
+    // Apply any leftover PA to savings (unlikely but handle edge cases)
+    paUsedOnSavings = Math.min(remainingAllowance, totalSavingsIncome)
+    taxableSavingsIncome = totalSavingsIncome - paUsedOnSavings
+  } else {
+    // STANDARD ORDERING: PA to savings before dividends
+    // Apply to savings income
+    paUsedOnSavings = Math.min(remainingAllowance, totalSavingsIncome)
+    taxableSavingsIncome = totalSavingsIncome - paUsedOnSavings
+    remainingAllowance -= paUsedOnSavings
+
+    // Apply to dividend income
+    paUsedOnDividends = Math.min(remainingAllowance, totalDividendIncome)
+    taxableDividendIncome = totalDividendIncome - paUsedOnDividends
+  }
 
   const totalTaxableIncome = taxableNonSavingsIncome + taxableSavingsIncome + taxableDividendIncome
 
