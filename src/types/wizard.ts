@@ -742,6 +742,8 @@ export interface WizardData {
     newAddress?: string;
     newPostcode?: string;
     moveDate?: string; // ISO date string
+    // Tax region - determines which tax rates apply
+    taxRegion: 'scotland' | 'wales' | 'england_ni' | 'non_uk' | null;
   };
 
   // Calculations

@@ -76,6 +76,7 @@ const initialData: WizardData = {
     address: '',
     postcode: '',
     addressChanged: null,
+    taxRegion: null,
   },
   taxCalculation: null,
   payment: null,

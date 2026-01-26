@@ -15,22 +15,24 @@ import {
 } from '@/lib/sa100/tax-calculator'
 
 /**
- * Convert wizard personalInfo taxpayer status to TaxCalculatorInput status
+ * Convert wizard personalInfo tax region to TaxCalculatorInput status
+ *
+ * Tax region values from wizard:
+ * - 'scotland' -> 'S' (Scottish rates apply)
+ * - 'wales' -> 'C' (Welsh rates - currently same as England but flagged for HMRC)
+ * - 'england_ni' -> 'E' (England/NI rates)
+ * - 'non_uk' -> 'U' (Unknown/other - uses England rates)
+ * - null/undefined -> 'U' (default to UK rates)
  */
-function mapTaxpayerStatus(status?: string): TaxpayerStatus {
-  switch (status?.toUpperCase()) {
-    case 'S':
-    case 'SCOTTISH':
-    case 'SCOTLAND':
+function mapTaxRegionToStatus(taxRegion?: string | null): TaxpayerStatus {
+  switch (taxRegion) {
+    case 'scotland':
       return 'S'
-    case 'C':
-    case 'WELSH':
-    case 'WALES':
+    case 'wales':
       return 'C'
-    case 'E':
-    case 'ENGLISH':
-    case 'ENGLAND':
+    case 'england_ni':
       return 'E'
+    case 'non_uk':
     default:
       return 'U' // UK/other - uses England & NI rates
   }
@@ -299,8 +301,8 @@ export function mapWizardToTaxInput(data: WizardData): TaxCalculationInput {
 
   const input: TaxCalculationInput = {
     // Taxpayer status (England/Scotland/Wales/NI)
-    // Note: taxpayerStatus may be stored directly on personalInfo in some cases
-    status: mapTaxpayerStatus((data.personalInfo as { taxpayerStatus?: string })?.taxpayerStatus),
+    // Maps from wizard's taxRegion field to calculator's status
+    status: mapTaxRegionToStatus(data.personalInfo?.taxRegion),
 
     // Employment income
     employmentIncome: Math.max(0, totalEmploymentIncome),
@@ -348,6 +350,7 @@ export function mapWizardToTaxInput(data: WizardData): TaxCalculationInput {
     capitalGainsNonResidential,
     capitalGainsResidential,
     capitalLossesInYear,
+    capitalLossesBroughtForward: data.capitalGainsData?.lossesFromPreviousYears ?? 0,
 
     // HICBC
     childBenefitReceived,

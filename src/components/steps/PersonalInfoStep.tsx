@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Calendar,
   Home,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +38,7 @@ export function PersonalInfoStep() {
     address: '',
     postcode: '',
     addressChanged: null,
+    taxRegion: null,
   };
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -201,6 +203,11 @@ export function PersonalInfoStep() {
       isValid = false;
     }
 
+    // Check if tax region is selected
+    if (!personalInfo.taxRegion) {
+      isValid = false;
+    }
+
     return isValid;
   };
 
@@ -228,7 +235,8 @@ export function PersonalInfoStep() {
     personalInfo.address.trim().length > 0 &&
     POSTCODE_REGEX.test(personalInfo.postcode.replace(/\s/g, '')) &&
     (!personalInfo.utr || UTR_REGEX.test(personalInfo.utr)) &&
-    personalInfo.addressChanged !== null;
+    personalInfo.addressChanged !== null &&
+    !!personalInfo.taxRegion;
 
   const addressChangeValid =
     personalInfo.addressChanged === false ||
@@ -416,6 +424,146 @@ export function PersonalInfoStep() {
               <AlertCircle className="h-3 w-3" />
               {errors.postcode}
             </p>
+          )}
+        </div>
+
+        {/* Tax Region */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm sm:text-base font-medium text-gray-900">
+            <Globe className="h-4 w-4 text-gray-400" />
+            Tax region
+            <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs sm:text-sm text-gray-500">
+            Where were you resident for tax purposes during the 2024-25 tax year?
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handleChange('taxRegion', 'england_ni')}
+              className={cn(
+                'p-3 sm:p-4 rounded-xl border-2 text-left transition-all',
+                personalInfo.taxRegion === 'england_ni'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                  personalInfo.taxRegion === 'england_ni'
+                    ? 'border-[#00e3ec]'
+                    : 'border-gray-300'
+                )}>
+                  {personalInfo.taxRegion === 'england_ni' && (
+                    <div className="w-2 h-2 rounded-full bg-[#00e3ec]" />
+                  )}
+                </div>
+                <span className={cn(
+                  'text-sm sm:text-base font-medium',
+                  personalInfo.taxRegion === 'england_ni' ? 'text-[#00a8b0]' : 'text-gray-700'
+                )}>
+                  England / Northern Ireland / Channel Islands
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleChange('taxRegion', 'scotland')}
+              className={cn(
+                'p-3 sm:p-4 rounded-xl border-2 text-left transition-all',
+                personalInfo.taxRegion === 'scotland'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                  personalInfo.taxRegion === 'scotland'
+                    ? 'border-[#00e3ec]'
+                    : 'border-gray-300'
+                )}>
+                  {personalInfo.taxRegion === 'scotland' && (
+                    <div className="w-2 h-2 rounded-full bg-[#00e3ec]" />
+                  )}
+                </div>
+                <span className={cn(
+                  'text-sm sm:text-base font-medium',
+                  personalInfo.taxRegion === 'scotland' ? 'text-[#00a8b0]' : 'text-gray-700'
+                )}>
+                  Scotland
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleChange('taxRegion', 'wales')}
+              className={cn(
+                'p-3 sm:p-4 rounded-xl border-2 text-left transition-all',
+                personalInfo.taxRegion === 'wales'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                  personalInfo.taxRegion === 'wales'
+                    ? 'border-[#00e3ec]'
+                    : 'border-gray-300'
+                )}>
+                  {personalInfo.taxRegion === 'wales' && (
+                    <div className="w-2 h-2 rounded-full bg-[#00e3ec]" />
+                  )}
+                </div>
+                <span className={cn(
+                  'text-sm sm:text-base font-medium',
+                  personalInfo.taxRegion === 'wales' ? 'text-[#00a8b0]' : 'text-gray-700'
+                )}>
+                  Wales
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleChange('taxRegion', 'non_uk')}
+              className={cn(
+                'p-3 sm:p-4 rounded-xl border-2 text-left transition-all',
+                personalInfo.taxRegion === 'non_uk'
+                  ? 'border-[#00e3ec] bg-[#e6fafb]'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                  personalInfo.taxRegion === 'non_uk'
+                    ? 'border-[#00e3ec]'
+                    : 'border-gray-300'
+                )}>
+                  {personalInfo.taxRegion === 'non_uk' && (
+                    <div className="w-2 h-2 rounded-full bg-[#00e3ec]" />
+                  )}
+                </div>
+                <span className={cn(
+                  'text-sm sm:text-base font-medium',
+                  personalInfo.taxRegion === 'non_uk' ? 'text-[#00a8b0]' : 'text-gray-700'
+                )}>
+                  Non-UK resident
+                </span>
+              </div>
+            </button>
+          </div>
+          {personalInfo.taxRegion === 'scotland' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+              <p className="text-xs sm:text-sm text-amber-800">
+                <strong>Scottish tax rates will apply.</strong> Scotland has different income tax bands and rates compared to the rest of the UK.
+              </p>
+            </div>
           )}
         </div>
       </div>

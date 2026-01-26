@@ -643,8 +643,11 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
 
     // Determine Personal Savings Allowance based on marginal rate
     // PSA is £1,000 for basic rate, £500 for higher rate, £0 for additional rate
-    // IMPORTANT: PSA is based on TOTAL taxable income, not just non-savings
-    // If total taxable income exceeds £125,140, PSA is £0 (additional rate taxpayer)
+    //
+    // IMPORTANT: PSA is based on TOTAL taxable income, not just non-savings income.
+    // If any part of your income (non-savings, savings, or dividends) falls into the
+    // higher rate band, you're a higher rate taxpayer and get £500 PSA.
+    // If any income falls into additional rate, you get £0 PSA.
     //
     // For Scottish taxpayers, the higher rate threshold is different:
     // Scottish higher rate (42%) starts at SSR_band + SBR_band + SIR_band + extension
@@ -655,12 +658,13 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
       // Scottish higher rate threshold (where 42% rate starts)
       const scottishHigherRateThreshold =
         params.bands.SSR_band + params.bands.SBR_band + params.bands.SIR_band + (extendedBasicRateBand - params.bands.BR_band)
-      if (nonSavingsUsedBand > scottishHigherRateThreshold) {
+      // Check if TOTAL taxable income exceeds the threshold
+      if (totalTaxableIncome > scottishHigherRateThreshold) {
         personalSavingsAllowance = params.allowances.PSA_HR // £500
       }
     } else {
-      // UK/Welsh higher rate threshold
-      if (nonSavingsUsedBand > extendedBasicRateBand) {
+      // UK/Welsh higher rate threshold - based on TOTAL taxable income
+      if (totalTaxableIncome > extendedBasicRateBand) {
         personalSavingsAllowance = params.allowances.PSA_HR // £500
       }
     }
@@ -864,26 +868,33 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     const lowerLimit = params.bands.NIC_LEL // £12,570
     const upperLimit = params.bands.NIC_UEL // £50,270
 
-    // Class 1 NIC earnings that have already been subject to NIC
-    const class1NICEarnings = input.primaryClass1NIC || 0
-    const class1AboveThreshold = Math.max(0, class1NICEarnings - lowerLimit)
+    // Class 1 NIC adjustment:
+    // When someone has BOTH employment AND self-employment income, they may have
+    // already paid Class 1 NIC on their employment earnings. To avoid double-charging
+    // NIC on the same income band, the Class 4 rate is reduced from 6% to 2% on the
+    // portion of SE profit that overlaps with income already subject to Class 1.
+    //
+    // The adjustment is based on EMPLOYMENT EARNINGS, not the Class 1 NIC amount paid.
+    // Use employment income to determine how much of the NIC band is already covered.
+    const employmentEarnings = input.employmentIncome || 0
+    const class1EarningsAboveThreshold = Math.max(0, Math.min(employmentEarnings, upperLimit) - lowerLimit)
 
     if (profits > lowerLimit) {
       // Calculate profits in the main band (between lower and upper limits)
-      const profitsAboveThreshold = Math.min(profits, upperLimit) - lowerLimit
+      const profitsInMainBand = Math.min(profits, upperLimit) - lowerLimit
 
-      if (class1AboveThreshold >= profitsAboveThreshold) {
-        // All self-employment profit is within range already covered by Class 1
+      if (class1EarningsAboveThreshold >= profitsInMainBand) {
+        // All SE profit in main band is within range already covered by Class 1
         // Charge at reduced rate (2% instead of 6%)
-        class4NIC = profitsAboveThreshold * params.rates.NIC_supp_rate
-      } else if (class1AboveThreshold > 0) {
+        class4NIC = profitsInMainBand * params.rates.NIC_supp_rate
+      } else if (class1EarningsAboveThreshold > 0) {
         // Partial overlap - charge 2% on overlap, 6% on remainder
-        const overlapAmount = class1AboveThreshold
-        const nonOverlapAmount = profitsAboveThreshold - class1AboveThreshold
+        const overlapAmount = class1EarningsAboveThreshold
+        const nonOverlapAmount = profitsInMainBand - class1EarningsAboveThreshold
         class4NIC = (overlapAmount * params.rates.NIC_supp_rate) + (nonOverlapAmount * params.rates.NIC_rate)
       } else {
         // No Class 1 paid - standard 6% rate
-        class4NIC = profitsAboveThreshold * params.rates.NIC_rate
+        class4NIC = profitsInMainBand * params.rates.NIC_rate
       }
 
       // NIC on profits above upper limit (always at 2% supplementary rate)
