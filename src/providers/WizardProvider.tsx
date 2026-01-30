@@ -53,6 +53,7 @@ const initialData: WizardData = {
   capitalGainsData: {},
   pensionIncomeData: {},
   stateBenefitsData: {},
+  otherTaxableIncomeData: {},
   general: {
     selectedReliefs: [],
   },

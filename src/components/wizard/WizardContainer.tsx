@@ -58,6 +58,7 @@ import { InterestStep } from '@/components/steps/interest';
 // Capital Gains Steps
 import {
   CapitalGainsDisposalsStep,
+  CapitalGainsAttachmentsStep,
   CapitalGainsSummaryStep,
 } from '@/components/steps/capital-gains';
 
@@ -66,6 +67,9 @@ import { PensionIncomeStep } from '@/components/steps/pension-income';
 
 // State Benefits Steps
 import { StateBenefitsStep } from '@/components/steps/state-benefits';
+
+// Other Income Steps
+import { OtherTaxableIncomeStep } from '@/components/steps/other-income';
 
 // General Steps (Tax Reliefs & Allowances)
 import {
@@ -178,6 +182,8 @@ export function WizardContainer() {
       // Capital Gains
       case 'capital-gains-disposals':
         return <CapitalGainsDisposalsStep />;
+      case 'capital-gains-attachments':
+        return <CapitalGainsAttachmentsStep />;
       case 'capital-gains-summary':
         return <CapitalGainsSummaryStep />;
 
@@ -191,7 +197,7 @@ export function WizardContainer() {
 
       // Other Income
       case 'other-income':
-        return <PlaceholderStep title="Other Income" />;
+        return <OtherTaxableIncomeStep />;
 
       // General (Tax Reliefs & Allowances)
       case 'general-overview':

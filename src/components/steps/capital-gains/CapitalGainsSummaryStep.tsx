@@ -204,6 +204,63 @@ export function CapitalGainsSummaryStep() {
         </div>
       )}
 
+      {/* Additional Information (Box 54) */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <h3 className="font-semibold text-gray-900 mb-2">
+          Additional Information (Optional)
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Use this space to provide any additional context about your capital gains,
+          such as references to attached computations or explanations for unusual
+          circumstances.
+        </p>
+
+        {/* Estimates checkbox */}
+        <div className="flex items-center gap-2 mb-4">
+          <input
+            type="checkbox"
+            id="includesEstimates"
+            checked={capitalGains.includesEstimates || false}
+            onChange={(e) =>
+              updateData({
+                capitalGainsData: {
+                  ...capitalGains,
+                  includesEstimates: e.target.checked,
+                },
+              })
+            }
+            className="h-4 w-4 text-[#00c4d4] rounded border-gray-300 focus:ring-[#00c4d4]"
+          />
+          <Label htmlFor="includesEstimates" className="text-sm">
+            Computations include estimates or valuations
+          </Label>
+        </div>
+
+        {/* Additional info textarea */}
+        <div className="space-y-2">
+          <Label htmlFor="additionalInfo">Additional notes for HMRC</Label>
+          <textarea
+            id="additionalInfo"
+            rows={3}
+            maxLength={2000}
+            placeholder="e.g., CGT computations attached - calculated using HMRC share pooling rules via Koinly"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c4d4] focus:border-transparent resize-none text-sm"
+            value={capitalGains.additionalInformation || ''}
+            onChange={(e) =>
+              updateData({
+                capitalGainsData: {
+                  ...capitalGains,
+                  additionalInformation: e.target.value,
+                },
+              })
+            }
+          />
+          <p className="text-xs text-gray-400 text-right">
+            {(capitalGains.additionalInformation || '').length}/2000 characters
+          </p>
+        </div>
+      </div>
+
       {/* Navigation */}
       <div className="flex justify-between pt-6 border-t border-gray-200">
         {canGoBack && (

@@ -15,7 +15,10 @@ export function MarriageAllowanceStep() {
     type: existing?.type || (null as 'transfer' | 'receive' | null),
     spouseNino: existing?.spouseNino || '',
     spouseName: existing?.spouseName || '',
+    spouseFirstName: existing?.spouseFirstName || '',
+    spouseSurname: existing?.spouseSurname || '',
     spouseDob: existing?.spouseDob || '',
+    dateOfMarriage: existing?.dateOfMarriage || '',
   });
 
   const handleContinue = () => {
@@ -28,7 +31,11 @@ export function MarriageAllowanceStep() {
     goNext();
   };
 
-  const isValid = form.type && form.spouseName;
+  // Validation: When transferring, all spouse details are required
+  // When receiving, just the type selection is needed
+  const isValid = form.type === 'receive'
+    ? true
+    : form.type === 'transfer' && form.spouseFirstName && form.spouseSurname && form.spouseNino && form.spouseDob && form.dateOfMarriage;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -112,26 +119,59 @@ export function MarriageAllowanceStep() {
       {/* Spouse Details */}
       {form.type && (
         <>
-          <div className="mb-6">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-              Spouse/civil partner&apos;s full name
-              <span className="text-red-500">*</span>
-            </label>
-            <Input
-              value={form.spouseName}
-              onChange={(e) => setForm({ ...form, spouseName: e.target.value })}
-              placeholder="e.g. Jane Smith"
-            />
-          </div>
+          {/* For transferring, we need first and last name separately */}
+          {form.type === 'transfer' ? (
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  Spouse&apos;s first name
+                  <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={form.spouseFirstName}
+                  onChange={(e) => setForm({ ...form, spouseFirstName: e.target.value })}
+                  placeholder="e.g. Jane"
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  Spouse&apos;s surname
+                  <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={form.spouseSurname}
+                  onChange={(e) => setForm({ ...form, spouseSurname: e.target.value })}
+                  placeholder="e.g. Smith"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                Spouse/civil partner&apos;s full name
+              </label>
+              <p className="text-sm text-gray-500 mb-2">
+                Optional when receiving allowance
+              </p>
+              <Input
+                value={form.spouseName}
+                onChange={(e) => setForm({ ...form, spouseName: e.target.value })}
+                placeholder="e.g. Jane Smith"
+              />
+            </div>
+          )}
 
           <div className="mb-6">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
               Spouse/civil partner&apos;s National Insurance number
+              {form.type === 'transfer' && <span className="text-red-500">*</span>}
               <HelpCircle className="h-4 w-4 text-gray-400" />
             </label>
-            <p className="text-sm text-gray-500 mb-2">
-              Optional but helps HMRC process faster
-            </p>
+            {form.type === 'receive' && (
+              <p className="text-sm text-gray-500 mb-2">
+                Optional when receiving allowance
+              </p>
+            )}
             <Input
               value={form.spouseNino}
               onChange={(e) =>
@@ -145,11 +185,30 @@ export function MarriageAllowanceStep() {
           <div className="mb-6">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
               Spouse/civil partner&apos;s date of birth
+              {form.type === 'transfer' && <span className="text-red-500">*</span>}
             </label>
             <Input
               type="date"
               value={form.spouseDob}
               onChange={(e) => setForm({ ...form, spouseDob: e.target.value })}
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+              Date of marriage or civil partnership
+              {form.type === 'transfer' && <span className="text-red-500">*</span>}
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+            </label>
+            {form.type === 'transfer' && (
+              <p className="text-sm text-gray-500 mb-2">
+                Required when transferring Marriage Allowance
+              </p>
+            )}
+            <Input
+              type="date"
+              value={form.dateOfMarriage}
+              onChange={(e) => setForm({ ...form, dateOfMarriage: e.target.value })}
             />
           </div>
         </>

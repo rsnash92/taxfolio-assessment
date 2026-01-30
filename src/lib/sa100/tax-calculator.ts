@@ -192,8 +192,11 @@ export interface TaxCalculationInput {
   /** Property income (net profit) */
   propertyIncome?: number
 
-  /** Other income */
+  /** Other income (net of allowable expenses) */
   otherIncome?: number
+
+  /** Tax already deducted from other income (SA100 box 19) */
+  otherIncomeTaxDeducted?: number
 
   /** Gift Aid donations (NET amount paid - will be grossed up by 1.25) */
   giftAidDonations?: number
@@ -835,7 +838,9 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
 
   // Include PAYE from employment plus any tax already deducted from taxed interest
   const taxDeductedAtSource =
-    (input.employmentTaxDeducted || 0) + (input.taxedInterestTaxDeducted || 0)
+    (input.employmentTaxDeducted || 0) +
+    (input.taxedInterestTaxDeducted || 0) +
+    (input.otherIncomeTaxDeducted || 0)
 
   // ==========================================================================
   // Stage 16: Class 4 NIC (Self-Employment)
@@ -943,34 +948,31 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   const totalNIC = class4NIC + class2NIC
 
   // ==========================================================================
-  // Stage 27: Student Loan Repayment
-  // ==========================================================================
-  // Student loan calculation logic:
-  // - If employer deducted loan via PAYE: use earned income (to match employer calc)
-  // - If no PAYE deduction AND has employment income: exclude dividends from total
-  // - If no PAYE deduction AND no employment (self-emp only): use full total income
-
   // ==========================================================================
   // Stage 27: Student Loan and Postgraduate Loan Repayments
   // ==========================================================================
   //
-  // Student loan calculation depends on whether employer has already deducted:
+  // Per HMRC spec Stage 27:
   //
-  // A) When PAYE has deducted student loan (employer calculated):
-  //    - Employer calculates loan on EMPLOYMENT INCOME ONLY
-  //    - SA100 uses the same income base (employment only)
-  //    - Additional due = employer-calculated total - PAYE deducted
+  // Income base calculation:
+  // c27.17 = earned income (employment after c27.1b deductions, SE, property, pensions)
+  // c27.26 = unearned income (savings, dividends)
+  // c27.28 = unearned income IF > £2,000 UIT, else 0
+  // c27.29 = c27.17 + c27.28 (total income for SL)
   //
-  // B) When no PAYE deduction (self-employed, no employer deduction):
-  //    - Per HMRC spec c27, use total income (earned + unearned if > £2,000)
-  //    - Earned income: employment, self-employment, pensions, property, other
-  //    - Unearned income: savings, dividends (only if > £2,000 UIT)
+  // Deductions (c27.39):
+  // c27.30-37 = losses (SE, property, foreign, etc.)
+  // c27.38 = REL1 + REL2 + REL3 + REL4 (pension relief - GROSSED UP for RAS)
   //
-  // Student loan calculation:
-  // - SA calculation uses TOTAL income (earned + unearned if > £2,000 UIT)
-  // - This is different from employer PAYE calculation which only sees employment
-  // - SA110 reports the GROSS loan amount due based on total income
-  // - PAYE-deducted amounts are reported separately and subtracted in final balance
+  // Final income (c27.40) = c27.29 - c27.39
+  //
+  // Student loan repayment:
+  // c27.41 = c27.40 - threshold (Plan 1: £24,990, Plan 2: £27,295, Plan 4: £31,395)
+  // c27.42 = c27.41 × 9% (rounded DOWN to integer pounds)
+  //
+  // Postgraduate loan:
+  // c27.43a = c27.40 - PGL_limit (£21,000)
+  // c27.43b = c27.43a × 6% (rounded DOWN to integer pounds)
 
   let studentLoanRepaymentGross = 0 // Total due based on SA calculation
   let postgraduateLoanRepaymentGross = 0 // Total due based on SA calculation
@@ -981,19 +983,30 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   const slPropertyIncome = input.propertyIncome || 0
   const slOtherEarnedIncome = input.otherIncome || 0
 
-  // Full earned income for self-assessment calculation
+  // c27.17: Earned income for student loan purposes
   const earnedIncomeForSL = slEmploymentIncome + slSelfEmploymentProfits + slPensionIncome + slPropertyIncome + slOtherEarnedIncome
 
-  // Unearned income (savings, dividends)
+  // c27.26: Unearned income (savings, dividends)
   const unearnedIncome = totalSavingsIncome + totalDividendIncome
 
-  // Unearned Income Threshold (SL_UIT = £2,000)
+  // c27.27-28: Unearned Income Threshold (SL_UIT = £2,000)
   const SL_UIT = 2000
+  const unearnedIncomeForSL = unearnedIncome > SL_UIT ? unearnedIncome : 0
 
-  // Always use total income for SA calculation (earned + unearned if > UIT)
-  const relevantIncomeForSL = unearnedIncome > SL_UIT
-    ? earnedIncomeForSL + unearnedIncome
-    : earnedIncomeForSL
+  // c27.29: Total income before deductions
+  const totalIncomeForSL = earnedIncomeForSL + unearnedIncomeForSL
+
+  // c27.38: Pension relief deduction (REL1-4)
+  // RAS contributions are deducted at their GROSSED UP value (net × 100/80)
+  // Net pay contributions may also be deducted if tracked separately
+  const pensionReliefDeduction = pensionContributionsRAS * 1.25 // Gross up RAS at basic rate
+
+  // c27.39: Total deductions (pension relief + losses)
+  // For now, we only handle pension relief. Losses would need separate tracking.
+  const totalSLDeductions = pensionReliefDeduction
+
+  // c27.40: Final income for student loan calculation
+  const relevantIncomeForSL = Math.max(0, totalIncomeForSL - totalSLDeductions)
 
   if (input.studentLoanPlan) {
     let threshold = 0
@@ -1010,16 +1023,18 @@ export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
     }
 
     if (relevantIncomeForSL > threshold) {
-      studentLoanRepaymentGross = (relevantIncomeForSL - threshold) * params.rates.Sloan_rate
+      // c27.42: Rounded DOWN to integer pounds (£down = truncate pence)
+      studentLoanRepaymentGross = Math.floor((relevantIncomeForSL - threshold) * params.rates.Sloan_rate)
     }
   }
 
-  // Postgraduate Loan - same income base
+  // Postgraduate Loan - same income base (c27.40)
   if (input.hasPostgraduateLoan) {
     const threshold = params.bands.PGL_limit
 
     if (relevantIncomeForSL > threshold) {
-      postgraduateLoanRepaymentGross = (relevantIncomeForSL - threshold) * params.rates.PGL_rate
+      // c27.43b: Rounded DOWN to integer pounds (£down = truncate pence)
+      postgraduateLoanRepaymentGross = Math.floor((relevantIncomeForSL - threshold) * params.rates.PGL_rate)
     }
   }
 

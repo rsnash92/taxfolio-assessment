@@ -46,6 +46,8 @@ export const POLL_URLS = {
 // =============================================================================
 
 export const MESSAGE_CLASS = 'HMRC-SA-SA100'
+/** Message class for submissions with PDF attachments */
+export const MESSAGE_CLASS_ATT = 'HMRC-SA-SA100-ATT'
 export const SCHEMA_VERSION = '2024-v1.0'
 
 // =============================================================================

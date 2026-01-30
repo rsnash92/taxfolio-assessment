@@ -39,6 +39,7 @@ export const EMPLOYMENT_STEPS: { id: StepId; label: string }[] = [
 // Capital Gains sub-steps
 export const CAPITAL_GAINS_STEPS: { id: StepId; label: string }[] = [
   { id: 'capital-gains-disposals', label: 'Disposals' },
+  { id: 'capital-gains-attachments', label: 'Documents' },
   { id: 'capital-gains-summary', label: 'Summary' },
 ];
 
@@ -260,6 +261,13 @@ export const ALL_STEPS: StepConfig[] = [
     section: 'capital-gains',
     title: 'Capital Gains',
     showInSidebar: true,
+    condition: (data) => data.incomeSources.some((s) => s.type === 'capital-gains'),
+  },
+  {
+    id: 'capital-gains-attachments',
+    section: 'capital-gains',
+    title: 'Documents',
+    showInSidebar: false,
     condition: (data) => data.incomeSources.some((s) => s.type === 'capital-gains'),
   },
   {
@@ -605,6 +613,10 @@ export function getNextStep(
 
   // Handle capital gains section navigation
   if (currentStep === 'capital-gains-disposals') {
+    return 'capital-gains-attachments';
+  }
+
+  if (currentStep === 'capital-gains-attachments') {
     return 'capital-gains-summary';
   }
 

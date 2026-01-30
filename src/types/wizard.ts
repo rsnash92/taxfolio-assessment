@@ -37,6 +37,7 @@ export type StepId =
   | 'interest'
   // Capital Gains
   | 'capital-gains-disposals'
+  | 'capital-gains-attachments'
   | 'capital-gains-summary'
   // Pension Income
   | 'pension-income'
@@ -44,6 +45,8 @@ export type StepId =
   | 'state-benefits'
   // Other Income (simple amounts)
   | 'other-income'
+  // Other Taxable Income (SA100 boxes 17-21)
+  | 'other-taxable-income'
   // General (Tax Reliefs & Allowances)
   | 'general-overview'
   | 'general-marriage-allowance'
@@ -386,6 +389,22 @@ export interface CapitalGainsData {
 
   // Residential property (different rates)
   residentialPropertyGains?: number;
+
+  // CGT Adjustment (box 51) - for 2024-25 due to rate change on 30 Oct 2024
+  cgtAdjustment?: number;
+
+  // PDF Attachments for SA108
+  attachments?: Array<{
+    filename: string;
+    content: string; // base64-encoded
+    description?: string;
+  }>;
+
+  // Box 53: Computations include estimates or valuations
+  includesEstimates?: boolean;
+
+  // Box 54: Any other information about capital gains (max 2000 chars)
+  additionalInformation?: string;
 }
 
 // Pension Income
@@ -425,6 +444,24 @@ export interface PensionIncomeData {
   totalTaxDeducted: number;
 }
 
+// Other Taxable Income (SA100 boxes 17-21)
+export interface OtherTaxableIncomeData {
+  /** Box 17: Gross amount of other taxable income */
+  grossIncome?: number;
+
+  /** Box 18: Allowable expenses against other income */
+  allowableExpenses?: number;
+
+  /** Box 19: Tax already deducted from other income */
+  taxDeducted?: number;
+
+  /** Box 21: Description of the income source */
+  description?: string;
+
+  /** Box 20: Benefit from pre-owned assets (rare) */
+  preOwnedAssetsBenefit?: number;
+}
+
 // State Benefits
 export interface StateBenefitsData {
   // Taxable benefits
@@ -459,7 +496,9 @@ export interface StateBenefitsData {
 
   // High Income Child Benefit Charge
   hasHighIncomeChildBenefit: boolean; // If income > £60,000
-  childBenefitReceived?: number;
+  childBenefitReceived?: number; // Box CBC1: Total amount received
+  numberOfChildren?: number; // Box CBC2: Number of children
+  dateStoppedReceiving?: string; // Box CBC3: Date stopped receiving (if applicable)
   childBenefitCharge?: number; // HICBC to pay back
 
   // Total
@@ -480,6 +519,7 @@ export interface GeneralData {
     spouseSurname?: string;
     spouseDob?: string;
     spouseDateOfBirth?: string; // Alias for spouseDob
+    dateOfMarriage?: string; // Date of marriage or civil partnership
   };
 
   // Blind Person's Allowance
@@ -709,6 +749,9 @@ export interface WizardData {
 
   // State Benefits Data
   stateBenefitsData: Partial<StateBenefitsData>;
+
+  // Other Taxable Income Data (SA100 boxes 17-21)
+  otherTaxableIncomeData: Partial<OtherTaxableIncomeData>;
 
   // Other Income (simple types - legacy, may be removed)
   otherIncome: {

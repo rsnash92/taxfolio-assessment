@@ -242,7 +242,17 @@ export function mapWizardToTaxInput(data: WizardData): TaxCalculationInput {
   // ==========================================================================
   // Other Income
   // ==========================================================================
-  const otherIncome = data.otherIncome?.other || 0
+  // Legacy "other income" field
+  const legacyOtherIncome = data.otherIncome?.other || 0
+
+  // SA100 boxes 17-21: Other Taxable Income
+  const otherTaxableGross = data.otherTaxableIncomeData?.grossIncome || 0
+  const otherTaxableExpenses = data.otherTaxableIncomeData?.allowableExpenses || 0
+  const otherTaxableNet = Math.max(0, otherTaxableGross - otherTaxableExpenses)
+  const otherIncomeTaxDeducted = data.otherTaxableIncomeData?.taxDeducted || 0
+
+  // Combine legacy and new other income for tax calculation
+  const otherIncome = legacyOtherIncome + otherTaxableNet
 
   // ==========================================================================
   // Capital Gains
@@ -251,16 +261,35 @@ export function mapWizardToTaxInput(data: WizardData): TaxCalculationInput {
   let capitalGainsResidential = 0
   let capitalLossesInYear = 0
 
+  // Crypto aggregates for SA108 Cryptoassets section (NEW for 2024-25)
+  let cryptoDisposalCount = 0
+  let cryptoProceeds = 0
+  let cryptoCosts = 0
+  let cryptoGains = 0
+  let cryptoLosses = 0
+
   if (data.capitalGainsData) {
     for (const disposal of data.capitalGainsData.disposals || []) {
       const gain = disposal.gain || 0
       const loss = disposal.loss || 0
+      const proceeds = disposal.proceedsAmount || 0
+      const costs = (disposal.acquisitionCost || 0) + (disposal.allowableCosts || 0)
 
       if (
         disposal.assetType === 'property' ||
         disposal.assetType === 'residential-property'
       ) {
         if (gain > 0) capitalGainsResidential += gain
+        if (loss > 0) capitalLossesInYear += loss
+      } else if (disposal.assetType === 'crypto') {
+        // Cryptoassets go to dedicated SA108 section
+        cryptoDisposalCount++
+        cryptoProceeds += proceeds
+        cryptoCosts += costs
+        if (gain > 0) cryptoGains += gain
+        if (loss > 0) cryptoLosses += loss
+        // Also add to non-residential for tax calculation purposes
+        if (gain > 0) capitalGainsNonResidential += gain
         if (loss > 0) capitalLossesInYear += loss
       } else {
         if (gain > 0) capitalGainsNonResidential += gain
@@ -325,6 +354,9 @@ export function mapWizardToTaxInput(data: WizardData): TaxCalculationInput {
     untaxedInterest,
     taxedInterest,
     taxedInterestTaxDeducted,
+
+    // Other income tax deducted (SA100 box 19)
+    otherIncomeTaxDeducted,
 
     // Dividend income
     ukDividends,
@@ -654,4 +686,56 @@ export function calculateTaxForWizard(data: WizardData): TaxCalculation {
 
   // Convert result to wizard format
   return convertResultToWizardFormat(result, data)
+}
+
+/**
+ * SA108 Cryptoassets section data (NEW for 2024-25)
+ * Used by submit route to build the Cryptoassets XML element
+ */
+export interface SA108CryptoassetsData {
+  numberOfDisposals: number
+  disposalProceeds: number
+  allowableCosts: number
+  gainsInTheYear: number
+  lossesInTheYear: number
+}
+
+/**
+ * Extract SA108 Cryptoassets data from wizard data
+ *
+ * This extracts aggregate crypto disposal information for the
+ * dedicated Cryptoassets section in SA108 (new for 2024-25).
+ */
+export function extractSA108CryptoassetsData(data: WizardData): SA108CryptoassetsData | null {
+  if (!data.capitalGainsData?.disposals?.length) {
+    return null
+  }
+
+  let numberOfDisposals = 0
+  let disposalProceeds = 0
+  let allowableCosts = 0
+  let gainsInTheYear = 0
+  let lossesInTheYear = 0
+
+  for (const disposal of data.capitalGainsData.disposals) {
+    if (disposal.assetType === 'crypto') {
+      numberOfDisposals++
+      disposalProceeds += disposal.proceedsAmount || 0
+      allowableCosts += (disposal.acquisitionCost || 0) + (disposal.allowableCosts || 0)
+      if (disposal.gain > 0) gainsInTheYear += disposal.gain
+      if (disposal.loss > 0) lossesInTheYear += disposal.loss
+    }
+  }
+
+  if (numberOfDisposals === 0) {
+    return null
+  }
+
+  return {
+    numberOfDisposals,
+    disposalProceeds: Math.round(disposalProceeds),
+    allowableCosts: Math.round(allowableCosts),
+    gainsInTheYear: Math.round(gainsInTheYear),
+    lossesInTheYear: Math.round(lossesInTheYear),
+  }
 }

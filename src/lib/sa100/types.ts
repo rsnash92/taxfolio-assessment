@@ -75,8 +75,8 @@ export interface TaxpayerIdentification {
 // =============================================================================
 
 export interface GovTalkHeader {
-  /** Message class identifies the service - must be 'HMRC-SA-SA100' for SA100 */
-  messageClass: 'HMRC-SA-SA100'
+  /** Message class identifies the service */
+  messageClass: 'HMRC-SA-SA100' | 'HMRC-SA-SA100-ATT'
   /** Qualifier indicates message direction */
   qualifier: 'request' | 'acknowledgement' | 'response' | 'error'
   /** Function type */
@@ -102,6 +102,21 @@ export interface GovTalkSenderDetails {
 
 export interface GovTalkKeys {
   utr: string
+}
+
+/**
+ * PDF attachment for SA100 submission
+ * When attachments are present, messageClass must be 'HMRC-SA-SA100-ATT'
+ */
+export interface SA100Attachment {
+  /** Filename with extension (e.g., "supporting-docs.pdf") */
+  filename: string
+  /** MIME type - must be application/pdf */
+  mimeType: 'application/pdf'
+  /** Base64-encoded PDF content */
+  content: string
+  /** Optional description for the attachment */
+  description?: string
 }
 
 export interface GovTalkEnvelope {
@@ -222,6 +237,9 @@ export interface SA100Return {
 
   /** State Benefits */
   stateBenefits?: SA100StateBenefits
+
+  /** Other Taxable Income (boxes 17-21) */
+  otherTaxableIncome?: SA100OtherTaxableIncome
 
   /** Reliefs section */
   reliefs?: SA100Reliefs
@@ -437,6 +455,23 @@ export interface SA100StateBenefits {
 }
 
 /**
+ * Maps to /MTR/SA100/OtherIncome (boxes 17-21)
+ * Other taxable income not included elsewhere
+ */
+export interface SA100OtherTaxableIncome {
+  /** Box 17: Other taxable income (gross) - whole pounds */
+  grossIncomeAmount?: number
+  /** Box 18: Allowable expenses - whole pounds */
+  allowableExpensesAmount?: number
+  /** Box 19: Tax taken off - whole pounds */
+  taxTakenOffAmount?: number
+  /** Box 20: Benefit from pre-owned assets - whole pounds */
+  preOwnedAssetsBenefitAmount?: number
+  /** Box 21: Description of income */
+  incomeDescription?: string
+}
+
+/**
  * Maps to /MTR/SA100/BlindPersonsAllowance
  */
 export interface SA100BlindPersons {
@@ -465,20 +500,27 @@ export interface SA100TaxOwed {
 }
 
 /**
- * Maps to /MTR/SA100/Marriage
+ * Maps to /MTR/SA100/MarriageAllowance, MarriageAllowanceTransferredIn, MarriageAllowanceTransferredOut
+ *
+ * Note: The MarriageAllowance element has REQUIRED children when present.
+ * The TransferredIn/TransferredOut indicators are separate elements at SA100 level.
  */
 export interface SA100Marriage {
-  /** Transfer some of personal allowance to spouse (box 1) */
+  /** Transfer some of personal allowance to spouse - MarriageAllowanceTransferredOut */
   transferToSpouseIndicator?: YesIndicator
-  /** Receive transfer from spouse (box 2) */
+  /** Receive transfer from spouse - MarriageAllowanceTransferredIn */
   receiveFromSpouseIndicator?: YesIndicator
-  /** Spouse/partner's NI number (box 3) */
+  /** Spouse/partner's first name (required if transferring out) */
+  spouseFirstName?: string
+  /** Spouse/partner's last name (required if transferring out) */
+  spouseLastName?: string
+  /** Spouse/partner's NI number (required if transferring out) */
   spouseNINO?: string
-  /** Spouse/partner's date of birth (box 4) */
+  /** Spouse/partner's date of birth (required if transferring out) */
   spouseDateOfBirth?: string
-  /** Spouse/partner's full name (box 5) */
+  /** Spouse/partner's full name (legacy - will be split into first/last) */
   spouseName?: string
-  /** Date of marriage or civil partnership */
+  /** Date of marriage or civil partnership (required if transferring out) */
   dateOfMarriage?: string
 }
 
@@ -685,6 +727,34 @@ export interface SA102Employment {
 // =============================================================================
 
 /**
+ * SA103S Allowable Business Expenses breakdown
+ * Maps to /MTR/SA103S/AllowableBusinessExpenses
+ * All values in whole pounds
+ */
+export interface SA103SAllowableExpenses {
+  /** Cost of goods bought for resale or goods used (SSE11) */
+  costOfGoods?: number
+  /** Car, van and travel expenses (SSE12) */
+  carVanAndTravelExpenses?: number
+  /** Wages, salaries and other staff costs (SSE13) */
+  wagesSalariesAndStaffCosts?: number
+  /** Rent, rates, power and insurance costs (SSE14) */
+  rentAndOtherPropertyCosts?: number
+  /** Repairs and maintenance of property and equipment (SSE15) */
+  repairsAndMaintenanceCosts?: number
+  /** Accountancy, legal and other professional fees (SSE16) */
+  accountancyAndLegalFees?: number
+  /** Interest on bank and other loans (SSE17) */
+  interestAndFinanceCharges?: number
+  /** Phone, fax, stationery and other office costs (SSE18) */
+  phoneAndOtherOfficeCosts?: number
+  /** Other allowable business expenses (SSE19) */
+  otherAllowableBusinessExpenses?: number
+  /** Total allowable expenses - sum of above (SSE20) */
+  totalAllowableExpenses?: number
+}
+
+/**
  * SA103S Short Self-Employment schedule
  * Maps to /MTR/SA100/SA103S
  * Use for turnover under £85,000 and not using full expenses
@@ -727,7 +797,10 @@ export interface SA103SelfEmploymentShort {
     otherBusinessIncome?: number
   }
 
-  /** Allowable expenses - total only for short version (box 11) */
+  /** Allowable business expenses - can be itemized or just total */
+  allowableExpenses?: SA103SAllowableExpenses
+
+  /** Legacy: Total allowable expenses (box 20) - prefer using allowableExpenses */
   totalAllowableExpenses?: number
 
   /** Net profit or loss (box 12) - whole pounds (negative for loss) */
@@ -1088,6 +1161,26 @@ export interface SA108CapitalGains {
     lossesInYear?: number
   }
 
+  /** Cryptoassets section (NEW for 2024-25) */
+  cryptoassets?: {
+    /** Number of disposals (CGT13.1) */
+    numberOfDisposals?: number
+    /** Disposal proceeds - whole pounds (CGT13.2) */
+    disposalProceeds?: number
+    /** Allowable costs - whole pounds (CGT13.3) */
+    allowableCosts?: number
+    /** Gains in year - whole pounds (CGT13.4) */
+    gainsInTheYear?: number
+    /** Losses in year - whole pounds (CGT13.5) */
+    lossesInTheYear?: number
+    /** Claim or election made (CGT13.6) */
+    claimOrElectionMade?: boolean
+    /** Gain from RTT return - whole pounds (CGT13.7) */
+    gainFromRTTReturn?: number
+    /** RTT tax already charged - whole pounds (CGT13.8) */
+    rttTaxAlreadyCharged?: number
+  }
+
   /** Other property, assets and gains section */
   otherPropertyAndAssets?: {
     /** Number of disposals in this section (CGT14) */
@@ -1127,7 +1220,7 @@ export interface SA108CapitalGains {
     }>
   }
 
-  /** Losses section */
+  /** Losses and adjustments section */
   losses?: {
     /** Losses brought forward and used in the return year (CGT45) - whole pounds */
     lossesBroughtForward?: number
@@ -1137,6 +1230,9 @@ export interface SA108CapitalGains {
     lossesCarryForward?: number
     /** Losses used this year (box 16) - whole pounds */
     lossesUsedThisYear?: number
+    /** Adjustment to CGT (CGT51) - whole pounds
+     *  Used for 2024-25 due to rate change on 30 Oct 2024 */
+    cgtAdjustment?: number
   }
 
   /** Annual exempt amount section */
@@ -1177,6 +1273,14 @@ export interface SA108CapitalGains {
     gainsAt24Percent?: number
     /** Total tax due - whole pounds */
     totalTaxDue?: number
+  }
+
+  /** Any other information section (boxes 53-54) */
+  anyOtherInfo?: {
+    /** Box 53: Computations include estimates or valuations */
+    includesEstimates?: boolean
+    /** Box 54: Additional information text (max 2000 chars) */
+    additionalInfo?: string
   }
 }
 

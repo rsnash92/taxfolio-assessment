@@ -17,8 +17,9 @@ import type {
   TaxpayerIdentification,
   SA100Return,
   SenderType,
+  SA100Attachment,
 } from './types'
-import { NAMESPACES, SCHEMA_VERSION, MESSAGE_CLASS, getPeriodEndDate } from './schema-reference'
+import { NAMESPACES, SCHEMA_VERSION, MESSAGE_CLASS, MESSAGE_CLASS_ATT, getPeriodEndDate } from './schema-reference'
 import { calculateIRmark, insertIRmark } from './irmark'
 import { getChannelRoutingInfo } from './transaction-engine'
 
@@ -36,6 +37,8 @@ export interface BuildXMLOptions {
   dryRun?: boolean
   /** If true, includes GatewayTest=1 for ETS testing */
   isTestSubmission?: boolean
+  /** PDF attachments - if present, uses HMRC-SA-SA100-ATT message class */
+  attachments?: SA100Attachment[]
 }
 
 export interface BuildXMLResult {
@@ -54,7 +57,7 @@ export interface ValidationError {
  * Build complete GovTalk XML from wizard data
  */
 export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
-  const { credentials, taxpayer, returnData, senderType = 'Individual', isTestSubmission = false } = options
+  const { credentials, taxpayer, returnData, senderType = 'Individual', isTestSubmission = false, attachments } = options
 
   console.log('[XML Builder] Building XML with:', {
     senderId: credentials.userId,
@@ -63,6 +66,7 @@ export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
     taxYear: returnData.taxYear,
     senderType,
     isTestSubmission,
+    attachmentCount: attachments?.length ?? 0,
   })
 
   // Validate the data first
@@ -76,7 +80,7 @@ export function buildSubmissionXML(options: BuildXMLOptions): BuildXMLResult {
   const irEnvelopeXml = buildIREnvelope(taxpayer, returnData, senderType, mtrXml)
 
   // Build the complete GovTalk envelope first (with placeholder IRmark)
-  const govTalkXmlWithPlaceholder = buildGovTalkEnvelope(credentials, taxpayer, irEnvelopeXml, isTestSubmission)
+  const govTalkXmlWithPlaceholder = buildGovTalkEnvelope(credentials, taxpayer, irEnvelopeXml, isTestSubmission, attachments)
 
   // Now calculate IRmark on the MTR as it appears in the final structure
   // and insert it
@@ -112,20 +116,29 @@ function buildGovTalkEnvelope(
   credentials: GatewayCredentials,
   taxpayer: TaxpayerIdentification,
   irEnvelopeContent: string,
-  isTestSubmission: boolean = false
+  isTestSubmission: boolean = false,
+  attachments?: SA100Attachment[]
 ): string {
   const channelInfo = getChannelRoutingInfo()
+
+  // Use ATT message class when attachments are present
+  const messageClass = attachments && attachments.length > 0 ? MESSAGE_CLASS_ATT : MESSAGE_CLASS
 
   // GatewayTest element: Per HMRC ETS documentation, set to 1 for test submissions
   // This routes the submission through TPVS (Third Party Validation Service) for testing
   const gatewayTestElement = isTestSubmission ? '\n      <GatewayTest>1</GatewayTest>' : ''
+
+  // Build attachment elements if present
+  const attachmentElements = attachments && attachments.length > 0
+    ? attachments.map((att, index) => buildAttachmentElement(att, index + 1)).join('\n')
+    : ''
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <GovTalkMessage xmlns="${NAMESPACES.GOVTALK}">
   <EnvelopeVersion>2.0</EnvelopeVersion>
   <Header>
     <MessageDetails>
-      <Class>${MESSAGE_CLASS}</Class>
+      <Class>${messageClass}</Class>
       <Qualifier>request</Qualifier>
       <Function>submit</Function>${gatewayTestElement}
     </MessageDetails>
@@ -156,8 +169,20 @@ function buildGovTalkEnvelope(
   </GovTalkDetails>
   <Body>
 ${indentXml(irEnvelopeContent, 4)}
-  </Body>
+  </Body>${attachmentElements ? '\n' + attachmentElements : ''}
 </GovTalkMessage>`
+}
+
+/**
+ * Build an attachment element for the GovTalk envelope
+ * Per HMRC spec: Attachments go after </Body> as siblings within <GovTalkMessage>
+ */
+function buildAttachmentElement(attachment: SA100Attachment, sequence: number): string {
+  return `  <Attachment sequence="${sequence}">
+    <Filename>${escapeXml(attachment.filename)}</Filename>
+    <MIMEType>${attachment.mimeType}</MIMEType>
+    <Content>${attachment.content}</Content>
+  </Attachment>`
 }
 
 // =============================================================================
@@ -286,7 +311,8 @@ function buildSA100Content(returnData: SA100Return): string {
   }
 
   // UK Interest Etc (Income section in schema)
-  if (returnData.ukInterestEtc || returnData.ukDividends) {
+  // Also includes OtherUKIncome (boxes 17-21) and StateBenefits
+  if (returnData.ukInterestEtc || returnData.ukDividends || returnData.otherTaxableIncome || returnData.stateBenefits || returnData.ukPensionsAnnuities) {
     sections.push(buildIncome(returnData))
   }
 
@@ -513,6 +539,44 @@ ${benefitElements.map((e) => '  ' + e).join('\n')}
 </StateBenefits>`)
   }
 
+  // OtherUKIncome subsection (boxes 17-21)
+  if (returnData.otherTaxableIncome) {
+    const otherIncomeElements: string[] = []
+
+    // OtherTaxableIncomeDetails - contains box 17 and 19
+    if (returnData.otherTaxableIncome.grossIncomeAmount) {
+      const detailElements: string[] = []
+      detailElements.push(`<OtherTaxableIncome>${formatMoney(returnData.otherTaxableIncome.grossIncomeAmount)}</OtherTaxableIncome>`)
+      if (returnData.otherTaxableIncome.taxTakenOffAmount !== undefined && returnData.otherTaxableIncome.taxTakenOffAmount > 0) {
+        detailElements.push(`<TaxTakenOffOtherTaxableIncome>${formatMoney(returnData.otherTaxableIncome.taxTakenOffAmount)}</TaxTakenOffOtherTaxableIncome>`)
+      }
+      otherIncomeElements.push(`<OtherTaxableIncomeDetails>
+${detailElements.map((e) => '  ' + e).join('\n')}
+</OtherTaxableIncomeDetails>`)
+    }
+
+    // AllowableExpenses (box 18)
+    if (returnData.otherTaxableIncome.allowableExpensesAmount !== undefined && returnData.otherTaxableIncome.allowableExpensesAmount > 0) {
+      otherIncomeElements.push(`<AllowableExpenses>${formatMoney(returnData.otherTaxableIncome.allowableExpensesAmount)}</AllowableExpenses>`)
+    }
+
+    // DeemedIncomeOrBenefits (box 20) - pre-owned assets benefit
+    if (returnData.otherTaxableIncome.preOwnedAssetsBenefitAmount !== undefined && returnData.otherTaxableIncome.preOwnedAssetsBenefitAmount > 0) {
+      otherIncomeElements.push(`<DeemedIncomeOrBenefits>${formatMoney(returnData.otherTaxableIncome.preOwnedAssetsBenefitAmount)}</DeemedIncomeOrBenefits>`)
+    }
+
+    // DescriptionOfOtherIncome (box 21) - required if box 17 or 20 present
+    if (returnData.otherTaxableIncome.incomeDescription) {
+      otherIncomeElements.push(`<DescriptionOfOtherIncome>${escapeXml(returnData.otherTaxableIncome.incomeDescription)}</DescriptionOfOtherIncome>`)
+    }
+
+    if (otherIncomeElements.length > 0) {
+      elements.push(`<OtherUKIncome>
+${otherIncomeElements.map((e) => '  ' + e).join('\n')}
+</OtherUKIncome>`)
+    }
+  }
+
   return `<Income>
 ${elements.map((e) => '  ' + e).join('\n')}
 </Income>`
@@ -558,27 +622,64 @@ ${elements.map((e) => '  ' + e).join('\n')}
 }
 
 /**
- * Build MarriageAllowance section (schema element: MarriageAllowance)
+ * Build MarriageAllowance section and TransferredIn/TransferredOut indicators
+ *
+ * XSD structure:
+ * - /MTR/SA100/MarriageAllowance (contains SpouseFirstName, SpouseLastName, SpouseNINO, SpouseDateOfBirth, DateOfMarriageOrCivilPartnership)
+ * - /MTR/SA100/MarriageAllowanceTransferredIn
+ * - /MTR/SA100/MarriageAllowanceTransferredOut
+ *
+ * When transferring OUT, the MarriageAllowance element with spouse details is required.
+ * When receiving IN, only the MarriageAllowanceTransferredIn indicator is needed.
  */
 function buildMarriageAllowance(data: NonNullable<SA100Return['marriage']>): string {
-  const elements: string[] = []
+  const sections: string[] = []
 
-  if (data.spouseNINO) {
-    elements.push(`<SpouseOrCivilPartnersNINO>${escapeXml(data.spouseNINO)}</SpouseOrCivilPartnersNINO>`)
-  }
-  if (data.spouseName) {
-    elements.push(`<SpouseOrCivilPartnersName>${escapeXml(data.spouseName)}</SpouseOrCivilPartnersName>`)
-  }
-  if (data.spouseDateOfBirth) {
-    elements.push(`<SpouseDateOfBirth>${data.spouseDateOfBirth}</SpouseDateOfBirth>`)
-  }
-  if (data.dateOfMarriage) {
-    elements.push(`<DateOfMarriageOrCivilPartnership>${data.dateOfMarriage}</DateOfMarriageOrCivilPartnership>`)
-  }
+  // If transferring out, we need the full MarriageAllowance element with spouse details
+  if (data.transferToSpouseIndicator === 'yes') {
+    const elements: string[] = []
 
-  return `<MarriageAllowance>
+    // Split full name into first/last if not already split
+    let firstName = data.spouseFirstName
+    let lastName = data.spouseLastName
+    if (!firstName && data.spouseName) {
+      const parts = data.spouseName.trim().split(/\s+/)
+      firstName = parts[0] || ''
+      lastName = parts.slice(1).join(' ') || parts[0] || ''
+    }
+
+    if (firstName) {
+      elements.push(`<SpouseFirstName>${escapeXml(firstName)}</SpouseFirstName>`)
+    }
+    if (lastName) {
+      elements.push(`<SpouseLastName>${escapeXml(lastName)}</SpouseLastName>`)
+    }
+    if (data.spouseNINO) {
+      elements.push(`<SpouseNINO>${escapeXml(data.spouseNINO)}</SpouseNINO>`)
+    }
+    if (data.spouseDateOfBirth) {
+      elements.push(`<SpouseDateOfBirth>${data.spouseDateOfBirth}</SpouseDateOfBirth>`)
+    }
+    if (data.dateOfMarriage) {
+      elements.push(`<DateOfMarriageOrCivilPartnership>${data.dateOfMarriage}</DateOfMarriageOrCivilPartnership>`)
+    }
+
+    if (elements.length > 0) {
+      sections.push(`<MarriageAllowance>
 ${elements.map((e) => '  ' + e).join('\n')}
-</MarriageAllowance>`
+</MarriageAllowance>`)
+    }
+
+    // Add the TransferredOut indicator
+    sections.push('<MarriageAllowanceTransferredOut>yes</MarriageAllowanceTransferredOut>')
+  }
+
+  // If receiving transfer in, just add the indicator
+  if (data.receiveFromSpouseIndicator === 'yes') {
+    sections.push('<MarriageAllowanceTransferredIn>yes</MarriageAllowanceTransferredIn>')
+  }
+
+  return sections.join('\n')
 }
 
 /**
@@ -758,10 +859,50 @@ ${incomeElements.map((e) => '  ' + e).join('\n')}
 </BusinessIncome>`)
   }
 
-  // AllowableBusinessExpenses
-  if (data.totalAllowableExpenses !== undefined && data.totalAllowableExpenses > 0) {
+  // AllowableBusinessExpenses - can be itemized or just total
+  const expenseElements: string[] = []
+  if (data.allowableExpenses) {
+    const exp = data.allowableExpenses
+    // Individual expense categories (SSE11-SSE19)
+    if (exp.costOfGoods !== undefined && exp.costOfGoods > 0) {
+      expenseElements.push(`<CostOfGoods>${formatMoney(exp.costOfGoods)}</CostOfGoods>`)
+    }
+    if (exp.carVanAndTravelExpenses !== undefined && exp.carVanAndTravelExpenses > 0) {
+      expenseElements.push(`<CarVanAndTravelExpenses>${formatMoney(exp.carVanAndTravelExpenses)}</CarVanAndTravelExpenses>`)
+    }
+    if (exp.wagesSalariesAndStaffCosts !== undefined && exp.wagesSalariesAndStaffCosts > 0) {
+      expenseElements.push(`<WagesSalariesAndStaffCosts>${formatMoney(exp.wagesSalariesAndStaffCosts)}</WagesSalariesAndStaffCosts>`)
+    }
+    if (exp.rentAndOtherPropertyCosts !== undefined && exp.rentAndOtherPropertyCosts > 0) {
+      expenseElements.push(`<RentAndOtherPropertyCosts>${formatMoney(exp.rentAndOtherPropertyCosts)}</RentAndOtherPropertyCosts>`)
+    }
+    if (exp.repairsAndMaintenanceCosts !== undefined && exp.repairsAndMaintenanceCosts > 0) {
+      expenseElements.push(`<RepairsAndMaintenanceCosts>${formatMoney(exp.repairsAndMaintenanceCosts)}</RepairsAndMaintenanceCosts>`)
+    }
+    if (exp.accountancyAndLegalFees !== undefined && exp.accountancyAndLegalFees > 0) {
+      expenseElements.push(`<AccountancyAndLegalFees>${formatMoney(exp.accountancyAndLegalFees)}</AccountancyAndLegalFees>`)
+    }
+    if (exp.interestAndFinanceCharges !== undefined && exp.interestAndFinanceCharges > 0) {
+      expenseElements.push(`<InterestAndFinanceCharges>${formatMoney(exp.interestAndFinanceCharges)}</InterestAndFinanceCharges>`)
+    }
+    if (exp.phoneAndOtherOfficeCosts !== undefined && exp.phoneAndOtherOfficeCosts > 0) {
+      expenseElements.push(`<PhoneAndOtherOfficeCosts>${formatMoney(exp.phoneAndOtherOfficeCosts)}</PhoneAndOtherOfficeCosts>`)
+    }
+    if (exp.otherAllowableBusinessExpenses !== undefined && exp.otherAllowableBusinessExpenses > 0) {
+      expenseElements.push(`<OtherAllowableBusinessExpenses>${formatMoney(exp.otherAllowableBusinessExpenses)}</OtherAllowableBusinessExpenses>`)
+    }
+    // TotalAllowableExpenses (SSE20) - sum of all above
+    if (exp.totalAllowableExpenses !== undefined && exp.totalAllowableExpenses > 0) {
+      expenseElements.push(`<TotalAllowableExpenses>${formatMoney(exp.totalAllowableExpenses)}</TotalAllowableExpenses>`)
+    }
+  } else if (data.totalAllowableExpenses !== undefined && data.totalAllowableExpenses > 0) {
+    // Legacy: just the total
+    expenseElements.push(`<TotalAllowableExpenses>${formatMoney(data.totalAllowableExpenses)}</TotalAllowableExpenses>`)
+  }
+
+  if (expenseElements.length > 0) {
     elements.push(`<AllowableBusinessExpenses>
-  <TotalAllowableExpenses>${formatMoney(data.totalAllowableExpenses)}</TotalAllowableExpenses>
+${expenseElements.map((e) => '  ' + e).join('\n')}
 </AllowableBusinessExpenses>`)
   }
 
@@ -977,7 +1118,7 @@ function buildSA108(data: NonNullable<SA100Return['sa108']>): string {
 
   // SA108 sections must be in XSD order:
   // 1. ResidentialPropertyAndCarriedInterest (not implemented yet)
-  // 2. Cryptoassets (not implemented yet)
+  // 2. Cryptoassets
   // 3. OtherPropertyAssetsAndGains
   // 4. ListedSharesAndSecurities
   // 5. UnlistedSharesAndSecurities
@@ -987,7 +1128,50 @@ function buildSA108(data: NonNullable<SA100Return['sa108']>): string {
   // 9. EstimateOrValuation (not implemented yet)
   // 10. AnyOtherInformationSpace
 
-  // OtherPropertyAssetsAndGains section (for crypto, general assets, etc.)
+  // Cryptoassets section (NEW for 2024-25)
+  // XPath: /MTR/SA108/Cryptoassets
+  if (data.cryptoassets) {
+    const cryptoElements: string[] = []
+    // CGT13.1 - Number of disposals
+    if (data.cryptoassets.numberOfDisposals !== undefined) {
+      cryptoElements.push(`<NumberOfDisposals>${data.cryptoassets.numberOfDisposals}</NumberOfDisposals>`)
+    }
+    // CGT13.2 - Disposal proceeds
+    if (data.cryptoassets.disposalProceeds !== undefined) {
+      cryptoElements.push(`<DisposalProceeds>${formatMoney(data.cryptoassets.disposalProceeds)}</DisposalProceeds>`)
+    }
+    // CGT13.3 - Allowable costs
+    if (data.cryptoassets.allowableCosts !== undefined) {
+      cryptoElements.push(`<AllowableCosts>${formatMoney(data.cryptoassets.allowableCosts)}</AllowableCosts>`)
+    }
+    // CGT13.4 - Gains in the year
+    if (data.cryptoassets.gainsInTheYear !== undefined) {
+      cryptoElements.push(`<GainsInTheYear>${formatMoney(data.cryptoassets.gainsInTheYear)}</GainsInTheYear>`)
+    }
+    // CGT13.5 - Losses in the year
+    if (data.cryptoassets.lossesInTheYear !== undefined) {
+      cryptoElements.push(`<LossesInTheYear>${formatMoney(data.cryptoassets.lossesInTheYear)}</LossesInTheYear>`)
+    }
+    // CGT13.6 - Claim or election made
+    if (data.cryptoassets.claimOrElectionMade) {
+      cryptoElements.push(`<ClaimOrElectionMade>yes</ClaimOrElectionMade>`)
+    }
+    // CGT13.7 - Gain from RTT return
+    if (data.cryptoassets.gainFromRTTReturn !== undefined && data.cryptoassets.gainFromRTTReturn > 0) {
+      cryptoElements.push(`<GainFromRTTreturn>${formatMoney(data.cryptoassets.gainFromRTTReturn)}</GainFromRTTreturn>`)
+    }
+    // CGT13.8 - RTT tax already charged
+    if (data.cryptoassets.rttTaxAlreadyCharged !== undefined && data.cryptoassets.rttTaxAlreadyCharged > 0) {
+      cryptoElements.push(`<RTTtaxAlreadyCharged>${formatMoney(data.cryptoassets.rttTaxAlreadyCharged)}</RTTtaxAlreadyCharged>`)
+    }
+    if (cryptoElements.length > 0) {
+      sections.push(`<Cryptoassets>
+${cryptoElements.map((e) => '  ' + e).join('\n')}
+</Cryptoassets>`)
+    }
+  }
+
+  // OtherPropertyAssetsAndGains section (for general assets, etc.)
   // HMRC requires CGT14 (NumberOfDisposals) when CGT15 (DisposalProceeds) or CGT17 (GainsInYear) are present
   if (data.otherPropertyAndAssets) {
     const otherElements: string[] = []
@@ -1101,6 +1285,11 @@ ${shareElements.map((e) => '  ' + e).join('\n')}
       lossElements.push(`<BADRandERclaimedToDate>${formatMoney(data.businessAssetDisposalRelief.lifetimeLimitUsed)}</BADRandERclaimedToDate>`)
     }
 
+    // CGT51 - Adjustment to CGT (for 2024-25 due to rate change on 30 Oct 2024)
+    if (data.losses?.cgtAdjustment !== undefined && data.losses.cgtAdjustment !== 0) {
+      lossElements.push(`<AdjustmentToCGT>${formatMoney(data.losses.cgtAdjustment)}</AdjustmentToCGT>`)
+    }
+
     if (lossElements.length > 0) {
       sections.push(`<LossesAndAdjustments>
 ${lossElements.map((e) => '  ' + e).join('\n')}
@@ -1108,12 +1297,35 @@ ${lossElements.map((e) => '  ' + e).join('\n')}
     }
   }
 
-  // AnyOtherInformationSpace - Required when SA108 is present (error 6020)
+  // EstimateOrValuation (Box 53) - if computations include estimates
+  if (data.anyOtherInfo?.includesEstimates) {
+    sections.push(`<EstimateOrValuation>yes</EstimateOrValuation>`)
+  }
+
+  // AnyOtherInformationSpace (Box 54) - Required when SA108 is present (error 6020)
   // HMRC requires either an attachment OR the whitespace element to be present
   // Pattern allowed: [A-Za-z0-9 &'\(\)\*,\-\./@£]* - no colons, semi-colons, newlines
-  // Build a simple summary that fits the pattern
+  // Build content from user input or auto-generate summary
   const numDisposals = data.summary?.numberOfDisposals || 1
-  sections.push(`<AnyOtherInformationSpace>CGT computation - ${numDisposals} disposal(s)</AnyOtherInformationSpace>`)
+  let additionalInfoText = data.anyOtherInfo?.additionalInfo || ''
+
+  // Sanitize the text - remove disallowed characters
+  additionalInfoText = additionalInfoText
+    .replace(/[^A-Za-z0-9 &'()*,\-./@£\n]/g, '')
+    .replace(/\n/g, ' ')
+    .trim()
+
+  // If no user input, provide default
+  if (!additionalInfoText) {
+    additionalInfoText = `CGT computation - ${numDisposals} disposal(s)`
+  }
+
+  // Truncate to 2000 chars (HMRC limit)
+  if (additionalInfoText.length > 2000) {
+    additionalInfoText = additionalInfoText.substring(0, 1997) + '...'
+  }
+
+  sections.push(`<AnyOtherInformationSpace>${escapeXml(additionalInfoText)}</AnyOtherInformationSpace>`)
 
   return `<SA108>
 ${sections.map((s) => '  ' + s).join('\n')}

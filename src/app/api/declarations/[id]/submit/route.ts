@@ -6,10 +6,11 @@ import {
   pollUntilComplete,
 } from '@/lib/sa100/transaction-engine'
 import { calculateTax, getTaxpayerStatus, TaxCalculationInput } from '@/lib/sa100/tax-calculator'
-import type { GatewayCredentials, TaxpayerIdentification, SA100Return } from '@/lib/sa100/types'
+import type { GatewayCredentials, TaxpayerIdentification, SA100Return, SA108CapitalGains } from '@/lib/sa100/types'
 import { checkRateLimit, createRateLimitHeaders, RATE_LIMITS } from '@/lib/security/rate-limiter'
 import { logAuditEvent } from '@/lib/security/audit-log'
 import { getClientIp, getUserAgent, getRequestId } from '@/lib/utils/request'
+import { extractSA108CryptoassetsData } from '@/lib/wizard/tax-mapping'
 
 interface SubmitRequest {
   gatewayUserId: string
@@ -102,8 +103,31 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
   if (hasSelfEmployment && wizardData.selfEmploymentData) {
     sa100Return.sa103S = Object.values(wizardData.selfEmploymentData).map((se: any) => {
       const turnover = Math.round((se.income?.total || 0) / 100)
-      const expenses = Math.round((se.expenses?.total || 0) / 100)
-      const netProfitOrLoss = turnover - expenses
+      const totalExpenses = Math.round((se.expenses?.total || 0) / 100)
+      const netProfitOrLoss = turnover - totalExpenses
+
+      // Map expense categories from wizard to SA103S structure
+      // Wizard categories -> HMRC XML element names
+      const byCategory = se.expenses?.byCategory || {}
+      const mapExpense = (key: string) => {
+        const val = byCategory[key]
+        return val ? Math.round(val / 100) : undefined
+      }
+
+      // Build expense breakdown if categories are provided
+      const hasBreakdown = Object.values(byCategory).some((v: unknown) => typeof v === 'number' && v > 0)
+      const allowableExpenses = hasBreakdown ? {
+        costOfGoods: mapExpense('costOfGoods'),
+        carVanAndTravelExpenses: mapExpense('carVanTravelExpenses'),
+        wagesSalariesAndStaffCosts: mapExpense('wagesAndStaffCosts'),
+        rentAndOtherPropertyCosts: mapExpense('premisesRunningCosts'),
+        repairsAndMaintenanceCosts: mapExpense('maintenanceCosts'),
+        accountancyAndLegalFees: mapExpense('professionalFees'),
+        interestAndFinanceCharges: (mapExpense('financeCharges') || 0) + (mapExpense('interestOnBankOtherLoans') || 0) || undefined,
+        phoneAndOtherOfficeCosts: mapExpense('adminCosts'),
+        otherAllowableBusinessExpenses: (mapExpense('advertisingCosts') || 0) + (mapExpense('otherExpenses') || 0) + (mapExpense('paymentsToSubcontractors') || 0) || undefined,
+        totalAllowableExpenses: totalExpenses,
+      } : undefined
 
       return {
         businessDetails: {
@@ -122,7 +146,8 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
         income: {
           turnover,
         },
-        totalAllowableExpenses: expenses,
+        allowableExpenses,
+        totalAllowableExpenses: hasBreakdown ? undefined : totalExpenses,
         netProfitOrLoss,
         totalTaxableProfits: Math.max(0, netProfitOrLoss),
       }
@@ -142,6 +167,195 @@ function convertWizardDataToSA100(wizardData: any, taxpayer: TaxpayerIdentificat
     sa100Return.ukDividends = {
       ukDividendsAmount: Math.round((wizardData.dividendsData.ukDividends || 0) / 100),
     }
+  }
+
+  // Add Other Taxable Income if present (SA100 boxes 17-21)
+  if (wizardData.otherTaxableIncomeData) {
+    const oti = wizardData.otherTaxableIncomeData
+    if (oti.grossIncome || oti.preOwnedAssetsBenefit) {
+      sa100Return.otherTaxableIncome = {
+        grossIncomeAmount: oti.grossIncome ? Math.round(oti.grossIncome) : undefined,
+        allowableExpensesAmount: oti.allowableExpenses ? Math.round(oti.allowableExpenses) : undefined,
+        taxTakenOffAmount: oti.taxDeducted ? Math.round(oti.taxDeducted) : undefined,
+        preOwnedAssetsBenefitAmount: oti.preOwnedAssetsBenefit ? Math.round(oti.preOwnedAssetsBenefit) : undefined,
+        incomeDescription: oti.description || undefined,
+      }
+    }
+  }
+
+  // Add Marriage Allowance if present (SA100 boxes 15-16)
+  const marriageAllowance = wizardData.general?.marriageAllowance
+  if (marriageAllowance && marriageAllowance.type) {
+    sa100Return.marriage = {
+      transferToSpouseIndicator: marriageAllowance.type === 'transfer' ? 'yes' : undefined,
+      receiveFromSpouseIndicator: marriageAllowance.type === 'receive' ? 'yes' : undefined,
+      spouseFirstName: marriageAllowance.spouseFirstName || undefined,
+      spouseLastName: marriageAllowance.spouseSurname || undefined,
+      spouseNINO: marriageAllowance.spouseNino || undefined,
+      spouseDateOfBirth: marriageAllowance.spouseDob || marriageAllowance.spouseDateOfBirth || undefined,
+      spouseName: marriageAllowance.spouseName || undefined,
+      dateOfMarriage: marriageAllowance.dateOfMarriage || undefined,
+    }
+  }
+
+  // Add High Income Child Benefit Charge if present (SA100 boxes CBC1-3)
+  const stateBenefits = wizardData.stateBenefitsData
+  if (stateBenefits?.hasHighIncomeChildBenefit && stateBenefits.childBenefitReceived) {
+    sa100Return.highIncomeChildBenefitCharge = {
+      amountReceived: Math.round(stateBenefits.childBenefitReceived),
+      numberOfChildren: stateBenefits.numberOfChildren || 1, // Default to 1 if not specified
+      dateStoppedReceiving: stateBenefits.dateStoppedReceiving || undefined,
+    }
+  }
+
+  // Build SA108 Capital Gains schedule if present
+  if (hasCapitalGains && wizardData.capitalGainsData) {
+    const cgData = wizardData.capitalGainsData
+    const disposals = cgData.disposals || []
+
+    // Build SA108 structure
+    const sa108: SA108CapitalGains = {
+      summary: {
+        numberOfDisposals: disposals.length,
+      },
+    }
+
+    // Extract cryptoassets data (NEW for 2024-25)
+    const cryptoData = extractSA108CryptoassetsData(wizardData)
+    if (cryptoData) {
+      sa108.cryptoassets = {
+        numberOfDisposals: cryptoData.numberOfDisposals,
+        disposalProceeds: cryptoData.disposalProceeds,
+        allowableCosts: cryptoData.allowableCosts,
+        gainsInTheYear: cryptoData.gainsInTheYear,
+        lossesInTheYear: cryptoData.lossesInTheYear,
+      }
+    }
+
+    // Aggregate disposals by asset type for other sections
+    let listedSharesGains = 0
+    let listedSharesLosses = 0
+    let listedSharesProceeds = 0
+    let listedSharesCosts = 0
+    let listedSharesCount = 0
+
+    let unlistedSharesGains = 0
+    let unlistedSharesLosses = 0
+    let unlistedSharesProceeds = 0
+    let unlistedSharesCosts = 0
+    let unlistedSharesCount = 0
+
+    let otherGains = 0
+    let otherLosses = 0
+    let otherProceeds = 0
+    let otherCosts = 0
+    let otherCount = 0
+
+    for (const disposal of disposals) {
+      const gain = disposal.gain || 0
+      const loss = disposal.loss || 0
+      const proceeds = disposal.proceedsAmount || 0
+      const costs = (disposal.acquisitionCost || 0) + (disposal.allowableCosts || 0)
+
+      switch (disposal.assetType) {
+        case 'listed-shares':
+        case 'shares': // Default shares to listed
+          listedSharesCount++
+          listedSharesProceeds += proceeds
+          listedSharesCosts += costs
+          if (gain > 0) listedSharesGains += gain
+          if (loss > 0) listedSharesLosses += loss
+          break
+        case 'unlisted-shares':
+          unlistedSharesCount++
+          unlistedSharesProceeds += proceeds
+          unlistedSharesCosts += costs
+          if (gain > 0) unlistedSharesGains += gain
+          if (loss > 0) unlistedSharesLosses += loss
+          break
+        case 'crypto':
+          // Already handled in cryptoassets section above
+          break
+        default:
+          // Property, other-property, residential-property, other
+          otherCount++
+          otherProceeds += proceeds
+          otherCosts += costs
+          if (gain > 0) otherGains += gain
+          if (loss > 0) otherLosses += loss
+          break
+      }
+    }
+
+    // Add ListedSharesAndSecurities section if present
+    if (listedSharesCount > 0) {
+      sa108.listedSharesAndSecurities = {
+        numberOfDisposals: listedSharesCount,
+        disposalProceeds: Math.round(listedSharesProceeds),
+        allowableCosts: Math.round(listedSharesCosts),
+        gainsInYear: Math.round(listedSharesGains),
+        lossesInYear: Math.round(listedSharesLosses),
+      }
+    }
+
+    // Add UnlistedShares section if present
+    if (unlistedSharesCount > 0) {
+      sa108.unlistedShares = {
+        numberOfDisposals: unlistedSharesCount,
+        disposalProceeds: Math.round(unlistedSharesProceeds),
+        allowableCosts: Math.round(unlistedSharesCosts),
+        gainsInYear: Math.round(unlistedSharesGains),
+        lossesInYear: Math.round(unlistedSharesLosses),
+      }
+    }
+
+    // Add OtherPropertyAndAssets section if present
+    if (otherCount > 0) {
+      sa108.otherPropertyAndAssets = {
+        numberOfDisposals: otherCount,
+        disposalProceeds: Math.round(otherProceeds),
+        allowableCosts: Math.round(otherCosts),
+        gainsInYear: Math.round(otherGains),
+        lossesInYear: Math.round(otherLosses),
+      }
+    }
+
+    // Add losses section
+    if (cgData.lossesFromPreviousYears || cgData.lossesThisYear || cgData.cgtAdjustment) {
+      sa108.losses = {}
+      if (cgData.lossesFromPreviousYears) {
+        sa108.losses.lossesBroughtForward = Math.round(cgData.lossesFromPreviousYears)
+      }
+      if (cgData.cgtAdjustment) {
+        sa108.losses.cgtAdjustment = Math.round(cgData.cgtAdjustment)
+      }
+    }
+
+    // Add Annual Exempt Amount
+    if (cgData.annualExemptAmount) {
+      sa108.annualExemptAmount = {
+        amountClaimed: Math.round(cgData.annualExemptAmount),
+      }
+    }
+
+    // Add any other info (boxes 53-54)
+    // Auto-append attachment filenames if present
+    let additionalInfo = cgData.additionalInformation || ''
+    if (cgData.attachments && cgData.attachments.length > 0) {
+      const attachmentNote = `Capital gains computations attached: ${cgData.attachments.map((a: { filename: string }) => a.filename).join(', ')}`
+      additionalInfo = additionalInfo
+        ? `${additionalInfo}. ${attachmentNote}`
+        : attachmentNote
+    }
+
+    if (cgData.includesEstimates || additionalInfo) {
+      sa108.anyOtherInfo = {
+        includesEstimates: cgData.includesEstimates,
+        additionalInfo: additionalInfo || undefined,
+      }
+    }
+
+    sa100Return.sa108 = sa108
   }
 
   // Calculate SA110 tax summary using HMRC-compliant calculator
@@ -361,6 +575,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const sa100Data = convertWizardDataToSA100(returnData, taxpayer)
     console.log('[Submit Route] SA100 data:', JSON.stringify(sa100Data, null, 2))
 
+    // Extract PDF attachments from capital gains data (if any)
+    const wizardAttachments = returnData.capitalGainsData?.attachments || []
+    const attachments = wizardAttachments.length > 0
+      ? wizardAttachments.map((att: { filename: string; content: string; description?: string }) => ({
+          filename: att.filename,
+          mimeType: 'application/pdf' as const,
+          content: att.content,
+          description: att.description,
+        }))
+      : undefined
+    console.log('[Submit Route] Attachments:', attachments?.length ?? 0)
+
     // Check if sandbox mode
     const isSandbox = process.env.HMRC_SANDBOX_MODE === 'true'
 
@@ -375,6 +601,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         taxpayer,
         returnData: sa100Data,
         isTestSubmission,
+        attachments,
       })
 
       // Store the XML for debugging
@@ -427,6 +654,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       taxpayer,
       returnData: sa100Data,
       isTestSubmission,
+      attachments,
     })
 
     // Check for validation errors

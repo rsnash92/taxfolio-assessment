@@ -236,30 +236,83 @@ export function StateBenefitsStep() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="childBenefitReceived">
-                Total Child Benefit Received This Year
-              </Label>
-              <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  £
-                </span>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="childBenefitReceived">
+                  Total Child Benefit Received This Year
+                  <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    £
+                  </span>
+                  <Input
+                    id="childBenefitReceived"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-8"
+                    value={benefitsData.childBenefitReceived || ''}
+                    onChange={(e) =>
+                      handleChildBenefitUpdate(parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  2024/25 rates: £25.60/week for eldest child, £16.95/week for
+                  additional children
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="numberOfChildren">
+                  Number of Children
+                  <span className="text-red-500 ml-1">*</span>
+                </Label>
                 <Input
-                  id="childBenefitReceived"
+                  id="numberOfChildren"
                   type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  className="pl-8"
-                  value={benefitsData.childBenefitReceived || ''}
+                  min="1"
+                  max="20"
+                  step="1"
+                  placeholder="1"
+                  value={benefitsData.numberOfChildren || ''}
                   onChange={(e) =>
-                    handleChildBenefitUpdate(parseFloat(e.target.value) || 0)
+                    updateData({
+                      stateBenefitsData: {
+                        ...benefitsData,
+                        numberOfChildren: parseInt(e.target.value) || undefined,
+                      },
+                    })
                   }
                 />
+                <p className="text-xs text-gray-500">
+                  How many children you claimed for
+                </p>
               </div>
+            </div>
+
+            <div className="space-y-2 mt-4">
+              <Label htmlFor="dateStoppedReceiving">
+                Date Stopped Receiving Child Benefit
+              </Label>
+              <Input
+                id="dateStoppedReceiving"
+                type="date"
+                className="max-w-xs"
+                value={benefitsData.dateStoppedReceiving || ''}
+                onChange={(e) =>
+                  updateData({
+                    stateBenefitsData: {
+                      ...benefitsData,
+                      dateStoppedReceiving: e.target.value || undefined,
+                    },
+                  })
+                }
+              />
               <p className="text-xs text-gray-500">
-                2024/25 rates: £25.60/week for eldest child, £16.95/week for
-                additional children
+                Only complete if you stopped receiving Child Benefit during the tax year
               </p>
             </div>
 
