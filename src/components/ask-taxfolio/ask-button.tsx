@@ -20,6 +20,7 @@ export function AskButton() {
       <SheetTrigger asChild>
         <Button
           size="lg"
+          data-slot="ask-taxfolio-trigger"
           className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-[#00e3ec] hover:bg-gradient-to-r hover:from-[#0f172a] hover:to-[#1e293b] hover:text-white text-black z-50 transition-all"
         >
           {open ? (
