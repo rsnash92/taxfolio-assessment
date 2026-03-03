@@ -90,10 +90,12 @@ export function WizardProvider({
   children,
   userId,
   initialTaxYear,
+  clientId,
 }: {
   children: ReactNode;
   userId?: string;
   initialTaxYear?: string;
+  clientId?: string;
 }) {
   const [currentStep, setCurrentStep] = useState<StepId>('residency');
   const [currentBusinessId, setCurrentBusinessId] = useState<string | null>(null);
@@ -119,7 +121,9 @@ export function WizardProvider({
 
     if (userId) {
       try {
-        const response = await fetch(`/api/wizard-progress?taxYear=${taxYear}`);
+        const lqp = new URLSearchParams({ taxYear });
+        if (clientId) lqp.set('clientId', clientId);
+        const response = await fetch(`/api/wizard-progress?${lqp}`);
         const result = await response.json();
 
         if (result.success && result.data) {
@@ -136,7 +140,7 @@ export function WizardProvider({
     }
 
     return { data: loadedData, step: savedStep, businessId: savedBusinessId, propertyId: savedPropertyId };
-  }, [userId]);
+  }, [userId, clientId]);
 
   // Load existing session on mount
   useEffect(() => {
@@ -154,7 +158,9 @@ export function WizardProvider({
       // Try to load from database if user is authenticated
       if (userId) {
         try {
-          const response = await fetch(`/api/wizard-progress?taxYear=${taxYearToLoad}`);
+          const queryParams = new URLSearchParams({ taxYear: taxYearToLoad });
+        if (clientId) queryParams.set('clientId', clientId);
+        const response = await fetch(`/api/wizard-progress?${queryParams}`);
           const result = await response.json();
 
           if (result.success && result.data) {
@@ -279,7 +285,8 @@ export function WizardProvider({
             currentStep,
             currentBusinessId,
             currentPropertyId,
-            taxYear: data.taxYear, // Explicitly pass tax year
+            taxYear: data.taxYear,
+            ...(clientId && { clientId }),
           }),
         });
 
@@ -329,6 +336,7 @@ export function WizardProvider({
             currentBusinessId,
             currentPropertyId,
             taxYear: data.taxYear,
+            ...(clientId && { clientId }),
           }),
         });
       }

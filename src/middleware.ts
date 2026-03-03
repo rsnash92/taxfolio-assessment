@@ -51,8 +51,11 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Agent routes use JWT token auth, allow through without Supabase session
+  const isAgentRoute = request.nextUrl.pathname.startsWith('/agent/');
+
   // If user is not logged in and trying to access protected route
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicRoute && !isAgentRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
