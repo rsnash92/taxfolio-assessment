@@ -147,13 +147,13 @@ export function WizardProvider({
     async function loadSession() {
       setIsLoading(true);
 
-      let loadedData = initialData;
+      // Determine which tax year to load (from URL param or default to 2024-25)
+      const taxYearToLoad = initialTaxYear || '2024-25';
+
+      let loadedData = { ...initialData, taxYear: taxYearToLoad };
       let savedStep: StepId | null = null;
       let savedBusinessId: string | null = null;
       let savedPropertyId: string | null = null;
-
-      // Determine which tax year to load (from URL param or default to 2024-25)
-      const taxYearToLoad = initialTaxYear || '2024-25';
 
       // Try to load from database if user is authenticated
       if (userId) {
@@ -166,7 +166,7 @@ export function WizardProvider({
           if (result.success && result.data) {
             // Exclude taxCalculation from loaded data - always compute fresh
             const { taxCalculation: _ignored, ...wizardDataWithoutCalc } = result.data.wizardData || {};
-            loadedData = { ...initialData, ...wizardDataWithoutCalc, taxCalculation: null };
+            loadedData = { ...initialData, ...wizardDataWithoutCalc, taxYear: taxYearToLoad, taxCalculation: null };
             savedStep = result.data.currentStep;
             savedBusinessId = result.data.currentBusinessId;
             savedPropertyId = result.data.currentPropertyId;
